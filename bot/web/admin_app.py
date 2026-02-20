@@ -176,7 +176,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 f"<td>{_fmt_money(int(r['money_uzs'] or 0))}</td>"
                 f"<td>{int(r['points'] or 0)}</td>"
                 "<td>"
-                "<form method='post' action='/users/update' class='rowform'>"
+                "<form method='post' action='/admin/users/update' class='rowform'>"
                 f"<input type='hidden' name='user_id' value='{int(r['id'])}'>"
                 "<input class='input' name='money_delta' placeholder='money +/-' style='width:120px'>"
                 "<input class='input' name='points_delta' placeholder='points +/-' style='width:120px'>"
@@ -184,7 +184,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 "</form>"
                 "</td>"
                 "<td>"
-                "<form method='post' action='/users/delete' class='rowform'>"
+                "<form method='post' action='/admin/users/delete' class='rowform'>"
                 f"<input type='hidden' name='user_id' value='{int(r['id'])}'>"
                 "<button class='btn' type='submit' onclick=\"return confirm('User o\'chirilsinmi?')\" style='border-color:rgba(248,113,113,.65);background:rgba(248,113,113,.12)'>Delete</button>"
                 "</form>"
@@ -214,7 +214,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             money_delta=_parse_int(money_delta),
             points_delta=_parse_int(points_delta),
         )
-        return RedirectResponse(url=str(request.headers.get("referer") or "/users"), status_code=303)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/users"), status_code=303)
 
     @router.post("/users/delete")
     async def admin_users_delete(
@@ -223,7 +223,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         user_id: int = Form(...),
     ):
         await repo.admin_delete_user(user_id=user_id)
-        return RedirectResponse(url=str(request.headers.get("referer") or "/users"), status_code=303)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/users"), status_code=303)
 
     @router.get("/orders", response_class=HTMLResponse)
     async def admin_orders(
@@ -274,7 +274,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 f"<td>{_fmt_money(int(r['price_uzs']))}</td>"
                 f"<td>{r['status']}</td>"
                 "<td>"
-                "<form method='post' action='/orders/update' class='rowform'>"
+                "<form method='post' action='/admin/orders/update' class='rowform'>"
                 f"<input type='hidden' name='order_id' value='{int(r['id'])}'>"
                 "<select class='select' name='status'>"
                 "<option value='new'>new</option>"
@@ -339,7 +339,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         status: str = Form(...),
     ):
         await repo.admin_set_order_status(order_id=order_id, status=status)
-        return RedirectResponse(url=str(request.headers.get("referer") or "/orders"), status_code=303)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/orders"), status_code=303)
 
     @router.get("/topups", response_class=HTMLResponse)
     async def admin_topups(
@@ -389,7 +389,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             if has_proof:
                 proof = (
                     f"{(r['proof_type'] or '')}: <code>{_escape_attr(str(r['proof_file_id'] or ''))}</code> "
-                    f"<a class='btn' href='/topups/proof/{int(r['id'])}' style='padding:6px 10px;border-radius:10px'>Download</a>"
+                    f"<a class='btn' href='/admin/topups/proof/{int(r['id'])}' style='padding:6px 10px;border-radius:10px'>Download</a>"
                 )
 
             username = ""
@@ -414,7 +414,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 f"<td>{r['status']}</td>"
                 f"<td>{proof}</td>"
                 "<td>"
-                "<form method='post' action='/topups/update' class='rowform'>"
+                "<form method='post' action='/admin/topups/update' class='rowform'>"
                 f"<input type='hidden' name='topup_id' value='{int(r['id'])}'>"
                 "<select class='select' name='status'>"
                 "<option value='pending'>pending</option>"
@@ -426,7 +426,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 "</form>"
                 "</td>"
                 "<td>"
-                "<form method='post' action='/topups/delete' class='rowform'>"
+                "<form method='post' action='/admin/topups/delete' class='rowform'>"
                 f"<input type='hidden' name='topup_id' value='{int(r['id'])}'>"
                 "<button class='btn' type='submit' onclick=\"return confirm('Topup o\'chirilsinmi?')\" style='border-color:rgba(248,113,113,.65);background:rgba(248,113,113,.12)'>Delete</button>"
                 "</form>"
@@ -603,10 +603,10 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             except Exception:
                 pass
         if status == "paid":
-            return RedirectResponse(url="/buyers", status_code=303)
+            return RedirectResponse(url="/admin/buyers", status_code=303)
         if status != "pending":
-            return RedirectResponse(url="/topups", status_code=303)
-        return RedirectResponse(url=str(request.headers.get("referer") or "/topups"), status_code=303)
+            return RedirectResponse(url="/admin/topups", status_code=303)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/topups"), status_code=303)
 
     @router.post("/topups/delete")
     async def admin_topups_delete(
@@ -615,7 +615,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         topup_id: int = Form(...),
     ):
         await repo.admin_delete_topup(topup_id=topup_id)
-        return RedirectResponse(url=str(request.headers.get("referer") or "/topups"), status_code=303)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/topups"), status_code=303)
 
     @router.get("/health", response_class=HTMLResponse)
     async def admin_health(credentials: HTTPBasicCredentials = Depends(_auth)):
@@ -725,7 +725,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "ChatGPT akkaunt",
             product_key="chatgpt_business",
             active="chatgpt",
-            post_url="/accounts/chatgpt",
+            post_url="/admin/accounts/chatgpt",
         )
 
     @router.post("/accounts/chatgpt")
@@ -738,7 +738,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         acc_id = await repo.admin_add_product_account("chatgpt_business", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse({"ok": True, "id": acc_id, "login": login, "password": password, "created_at": ""})
-        return RedirectResponse(url="/accounts/chatgpt", status_code=303)
+        return RedirectResponse(url="/admin/accounts/chatgpt", status_code=303)
 
     @router.get("/accounts/gemini", response_class=HTMLResponse)
     async def admin_gemini(credentials: HTTPBasicCredentials = Depends(_auth)):
@@ -746,7 +746,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "Gemini akkaunt",
             product_key="gemine",
             active="gemini",
-            post_url="/accounts/gemini",
+            post_url="/admin/accounts/gemini",
         )
 
     @router.post("/accounts/gemini")
@@ -759,6 +759,6 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         acc_id = await repo.admin_add_product_account("gemine", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse({"ok": True, "id": acc_id, "login": login, "password": password, "created_at": ""})
-        return RedirectResponse(url="/accounts/gemini", status_code=303)
+        return RedirectResponse(url="/admin/accounts/gemini", status_code=303)
 
     return router
