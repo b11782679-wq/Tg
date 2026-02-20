@@ -629,7 +629,14 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
     def _escape_attr(s: str) -> str:
         return _escape_textarea(s).replace("\"", "&quot;").replace("'", "&#39;")
 
-    async def _account_page(title: str, product_key: str, active: str, post_url: str, delete_post_url: str) -> str:
+    async def _account_page(
+        title: str,
+        product_key: str,
+        active: str,
+        post_url: str,
+        delete_post_url: str,
+        edit_post_url: str,
+    ) -> str:
         rows = await repo.admin_list_available_product_accounts(product_key=product_key, limit=300)
         body = (
             "<div class='stack'>"
@@ -689,7 +696,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "var tb=document.getElementById('acct-table-body');"
             "if(tb){"
             "var tr=document.createElement('tr');"
-            "tr.innerHTML='<td><code>'+d.id+'</code></td><td>'+d.login+'</td><td>'+d.password+'</td><td>'+d.created_at+'</td><td><form method=\'post\' action=\''+d.delete_url+'\' class=\'rowform\'><input type=\'hidden\' name=\'account_id\' value=\''+d.id+'\'><button class=\'btn\' type=\'submit\' onclick=\"return confirm(\\'O\\'chirish?\\')\" style=\'border-color:rgba(248,113,113,.65);background:rgba(248,113,113,.12)\'>Delete</button></form></td>';"
+            "tr.innerHTML='<td><code>'+d.id+'</code></td><td>'+d.login+'</td><td>'+d.password+'</td><td>'+d.created_at+'</td><td><form method=\'post\' action=\''+d.edit_url+'\' class=\'rowform\' style=\'gap:6px\'><input type=\'hidden\' name=\'account_id\' value=\''+d.id+'\'><input class=\'input\' name=\'login\' value=\''+(d.login||'')+'\' style=\'width:140px\'><input class=\'input\' name=\'password\' value=\''+(d.password||'')+'\' style=\'width:140px\'><button class=\'btn\' type=\'submit\'>Save</button></form></td><td><form method=\'post\' action=\''+d.delete_url+'\' class=\'rowform\'><input type=\'hidden\' name=\'account_id\' value=\''+d.id+'\'><button class=\'btn\' type=\'submit\' onclick=\"return confirm(\\'O\\'chirish?\\')\" style=\'border-color:rgba(248,113,113,.65);background:rgba(248,113,113,.12)\'>Delete</button></form></td>';"
             "tb.appendChild(tr);"
             "}"
             "});"
@@ -702,7 +709,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<div class='meta'>Available: " + str(len(rows)) + "</div>"
             "<div class='table-wrap'>"
             "<table>"
-            "<thead><tr><th>ID</th><th>Login</th><th>Parol</th><th>Created</th><th>Delete</th></tr></thead>"
+            "<thead><tr><th>ID</th><th>Login</th><th>Parol</th><th>Created</th><th>Edit</th><th>Delete</th></tr></thead>"
             "<tbody id='acct-table-body'>"
         )
 
@@ -713,6 +720,14 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 f"<td>{(r['login'] or '')}</td>"
                 f"<td>{(r['password'] or '')}</td>"
                 f"<td>{(r['created_at'] or '')}</td>"
+                "<td>"
+                f"<form method='post' action='{_escape_attr(str(edit_post_url))}' class='rowform' style='gap:6px'>"
+                f"<input type='hidden' name='account_id' value='{int(r['id'])}'>"
+                f"<input class='input' name='login' value='{_escape_attr(str(r['login'] or ''))}' style='width:140px'>"
+                f"<input class='input' name='password' value='{_escape_attr(str(r['password'] or ''))}' style='width:140px'>"
+                "<button class='btn' type='submit'>Save</button>"
+                "</form>"
+                "</td>"
                 "<td>"
                 f"<form method='post' action='{_escape_attr(str(delete_post_url))}' class='rowform'>"
                 f"<input type='hidden' name='account_id' value='{int(r['id'])}'>"
@@ -733,6 +748,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             active="chatgpt",
             post_url="/admin/accounts/chatgpt",
             delete_post_url="/admin/accounts/chatgpt/delete",
+            edit_post_url="/admin/accounts/chatgpt/edit",
         )
 
     @router.post("/accounts/chatgpt")
@@ -752,9 +768,21 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                     "password": password,
                     "created_at": "",
                     "delete_url": "/admin/accounts/chatgpt/delete",
+                    "edit_url": "/admin/accounts/chatgpt/edit",
                 }
             )
         return RedirectResponse(url="/admin/accounts/chatgpt", status_code=303)
+
+    @router.post("/accounts/chatgpt/edit")
+    async def admin_chatgpt_edit(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+        login: str = Form(""),
+        password: str = Form(""),
+    ):
+        await repo.admin_update_product_account("chatgpt_business", account_id=account_id, login=login, password=password)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/chatgpt"), status_code=303)
 
     @router.post("/accounts/chatgpt/delete")
     async def admin_chatgpt_delete(
@@ -773,6 +801,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             active="gemini",
             post_url="/admin/accounts/gemini",
             delete_post_url="/admin/accounts/gemini/delete",
+            edit_post_url="/admin/accounts/gemini/edit",
         )
 
     @router.post("/accounts/gemini")
@@ -792,9 +821,21 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                     "password": password,
                     "created_at": "",
                     "delete_url": "/admin/accounts/gemini/delete",
+                    "edit_url": "/admin/accounts/gemini/edit",
                 }
             )
         return RedirectResponse(url="/admin/accounts/gemini", status_code=303)
+
+    @router.post("/accounts/gemini/edit")
+    async def admin_gemini_edit(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+        login: str = Form(""),
+        password: str = Form(""),
+    ):
+        await repo.admin_update_product_account("gemine", account_id=account_id, login=login, password=password)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/gemini"), status_code=303)
 
     @router.post("/accounts/gemini/delete")
     async def admin_gemini_delete(

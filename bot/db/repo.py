@@ -131,6 +131,15 @@ class Repo:
             await db.commit()
             return (cur.rowcount or 0) > 0
 
+    async def admin_update_product_account(self, product_key: str, account_id: int, login: str, password: str) -> bool:
+        async with await self._conn() as db:
+            cur = await db.execute(
+                "UPDATE product_accounts SET login=?, password=? WHERE id=? AND product_key=? AND status='available'",
+                (login or "", password or "", int(account_id), str(product_key)),
+            )
+            await db.commit()
+            return (cur.rowcount or 0) > 0
+
     async def admin_list_purchases(self, limit: int = 200):
         limit = min(max(int(limit), 1), 500)
         query = """
