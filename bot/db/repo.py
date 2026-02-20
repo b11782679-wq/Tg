@@ -23,30 +23,35 @@ class Repo:
         async with await self._conn() as db:
             db.row_factory = aiosqlite.Row
 
-            cur = await db.execute("SELECT id FROM users WHERE id=?", (user_id,))
-            u = await cur.fetchone()
-            if u is None:
-                ref_code = _new_ref_code()
+            # Race condition'ni oldini olish uchun idempotent upsert.
+            ref_code = _new_ref_code()
+            safe_referrer_id = None
+            if referrer_id and int(referrer_id) != int(user_id):
+                safe_referrer_id = int(referrer_id)
+
+            await db.execute(
+                "INSERT OR IGNORE INTO users(id, full_name, username, referrer_id, referral_code) VALUES(?,?,?,?,?)",
+                (int(user_id), str(full_name or ""), username, safe_referrer_id, ref_code),
+            )
+            await db.execute(
+                "INSERT OR IGNORE INTO balances(user_id, points, money_uzs) VALUES(?,?,?)",
+                (int(user_id), 0, 0),
+            )
+
+            # Har doim username/full_name yangilab turamiz (foydalanuvchi o'zgartirishi mumkin)
+            await db.execute(
+                "UPDATE users SET full_name=?, username=? WHERE id=?",
+                (str(full_name or ""), username, int(user_id)),
+            )
+
+            # Referrer faqat birinchi marta o'rnatilsin.
+            if safe_referrer_id is not None:
                 await db.execute(
-                    "INSERT INTO users(id, full_name, username, referrer_id, referral_code) VALUES(?,?,?,?,?)",
-                    (user_id, full_name, username, referrer_id, ref_code),
+                    "UPDATE users SET referrer_id=? WHERE id=? AND referrer_id IS NULL",
+                    (int(safe_referrer_id), int(user_id)),
                 )
-                await db.execute(
-                    "INSERT OR IGNORE INTO balances(user_id, points, money_uzs) VALUES(?,?,?)",
-                    (user_id, 0, 0),
-                )
-                await db.commit()
-            else:
-                if referrer_id and int(referrer_id) != int(user_id):
-                    cur = await db.execute("SELECT referrer_id FROM users WHERE id=?", (int(user_id),))
-                    row = await cur.fetchone()
-                    current_ref = None if not row else row["referrer_id"]
-                    if current_ref is None:
-                        await db.execute(
-                            "UPDATE users SET referrer_id=? WHERE id=? AND referrer_id IS NULL",
-                            (int(referrer_id), int(user_id)),
-                        )
-                        await db.commit()
+
+            await db.commit()
 
     async def get_user(self, user_id: int):
         async with await self._conn() as db:
