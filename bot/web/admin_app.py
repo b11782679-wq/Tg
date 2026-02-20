@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Annotated
 
 import aiosqlite
-from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi import Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -19,7 +19,6 @@ from fastapi import APIRouter
 
 
 _security = HTTPBasic()
-router = APIRouter()
 
 
 def _check_auth(cfg: Config, creds: HTTPBasicCredentials):
@@ -30,7 +29,7 @@ def _check_auth(cfg: Config, creds: HTTPBasicCredentials):
 
 
 def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
-    # app = FastAPI()  # Eski versiya, endi router ishlatamiz
+    router = APIRouter()
 
     async def _auth(creds: Annotated[HTTPBasicCredentials, Depends(_security)]):
         _check_auth(cfg, creds)
@@ -177,7 +176,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 f"<td>{_fmt_money(int(r['money_uzs'] or 0))}</td>"
                 f"<td>{int(r['points'] or 0)}</td>"
                 "<td>"
-                "<form method='post' action='/admin/users/update' class='rowform'>"
+                "<form method='post' action='/users/update' class='rowform'>"
                 f"<input type='hidden' name='user_id' value='{int(r['id'])}'>"
                 "<input class='input' name='money_delta' placeholder='money +/-' style='width:120px'>"
                 "<input class='input' name='points_delta' placeholder='points +/-' style='width:120px'>"
@@ -185,7 +184,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 "</form>"
                 "</td>"
                 "<td>"
-                "<form method='post' action='/admin/users/delete' class='rowform'>"
+                "<form method='post' action='/users/delete' class='rowform'>"
                 f"<input type='hidden' name='user_id' value='{int(r['id'])}'>"
                 "<button class='btn' type='submit' onclick=\"return confirm('User o\'chirilsinmi?')\" style='border-color:rgba(248,113,113,.65);background:rgba(248,113,113,.12)'>Delete</button>"
                 "</form>"
@@ -196,7 +195,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         body += "</tbody></table></div>"
         return _layout("Users & Balances", body, active="users")
 
-    @router.post("/admin/users/update")
+    @router.post("/users/update")
     async def admin_users_update(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -215,18 +214,18 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             money_delta=_parse_int(money_delta),
             points_delta=_parse_int(points_delta),
         )
-        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/users"), status_code=303)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/users"), status_code=303)
 
-    @router.post("/admin/users/delete")
+    @router.post("/users/delete")
     async def admin_users_delete(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
         user_id: int = Form(...),
     ):
         await repo.admin_delete_user(user_id=user_id)
-        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/users"), status_code=303)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/users"), status_code=303)
 
-    @app.get("/admin/orders", response_class=HTMLResponse)
+    @router.get("/orders", response_class=HTMLResponse)
     async def admin_orders(
         credentials: HTTPBasicCredentials = Depends(_auth),
         status: str | None = None,
@@ -275,7 +274,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 f"<td>{_fmt_money(int(r['price_uzs']))}</td>"
                 f"<td>{r['status']}</td>"
                 "<td>"
-                "<form method='post' action='/admin/orders/update' class='rowform'>"
+                "<form method='post' action='/orders/update' class='rowform'>"
                 f"<input type='hidden' name='order_id' value='{int(r['id'])}'>"
                 "<select class='select' name='status'>"
                 "<option value='new'>new</option>"
@@ -292,7 +291,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         body += "</tbody></table></div>"
         return _layout("Orders", body, active="orders")
 
-    @app.get("/admin/referrals", response_class=HTMLResponse)
+    @router.get("/referrals", response_class=HTMLResponse)
     async def admin_referrals(
         credentials: HTTPBasicCredentials = Depends(_auth),
         limit: int = 50,
@@ -332,7 +331,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         body += "</tbody></table></div>"
         return _layout("Referrals", body, active="referrals")
 
-    @router.post("/admin/orders/update")
+    @router.post("/orders/update")
     async def admin_orders_update(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -340,9 +339,9 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         status: str = Form(...),
     ):
         await repo.admin_set_order_status(order_id=order_id, status=status)
-        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/orders"), status_code=303)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/orders"), status_code=303)
 
-    @app.get("/admin/topups", response_class=HTMLResponse)
+    @router.get("/topups", response_class=HTMLResponse)
     async def admin_topups(
         credentials: HTTPBasicCredentials = Depends(_auth),
         status: str | None = None,
@@ -390,7 +389,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             if has_proof:
                 proof = (
                     f"{(r['proof_type'] or '')}: <code>{_escape_attr(str(r['proof_file_id'] or ''))}</code> "
-                    f"<a class='btn' href='/admin/topups/proof/{int(r['id'])}' style='padding:6px 10px;border-radius:10px'>Download</a>"
+                    f"<a class='btn' href='/topups/proof/{int(r['id'])}' style='padding:6px 10px;border-radius:10px'>Download</a>"
                 )
 
             username = ""
@@ -415,7 +414,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 f"<td>{r['status']}</td>"
                 f"<td>{proof}</td>"
                 "<td>"
-                "<form method='post' action='/admin/topups/update' class='rowform'>"
+                "<form method='post' action='/topups/update' class='rowform'>"
                 f"<input type='hidden' name='topup_id' value='{int(r['id'])}'>"
                 "<select class='select' name='status'>"
                 "<option value='pending'>pending</option>"
@@ -427,7 +426,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 "</form>"
                 "</td>"
                 "<td>"
-                "<form method='post' action='/admin/topups/delete' class='rowform'>"
+                "<form method='post' action='/topups/delete' class='rowform'>"
                 f"<input type='hidden' name='topup_id' value='{int(r['id'])}'>"
                 "<button class='btn' type='submit' onclick=\"return confirm('Topup o\'chirilsinmi?')\" style='border-color:rgba(248,113,113,.65);background:rgba(248,113,113,.12)'>Delete</button>"
                 "</form>"
@@ -438,7 +437,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         body += "</tbody></table></div>"
         return _layout("Topups", body, active="topups")
 
-    @app.get("/admin/buyers", response_class=HTMLResponse)
+    @router.get("/buyers", response_class=HTMLResponse)
     async def admin_buyers(
         credentials: HTTPBasicCredentials = Depends(_auth),
         limit: int = 200,
@@ -479,7 +478,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         body += "</tbody></table></div>"
         return _layout("Sotib olganlar", body, active="buyers")
 
-    @app.get("/admin/topups/proof/{topup_id}")
+    @router.get("/topups/proof/{topup_id}")
     async def admin_topup_proof_download(
         topup_id: int,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -514,7 +513,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             headers={"Content-Disposition": f"attachment; filename=\"{filename}\""},
         )
 
-    @app.get("/admin/purchases", response_class=HTMLResponse)
+    @router.get("/purchases", response_class=HTMLResponse)
     async def admin_purchases(
         credentials: HTTPBasicCredentials = Depends(_auth),
         limit: int = 200,
@@ -559,7 +558,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         body += "</tbody></table></div>"
         return _layout("Purchases", body, active="purchases")
 
-    @router.post("/admin/topups/update")
+    @router.post("/topups/update")
     async def admin_topups_update(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -604,21 +603,21 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             except Exception:
                 pass
         if status == "paid":
-            return RedirectResponse(url="/admin/buyers", status_code=303)
+            return RedirectResponse(url="/buyers", status_code=303)
         if status != "pending":
-            return RedirectResponse(url="/admin/topups", status_code=303)
-        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/topups"), status_code=303)
+            return RedirectResponse(url="/topups", status_code=303)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/topups"), status_code=303)
 
-    @router.post("/admin/topups/delete")
+    @router.post("/topups/delete")
     async def admin_topups_delete(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
         topup_id: int = Form(...),
     ):
         await repo.admin_delete_topup(topup_id=topup_id)
-        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/topups"), status_code=303)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/topups"), status_code=303)
 
-    @app.get("/admin/health", response_class=HTMLResponse)
+    @router.get("/health", response_class=HTMLResponse)
     async def admin_health(credentials: HTTPBasicCredentials = Depends(_auth)):
         async with aiosqlite.connect(cfg.db_path) as db:
             await db.execute("SELECT 1")
@@ -720,16 +719,16 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         body += "</tbody></table></div></div>"
         return _layout(title, body, active=active)
 
-    @app.get("/admin/accounts/chatgpt", response_class=HTMLResponse)
+    @router.get("/accounts/chatgpt", response_class=HTMLResponse)
     async def admin_chatgpt(credentials: HTTPBasicCredentials = Depends(_auth)):
         return await _account_page(
             "ChatGPT akkaunt",
             product_key="chatgpt_business",
             active="chatgpt",
-            post_url="/admin/accounts/chatgpt",
+            post_url="/accounts/chatgpt",
         )
 
-    @router.post("/admin/accounts/chatgpt")
+    @router.post("/accounts/chatgpt")
     async def admin_chatgpt_save(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -739,18 +738,18 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         acc_id = await repo.admin_add_product_account("chatgpt_business", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse({"ok": True, "id": acc_id, "login": login, "password": password, "created_at": ""})
-        return RedirectResponse(url="/admin/accounts/chatgpt", status_code=303)
+        return RedirectResponse(url="/accounts/chatgpt", status_code=303)
 
-    @app.get("/admin/accounts/gemini", response_class=HTMLResponse)
+    @router.get("/accounts/gemini", response_class=HTMLResponse)
     async def admin_gemini(credentials: HTTPBasicCredentials = Depends(_auth)):
         return await _account_page(
             "Gemini akkaunt",
             product_key="gemine",
             active="gemini",
-            post_url="/admin/accounts/gemini",
+            post_url="/accounts/gemini",
         )
 
-    @router.post("/admin/accounts/gemini")
+    @router.post("/accounts/gemini")
     async def admin_gemini_save(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -760,6 +759,6 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         acc_id = await repo.admin_add_product_account("gemine", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse({"ok": True, "id": acc_id, "login": login, "password": password, "created_at": ""})
-        return RedirectResponse(url="/admin/accounts/gemini", status_code=303)
+        return RedirectResponse(url="/accounts/gemini", status_code=303)
 
     return router

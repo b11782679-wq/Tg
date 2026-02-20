@@ -5,12 +5,13 @@ from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 
 import uvicorn
+from fastapi import FastAPI
 
 from bot.config import load_config
 from bot.db.sqlite import init_db
 from bot.db.repo import Repo
 
-from bot.web.admin_app import router as admin_router
+from bot.web.admin_app import create_admin_app
 
 from bot.middlewares.subscribe import SubscribeMiddleware
 from bot.middlewares.activity_log import ActivityLogMiddleware
@@ -37,7 +38,7 @@ async def start():
 
     dp = Dispatcher()
 
-    # ✅ Kanalga a’zolikni hamma joyda tekshiradi
+    # Kanalga a’zolikni hamma joyda tekshiradi
     dp.message.middleware(SubscribeMiddleware(repo))
     dp.callback_query.middleware(SubscribeMiddleware(repo))
 
@@ -45,11 +46,11 @@ async def start():
         dp.message.middleware(ActivityLogMiddleware(cfg.log_channel))
         dp.callback_query.middleware(ActivityLogMiddleware(cfg.log_channel))
 
-    # ✅ subscription: sub:check tugmasi ishlashi uchun (FAqat 1 marta)
+    # subscription: sub:check tugmasi ishlashi uchun (FAqat 1 marta)
     h_subscription.setup(repo)
     dp.include_router(h_subscription.router)
 
-    # ✅ qolgan handlerlar
+    # qolgan handlerlar
     h_start.setup(repo)
     h_products.setup(repo)
     h_referral.setup(repo)
@@ -67,6 +68,7 @@ async def start():
     dp.include_router(h_admin.router)
 
     app = FastAPI()
+    admin_router = create_admin_app(cfg, repo)
     app.include_router(admin_router, prefix="/admin")
 
     server = uvicorn.Server(
