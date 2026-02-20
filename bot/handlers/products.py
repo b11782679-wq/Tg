@@ -99,10 +99,10 @@ def setup(repo: Repo):
             money_uzs = int(bal["money_uzs"] or 0) if bal else 0
             await _safe_show(
                 call,
-                "❌ Balansingiz yetarli emas.\n"
-                f"Sizda: {_fmt_money(money_uzs)} so'm\n"
-                f"Kerak: {_fmt_money(need_uzs)} so'm\n\n"
-                "Top bo‘limidan balans to‘ldiring.",
+                "❌ Balansingiz yetarli emas!\n"
+                f"💰 Sizning balansingiz: {_fmt_money(money_uzs)} so‘m\n"
+                f"💳 Kerakli summa: {_fmt_money(need_uzs)} so‘m\n"
+                "Iltimos, “Hisobni to‘ldirish” bo‘limi orqali balansingizni to‘ldiring 🔄",
                 reply_markup=back_only_kb(),
             )
             return
