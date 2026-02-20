@@ -15,9 +15,11 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from bot.config import Config
 from bot.db.repo import Repo
+from fastapi import APIRouter
 
 
 _security = HTTPBasic()
+router = APIRouter()
 
 
 def _check_auth(cfg: Config, creds: HTTPBasicCredentials):
@@ -27,8 +29,8 @@ def _check_auth(cfg: Config, creds: HTTPBasicCredentials):
         raise HTTPException(status_code=401, detail="Unauthorized", headers={"WWW-Authenticate": "Basic"})
 
 
-def create_admin_app(cfg: Config, repo: Repo) -> FastAPI:
-    app = FastAPI()
+def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
+    # app = FastAPI()  # Eski versiya, endi router ishlatamiz
 
     async def _auth(creds: Annotated[HTTPBasicCredentials, Depends(_security)]):
         _check_auth(cfg, creds)
@@ -127,7 +129,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> FastAPI:
         with urllib.request.urlopen(req, timeout=15) as _:
             return
 
-    @app.get("/admin", response_class=HTMLResponse)
+    @router.get("/", response_class=HTMLResponse)
     async def admin_home(credentials: HTTPBasicCredentials = Depends(_auth)):
         stats = await repo.get_admin_stats()
         body = (
@@ -140,7 +142,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> FastAPI:
         )
         return _layout("Admin Dashboard", body, active="dashboard")
 
-    @app.get("/admin/users", response_class=HTMLResponse)
+    @router.get("/users", response_class=HTMLResponse)
     async def admin_users(
         credentials: HTTPBasicCredentials = Depends(_auth),
         q: str | None = None,
@@ -194,7 +196,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> FastAPI:
         body += "</tbody></table></div>"
         return _layout("Users & Balances", body, active="users")
 
-    @app.post("/admin/users/update")
+    @router.post("/admin/users/update")
     async def admin_users_update(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -215,7 +217,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> FastAPI:
         )
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/users"), status_code=303)
 
-    @app.post("/admin/users/delete")
+    @router.post("/admin/users/delete")
     async def admin_users_delete(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -330,7 +332,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> FastAPI:
         body += "</tbody></table></div>"
         return _layout("Referrals", body, active="referrals")
 
-    @app.post("/admin/orders/update")
+    @router.post("/admin/orders/update")
     async def admin_orders_update(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -557,7 +559,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> FastAPI:
         body += "</tbody></table></div>"
         return _layout("Purchases", body, active="purchases")
 
-    @app.post("/admin/topups/update")
+    @router.post("/admin/topups/update")
     async def admin_topups_update(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -607,7 +609,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> FastAPI:
             return RedirectResponse(url="/admin/topups", status_code=303)
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/topups"), status_code=303)
 
-    @app.post("/admin/topups/delete")
+    @router.post("/admin/topups/delete")
     async def admin_topups_delete(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -727,7 +729,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> FastAPI:
             post_url="/admin/accounts/chatgpt",
         )
 
-    @app.post("/admin/accounts/chatgpt")
+    @router.post("/admin/accounts/chatgpt")
     async def admin_chatgpt_save(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -748,7 +750,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> FastAPI:
             post_url="/admin/accounts/gemini",
         )
 
-    @app.post("/admin/accounts/gemini")
+    @router.post("/admin/accounts/gemini")
     async def admin_gemini_save(
         request: Request,
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -760,4 +762,4 @@ def create_admin_app(cfg: Config, repo: Repo) -> FastAPI:
             return JSONResponse({"ok": True, "id": acc_id, "login": login, "password": password, "created_at": ""})
         return RedirectResponse(url="/admin/accounts/gemini", status_code=303)
 
-    return app
+    return router

@@ -10,7 +10,7 @@ from bot.config import load_config
 from bot.db.sqlite import init_db
 from bot.db.repo import Repo
 
-from bot.web.admin_app import create_admin_app
+from bot.web.admin_app import router as admin_router
 
 from bot.middlewares.subscribe import SubscribeMiddleware
 from bot.middlewares.activity_log import ActivityLogMiddleware
@@ -66,10 +66,12 @@ async def start():
     dp.include_router(h_topup.router)
     dp.include_router(h_admin.router)
 
-    admin_app = create_admin_app(cfg, repo)
+    app = FastAPI()
+    app.include_router(admin_router, prefix="/admin")
+
     server = uvicorn.Server(
         uvicorn.Config(
-            admin_app,
+            app,
             host=cfg.admin_panel_host,
             port=cfg.admin_panel_port,
             log_level="warning",
