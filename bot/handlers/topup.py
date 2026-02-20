@@ -8,6 +8,7 @@ from bot.keyboards.payments import (
     manual_topup_kb,
 )
 from bot.db.repo import Repo
+from bot.i18n import t
 import os
 from datetime import datetime
 import asyncio
@@ -37,12 +38,13 @@ def _render_top5(rows) -> str:
 
 async def _show_top(call: CallbackQuery, repo: Repo, period: str):
     rows = await repo.get_topup_leaderboard(period=period, limit=5)
+    lang = await repo.get_language(call.from_user.id)
     text = (
-        "🏆 <b>Eng Faol Xaridorlar (TOP–5)</b>\n"
-        "📊 Ushbu reytingda belgilangan vaqt oralig‘ida botga eng ko‘p mablag‘ kiritgan foydalanuvchilar joy oladi.\n\n"
+        f"{t(lang, 'top.leaderboard.title')}\n"
+        f"{t(lang, 'top.leaderboard.desc')}\n\n"
         f"{_render_top5(rows)}"
     )
-    await call.message.edit_text(text, reply_markup=top_leaderboard_kb(active=period))
+    await call.message.edit_text(text, reply_markup=top_leaderboard_kb(active=period, lang=lang))
 
 
 def setup(repo: Repo):
@@ -67,10 +69,11 @@ def setup(repo: Repo):
     @router.callback_query(F.data == "top:contest")
     async def top_contest(call: CallbackQuery):
         await call.answer()
+        lang = await repo.get_language(call.from_user.id)
         await call.message.edit_text(
             "🏁 <b>Konkurs</b>\n\n"
             "Bu bo‘limni keyin konkurs qoidalari bilan to‘ldiramiz.",
-            reply_markup=top_leaderboard_kb(active="today"),
+            reply_markup=top_leaderboard_kb(active="today", lang=lang),
         )
 
     # =========================
@@ -79,18 +82,20 @@ def setup(repo: Repo):
     @router.callback_query(F.data == "t:open")
     async def topup_open(call: CallbackQuery):
         await call.answer()
+        lang = await repo.get_language(call.from_user.id)
         await call.message.edit_text(
-            "💳 Hisob To'ldirish\n\nUsulni tanlang 👇",
-            reply_markup=topup_methods_kb(),
+            t(lang, "topup.open"),
+            reply_markup=topup_methods_kb(lang),
         )
 
     @router.callback_query(F.data.startswith("t:method:"))
     async def topup_method(call: CallbackQuery):
         provider = call.data.split(":")[2]
         await call.answer()
+        lang = await repo.get_language(call.from_user.id)
         await call.message.edit_text(
-            "💳 Summani tanlang 👇",
-            reply_markup=topup_amounts_kb(provider),
+            t(lang, "topup.choose_amount"),
+            reply_markup=topup_amounts_kb(provider, lang),
         )
 
     @router.callback_query(F.data.startswith("t:custom:"))
@@ -98,15 +103,10 @@ def setup(repo: Repo):
         provider = call.data.split(":")[2]
         awaiting_custom_amount[int(call.from_user.id)] = str(provider)
         await call.answer()
+        lang = await repo.get_language(call.from_user.id)
         await call.message.edit_text(
-            "💳 <b>Boshqa miqdor</b>\n\n"
-            "Summani xabar qilib yuboring.\n\n"
-            "Yuborish formati:\n"
-            "- <code>25000</code>\n"
-            "- <code>25 000</code>\n\n"
-            "Eng kam hisob to‘ldirish miqdori: <b>1000 so'm</b>\n\n"
-            "Faqat raqam kiriting (so'm yozmang).",
-            reply_markup=topup_amounts_kb(provider),
+            t(lang, "topup.custom.title") + "\n\n" + t(lang, "topup.custom.body"),
+            reply_markup=topup_amounts_kb(provider, lang),
         )
 
     @router.callback_query(F.data.startswith("t:amount:"))
@@ -140,7 +140,7 @@ def setup(repo: Repo):
             f"💰 Summa: <b>{_fmt_money(amount)} so'm</b>\n\n"
             "⚠️ Soxta chek yuborish botdan bloklanishga olib keladi.\n\n"
             "✅ Chek yuborilgandan so‘ng admin tomonidan tasdiqlanadi.",
-            reply_markup=manual_topup_kb(),
+            reply_markup=manual_topup_kb(await repo.get_language(call.from_user.id)),
         )
         return
 
@@ -203,6 +203,7 @@ def setup(repo: Repo):
             return
 
         user_id = int(message.from_user.id)
+        lang = await repo.get_language(user_id)
         provider = awaiting_custom_amount.get(user_id)
         if not provider:
             return
@@ -236,5 +237,5 @@ def setup(repo: Repo):
             f"💰 Summa: <b>{_fmt_money(amount)} so'm</b>\n\n"
             "⚠️ Soxta chek yuborish botdan bloklanishga olib keladi.\n\n"
             "✅ Chek yuborilgandan so‘ng admin tomonidan tasdiqlanadi.",
-            reply_markup=manual_topup_kb(),
+            reply_markup=manual_topup_kb(lang),
         )

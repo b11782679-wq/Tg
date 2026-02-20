@@ -39,4 +39,4 @@ def setup(repo: Repo):
                     f"\nParol: <code>{password}</code>"
                 )
 
-        await call.message.edit_text(text, reply_markup=back_only_kb())
+        await call.message.edit_text(text, reply_markup=back_only_kb(await repo.get_language(call.from_user.id)))

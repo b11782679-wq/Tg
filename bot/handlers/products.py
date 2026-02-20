@@ -6,6 +6,7 @@ from bot.keyboards.products import product_plans_kb
 from bot.services.pricing import PRICING
 from bot.constants import ACCOUNT_COST_POINTS
 from bot.db.repo import Repo
+from bot.i18n import t
 
 router = Router()
 
@@ -24,19 +25,12 @@ def setup(repo: Repo):
     async def back_home(call: CallbackQuery):
         await call.answer()
 
-        name = (call.from_user.full_name or "Foydalanuvchi")
-        text = (
-            "<b>"
-            f"👋 Assalomu alaykum, {name} botiga xush kelibsiz!\n\n"
-            "🛒 Ushbu bot orqali siz ilova va saytlardagi premium obunalarni arzon narxlarda xarid qilishingiz mumkin.\n\n"
-            "🎁 Shuningdek, referal dasturi orqali do‘stlaringizni taklif qiling va bonuslar evaziga akkauntlarga ega bo‘ling!\n\n"
-            "📌 Kerakli xizmatni tanlash uchun quyidagi menyudan foydalaning 👇"
-            "</b>"
-        )
+        lang = await repo.get_language(call.from_user.id)
+        text = t(lang, "home", name=call.from_user.full_name or "Foydalanuvchi")
 
         # message is not modified bo'lib qolsa ham yiqilmasin
         try:
-            await call.message.edit_text(text, reply_markup=main_menu_kb())
+            await call.message.edit_text(text, reply_markup=main_menu_kb(lang))
         except Exception:
             pass
 
@@ -44,6 +38,7 @@ def setup(repo: Repo):
     async def open_product(call: CallbackQuery):
         _, _, product_key = call.data.split(":")
         product = PRICING[product_key]
+        lang = await repo.get_language(call.from_user.id)
 
         if product_key == "gemine":
             text = (
@@ -58,7 +53,7 @@ def setup(repo: Repo):
             )
 
         await call.answer()
-        await call.message.edit_text(text, reply_markup=product_plans_kb(product_key))
+        await call.message.edit_text(text, reply_markup=product_plans_kb(product_key, lang))
 
     @router.callback_query(F.data.startswith("p:buy:"))
     async def buy_money(call: CallbackQuery):
@@ -83,7 +78,7 @@ def setup(repo: Repo):
                     call,
                     "❌ Hozircha akkaunt qolmagan.\n\n"
                     "Keyinroq qayta urinib ko‘ring.",
-                    reply_markup=back_only_kb(),
+                    reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
                 )
                 return
 
@@ -91,7 +86,7 @@ def setup(repo: Repo):
                 await _safe_show(
                     call,
                     "❌ Xatolik yuz berdi.\n\nKeyinroq qayta urinib ko‘ring.",
-                    reply_markup=back_only_kb(),
+                    reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
                 )
                 return
 
@@ -103,7 +98,7 @@ def setup(repo: Repo):
                 f"💰 Sizning balansingiz: {_fmt_money(money_uzs)} so‘m\n"
                 f"💳 Kerakli summa: {_fmt_money(need_uzs)} so‘m\n"
                 "Iltimos, “Hisobni to‘ldirish” bo‘limi orqali balansingizni to‘ldiring 🔄",
-                reply_markup=back_only_kb(),
+                reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
             )
             return
 
@@ -123,7 +118,7 @@ def setup(repo: Repo):
             f"{(password or '').strip() or '-'}"
         )
 
-        await _safe_show(call, msg, reply_markup=back_only_kb())
+        await _safe_show(call, msg, reply_markup=back_only_kb(await repo.get_language(call.from_user.id)))
 
     @router.callback_query(F.data.startswith("p:buy_points:"))
     async def buy_points(call: CallbackQuery):
@@ -139,7 +134,7 @@ def setup(repo: Repo):
                 f"Sizda: {bal['points']} ball\n"
                 f"Kerak: {ACCOUNT_COST_POINTS} ball\n\n"
                 "🎁 Referal bo‘limidan do‘st taklif qilib ball yig‘ing.",
-                reply_markup=main_menu_kb()
+                reply_markup=main_menu_kb(await repo.get_language(call.from_user.id))
             )
             return
 
@@ -147,5 +142,5 @@ def setup(repo: Repo):
             f"✅ Ball bilan olindi:\n"
             f"{PRICING[product_key]['title']}\n\n"
             "📞 Admin siz bilan bog‘lanadi.",
-            reply_markup=main_menu_kb()
+            reply_markup=main_menu_kb(await repo.get_language(call.from_user.id))
         )

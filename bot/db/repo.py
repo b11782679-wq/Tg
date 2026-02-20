@@ -53,6 +53,21 @@ class Repo:
 
             await db.commit()
 
+    async def get_language(self, user_id: int) -> str:
+        async with await self._conn() as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute("SELECT language FROM users WHERE id=?", (int(user_id),))
+            row = await cur.fetchone()
+            if not row:
+                return "uz"
+            lang = str(row["language"] or "").strip().lower()
+            return lang or "uz"
+
+    async def set_language(self, user_id: int, language: str) -> None:
+        async with await self._conn() as db:
+            await db.execute("UPDATE users SET language=? WHERE id=?", (str(language), int(user_id)))
+            await db.commit()
+
     async def get_user(self, user_id: int):
         async with await self._conn() as db:
             db.row_factory = aiosqlite.Row

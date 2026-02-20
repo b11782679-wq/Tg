@@ -88,6 +88,8 @@ async def init_db(db_path: str):
         user_cols = {str(r[1]).lower() for r in await cur.fetchall()}
         if "ref_action_done" not in user_cols:
             await db.execute("ALTER TABLE users ADD COLUMN ref_action_done INTEGER NOT NULL DEFAULT 0")
+        if "language" not in user_cols:
+            await db.execute("ALTER TABLE users ADD COLUMN language TEXT NOT NULL DEFAULT 'uz'")
 
         cur = await db.execute("PRAGMA table_info(referrals)")
         cols = {str(r[1]).lower() for r in await cur.fetchall()}

@@ -4,24 +4,13 @@ from aiogram.types import Message
 
 from bot.keyboards.menu import main_menu_kb
 from bot.db.repo import Repo
+from bot.i18n import t
 
 from bot.utils.subscribe import is_subscribed
 from bot.keyboards.subscribe import subscribe_kb
 from bot.constants import REQUIRED_CHANNEL, REF_MONEY_BONUS_UZS
 
 router = Router()
-
-
-def _home_text(full_name: str) -> str:
-    name = (full_name or "Foydalanuvchi")
-    return (
-        "<b>"
-        f"👋 Assalomu alaykum, {name} botiga xush kelibsiz!\n\n"
-        "🛒 Ushbu bot orqali siz ilova va saytlardagi premium obunalarni arzon narxlarda xarid qilishingiz mumkin.\n\n"
-        "🎁 Shuningdek, referal dasturi orqali do‘stlaringizni taklif qiling va bonuslar evaziga akkauntlarga ega bo‘ling!\n\n"
-        "📌 Kerakli xizmatni tanlash uchun quyidagi menyudan foydalaning 👇"
-        "</b>"
-    )
 
 
 def setup(repo: Repo):
@@ -76,4 +65,8 @@ def setup(repo: Repo):
             return
 
         # ✅ A’zo bo‘lsa — menyu
-        await message.answer(_home_text(message.from_user.full_name), reply_markup=main_menu_kb())
+        lang = await repo.get_language(user_id)
+        await message.answer(
+            t(lang, "home", name=message.from_user.full_name or "Foydalanuvchi"),
+            reply_markup=main_menu_kb(lang),
+        )

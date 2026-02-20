@@ -6,6 +6,7 @@ from bot.keyboards.subscribe import subscribe_kb
 from bot.keyboards.menu import main_menu_kb
 from bot.utils.subscribe import is_subscribed
 from bot.db.repo import Repo
+from bot.i18n import t
 
 router = Router()
 
@@ -52,7 +53,8 @@ def setup(repo: Repo):
             return
 
         # ✅ Home menu qaytaramiz
+        lang = await repo.get_language(call.from_user.id)
         await call.message.edit_text(
-            home_text(call.from_user.full_name),
-            reply_markup=main_menu_kb(),
+            t(lang, "home", name=call.from_user.full_name or "Foydalanuvchi"),
+            reply_markup=main_menu_kb(lang),
         )
