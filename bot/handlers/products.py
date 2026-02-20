@@ -48,8 +48,7 @@ def setup(repo: Repo):
             )
         else:
             text = (
-                f"{product['title']}\n\n"
-                "Quyidagilardan birini tanlang 👇"
+                f"{product['title']}\n\n" + t(lang, "products.choose_plan")
             )
 
         await call.answer()
@@ -76,8 +75,7 @@ def setup(repo: Repo):
             if reason == "no_stock":
                 await _safe_show(
                     call,
-                    "❌ Hozircha akkaunt qolmagan.\n\n"
-                    "Keyinroq qayta urinib ko‘ring.",
+                    t(await repo.get_language(call.from_user.id), "products.no_stock"),
                     reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
                 )
                 return
@@ -85,19 +83,22 @@ def setup(repo: Repo):
             if reason == "race":
                 await _safe_show(
                     call,
-                    "❌ Xatolik yuz berdi.\n\nKeyinroq qayta urinib ko‘ring.",
+                    t(await repo.get_language(call.from_user.id), "products.race"),
                     reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
                 )
                 return
 
             bal = await repo.get_balance(call.from_user.id)
             money_uzs = int(bal["money_uzs"] or 0) if bal else 0
+            lang = await repo.get_language(call.from_user.id)
             await _safe_show(
                 call,
-                "❌ Balansingiz yetarli emas!\n"
-                f"💰 Sizning balansingiz: {_fmt_money(money_uzs)} so‘m\n"
-                f"💳 Kerakli summa: {_fmt_money(need_uzs)} so‘m\n"
-                "Iltimos, “Hisobni to‘ldirish” bo‘limi orqali balansingizni to‘ldiring 🔄",
+                t(
+                    lang,
+                    "money.no_balance",
+                    balance=_fmt_money(money_uzs),
+                    need=_fmt_money(need_uzs),
+                ),
                 reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
             )
             return
@@ -106,15 +107,15 @@ def setup(repo: Repo):
         password = str((payload or {}).get("password") or "")
 
         msg = (
-            f"Tanlandi:\n"
+            f"{t(await repo.get_language(call.from_user.id), 'products.buy.selected')}\n"
             f"{PRICING[product_key]['title']} — {plan['label']}\n"
-            f"Narx: {_fmt_money(need_uzs)} so'm\n\n"
+            f"{t(await repo.get_language(call.from_user.id), 'products.buy.price')} {_fmt_money(need_uzs)} so'm\n\n"
         )
 
         msg += (
-            "Login:\n"
+            f"{t(await repo.get_language(call.from_user.id), 'profile.login')}:\n"
             f"{(login or '').strip() or '-'}\n\n"
-            "Parol:\n"
+            f"{t(await repo.get_language(call.from_user.id), 'profile.password')}:\n"
             f"{(password or '').strip() or '-'}"
         )
 
@@ -129,18 +130,16 @@ def setup(repo: Repo):
 
         if not ok:
             bal = await repo.get_balance(call.from_user.id)
+            lang = await repo.get_language(call.from_user.id)
             await call.message.edit_text(
-                f"❌ Ball yetarli emas.\n"
-                f"Sizda: {bal['points']} ball\n"
-                f"Kerak: {ACCOUNT_COST_POINTS} ball\n\n"
-                "🎁 Referal bo‘limidan do‘st taklif qilib ball yig‘ing.",
-                reply_markup=main_menu_kb(await repo.get_language(call.from_user.id))
+                t(lang, "points.no_balance", points=int(bal["points"] or 0), need=ACCOUNT_COST_POINTS),
+                reply_markup=main_menu_kb(await repo.get_language(call.from_user.id)),
             )
             return
 
         await call.message.edit_text(
-            f"✅ Ball bilan olindi:\n"
+            f"{t(await repo.get_language(call.from_user.id), 'points.bought')}\n"
             f"{PRICING[product_key]['title']}\n\n"
-            "📞 Admin siz bilan bog‘lanadi.",
-            reply_markup=main_menu_kb(await repo.get_language(call.from_user.id))
+            + t(await repo.get_language(call.from_user.id), "products.buy.success_admin"),
+            reply_markup=main_menu_kb(await repo.get_language(call.from_user.id)),
         )

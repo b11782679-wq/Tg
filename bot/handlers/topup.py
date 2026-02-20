@@ -29,7 +29,7 @@ def _now_hhmm() -> str:
 
 def _render_top5(rows) -> str:
     if not rows:
-        return "Hozircha reyting bo‘sh."
+        return "-"
     lines = []
     for i, (_, name, total) in enumerate(rows, start=1):
         lines.append(f"{i}. {name} — {_fmt_money(total)} so'm")
@@ -71,8 +71,7 @@ def setup(repo: Repo):
         await call.answer()
         lang = await repo.get_language(call.from_user.id)
         await call.message.edit_text(
-            "🏁 <b>Konkurs</b>\n\n"
-            "Bu bo‘limni keyin konkurs qoidalari bilan to‘ldiramiz.",
+            t(lang, "top.contest"),
             reply_markup=top_leaderboard_kb(active="today", lang=lang),
         )
 
@@ -146,11 +145,12 @@ def setup(repo: Repo):
 
     @router.callback_query(F.data == "t:send_proof")
     async def topup_send_proof(call: CallbackQuery):
-        await call.answer("Chek/screenshotni shu chatga yuboring (rasm yoki fayl).", show_alert=True)
+        lang = await repo.get_language(call.from_user.id)
+        await call.answer(t(lang, "kb.send_proof"), show_alert=True)
 
     @router.callback_query(F.data == "t:check")
     async def topup_check(call: CallbackQuery):
-        await call.answer("⏳ Hali to‘lov tasdiqlanmadi (webhook/admin tasdiq kerak).", show_alert=True)
+        await call.answer("⏳ ...", show_alert=True)
 
     @router.message(F.photo | F.document)
     async def topup_proof_message(message: Message):

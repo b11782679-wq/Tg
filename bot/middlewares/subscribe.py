@@ -6,6 +6,7 @@ from bot.utils.subscribe import is_subscribed
 from bot.keyboards.subscribe import subscribe_kb
 from bot.constants import REQUIRED_CHANNEL
 from bot.db.repo import Repo
+from bot.i18n import t
 
 
 class SubscribeMiddleware(BaseMiddleware):
@@ -43,16 +44,18 @@ class SubscribeMiddleware(BaseMiddleware):
         if user_id:
             ok = await is_subscribed(bot, user_id)
             if not ok:
-                text = (
-                    "🔒 Botdan foydalanish uchun kanalga a’zo bo‘ling:\n"
-                    f"{REQUIRED_CHANNEL}\n\n"
-                    "A’zo bo‘lgach ✅ Tekshirish ni bosing."
-                )
+                lang = "uz"
+                if repo is not None:
+                    try:
+                        lang = await repo.get_language(user_id)
+                    except Exception:
+                        lang = "uz"
+                text = t(lang, "sub.lock", channel=REQUIRED_CHANNEL)
                 if isinstance(event, Message):
-                    await event.answer(text, reply_markup=subscribe_kb())
+                    await event.answer(text, reply_markup=subscribe_kb(lang))
                 else:
                     await event.answer()
-                    await event.message.edit_text(text, reply_markup=subscribe_kb())
+                    await event.message.edit_text(text, reply_markup=subscribe_kb(lang))
                 return
 
             if repo is not None:

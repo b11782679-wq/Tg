@@ -3,6 +3,7 @@ from aiogram.types import CallbackQuery
 
 from bot.db.repo import Repo
 from bot.keyboards.menu import back_only_kb
+from bot.i18n import t
 
 router = Router()
 
@@ -18,12 +19,17 @@ def setup(repo: Repo):
 
         rank, points, total = await repo.get_rank_by_points(call.from_user.id)
 
-        text = (
-            "📊 <b>Statistikam</b>\n\n"
-            f"🧾 <b>Barcha buyurtmalar soni:</b> {orders_count}\n"
-            f"👥 <b>Siz botga taklif qilgan odamlar soni:</b> {invited}\n"
-            f"🏆 <b>Bot bo‘yicha o‘rningiz:</b> {rank}/{total}\n\n"
-            f"⭐ <b>Ball:</b> {points}"
+        lang = await repo.get_language(call.from_user.id)
+
+        text = t(
+            lang,
+            "stats.body",
+            title=t(lang, "stats.title"),
+            orders_count=orders_count,
+            invited=invited,
+            rank=rank,
+            total=total,
+            points=points,
         )
 
         await call.message.edit_text(text, reply_markup=back_only_kb(await repo.get_language(call.from_user.id)))

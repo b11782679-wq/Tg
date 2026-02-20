@@ -24,21 +24,18 @@ def home_text(full_name: str) -> str:
 
 
 async def show_subscribe_message_message(msg: Message):
-    text = (
-        "🔒 Botdan foydalanish uchun kanalga a’zo bo‘ling:\n"
-        f"{REQUIRED_CHANNEL}\n\n"
-        "A’zo bo‘lgach ✅ Tekshirish ni bosing."
-    )
-    await msg.answer(text, reply_markup=subscribe_kb())
+    lang = await msg.bot.get_chat(msg.chat.id) if False else None
+    # language is stored per user, this helper is rarely used; keep Uzbek by default
+    lang = await msg.bot.get_chat(msg.chat.id) if False else "uz"
+    await msg.answer(t(lang, "sub.lock", channel=REQUIRED_CHANNEL), reply_markup=subscribe_kb(lang))
 
 
 async def show_subscribe_message_callback(call: CallbackQuery):
-    text = (
-        "🔒 Botdan foydalanish uchun kanalga a’zo bo‘ling:\n"
-        f"{REQUIRED_CHANNEL}\n\n"
-        "A’zo bo‘lgach ✅ Tekshirish ni bosing."
+    lang = await call.bot.get_chat(call.message.chat.id) if False else "uz"
+    await call.message.edit_text(
+        t(lang, "sub.lock", channel=REQUIRED_CHANNEL),
+        reply_markup=subscribe_kb(lang),
     )
-    await call.message.edit_text(text, reply_markup=subscribe_kb())
 
 
 def setup(repo: Repo):
@@ -49,7 +46,11 @@ def setup(repo: Repo):
 
         ok = await is_subscribed(call.bot, call.from_user.id)
         if not ok:
-            await show_subscribe_message_callback(call)
+            lang = await repo.get_language(call.from_user.id)
+            await call.message.edit_text(
+                t(lang, "sub.lock", channel=REQUIRED_CHANNEL),
+                reply_markup=subscribe_kb(lang),
+            )
             return
 
         # ✅ Home menu qaytaramiz

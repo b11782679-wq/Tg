@@ -60,9 +60,48 @@ _TEXTS: dict[str, dict[str, str]] = {
         "top.period.all": "Barcha vaqt",
         "top.contest": "Konkurs",
         "products.buy_points": "🎁 Ball bilan olish (7 ball)",
+        "sub.join": "📢 Kanalga qo‘shilish",
+        "sub.check": "✅ Tekshirish",
+        "sub.lock": (
+            "🔒 Botdan foydalanish uchun kanalga a’zo bo‘ling:\n"
+            "{channel}\n\n"
+            "A’zo bo‘lgach ✅ Tekshirish ni bosing."
+        ),
+        "stats.body": (
+            "{title}\n\n"
+            "🧾 <b>Barcha buyurtmalar soni:</b> {orders_count}\n"
+            "👥 <b>Siz botga taklif qilgan odamlar soni:</b> {invited}\n"
+            "🏆 <b>Bot bo‘yicha o‘rningiz:</b> {rank}/{total}\n\n"
+            "⭐ <b>Ball:</b> {points}"
+        ),
+        "referral.body": (
+            "👥 <b>Referal tizimi</b>\n\n"
+            "⁉️ <b>U qanday ishlaydi?</b>\n"
+            "<blockquote>🎁 Botga do'stingizni taklif qiling. Do'stingiz kanalga qo'shilib \"Tekshirish\" tugmasini bosilganda va menyudagi tugmalardan birini bosganda hisobingizga pul qo'shiladi. Har bir taklif qilgan do'stingiz uchun hisobingizga 5000 so'mdan qo'shiladi</blockquote>\n\n"
+            "📊 <b>Taklif qilgan do'stlaringiz:</b> {invited} ta\n\n"
+            "🔗 <b>Referal havolangizni do'stlaringizga yuborib ularni botga taklif qiling</b>\n"
+            "<code>{link}</code>"
+        ),
+        "profile.body": "🆔 <b>User ID:</b> <code>[{user_id}]</code>\n💰 <b>Balans:</b> {money} so'm",
+        "profile.accounts_title": "<b>🧾 Akkauntlar (7 kun):</b>",
+        "profile.login": "Login",
+        "profile.password": "Parol",
+        "products.choose_plan": "Quyidagilardan birini tanlang �",
+        "products.no_stock": "❌ Hozircha akkaunt qolmagan.\n\nKeyinroq qayta urinib ko‘ring.",
+        "products.race": "❌ Xatolik yuz berdi.\n\nKeyinroq qayta urinib ko‘ring.",
+        "products.buy.selected": "Tanlandi:",
+        "products.buy.price": "Narx:",
+        "products.buy.success_admin": "📞 Admin siz bilan bog‘lanadi.",
+        "points.no_balance": (
+            "❌ Ball yetarli emas.\n"
+            "Sizda: {points} ball\n"
+            "Kerak: {need} ball\n\n"
+            "🎁 Referal bo‘limidan do‘st taklif qilib ball yig‘ing."
+        ),
+        "points.bought": "✅ Ball bilan olindi:",
     },
     "en": {
-        "menu.gemine": "💎 Gemini account",
+        "menu.gemine": "�💎 Gemini account",
         "menu.chatgpt": "🚀 ChatGPT Business",
         "menu.topup": "💳 Top up balance",
         "menu.top": "🏆 Top",
@@ -114,9 +153,48 @@ _TEXTS: dict[str, dict[str, str]] = {
         "top.period.all": "All time",
         "top.contest": "Contest",
         "products.buy_points": "🎁 Buy with points (7 points)",
+        "sub.join": "📢 Join channel",
+        "sub.check": "✅ Check",
+        "sub.lock": (
+            "🔒 To use the bot, join the channel:\n"
+            "{channel}\n\n"
+            "After joining, press ✅ Check."
+        ),
+        "stats.body": (
+            "{title}\n\n"
+            "🧾 <b>Total orders:</b> {orders_count}\n"
+            "👥 <b>Invited users:</b> {invited}\n"
+            "🏆 <b>Your rank:</b> {rank}/{total}\n\n"
+            "⭐ <b>Points:</b> {points}"
+        ),
+        "referral.body": (
+            "👥 <b>Referral</b>\n\n"
+            "⁉️ <b>How it works?</b>\n"
+            "<blockquote>🎁 Invite your friend. When your friend joins the channel and presses \"Check\" and uses the menu, you get a bonus. You get 5000 UZS per invited friend.</blockquote>\n\n"
+            "📊 <b>Invited friends:</b> {invited}\n\n"
+            "🔗 <b>Share this referral link</b>\n"
+            "<code>{link}</code>"
+        ),
+        "profile.body": "🆔 <b>User ID:</b> <code>[{user_id}]</code>\n💰 <b>Balance:</b> {money} UZS",
+        "profile.accounts_title": "<b>🧾 Accounts (7 days):</b>",
+        "profile.login": "Login",
+        "profile.password": "Password",
+        "products.choose_plan": "Choose one 👇",
+        "products.no_stock": "❌ No accounts in stock right now.\n\nPlease try again later.",
+        "products.race": "❌ Something went wrong.\n\nPlease try again later.",
+        "products.buy.selected": "Selected:",
+        "products.buy.price": "Price:",
+        "products.buy.success_admin": "� Admin will contact you.",
+        "points.no_balance": (
+            "❌ Not enough points.\n"
+            "You have: {points} points\n"
+            "Need: {need} points\n\n"
+            "🎁 Invite friends from Referral section to earn points."
+        ),
+        "points.bought": "✅ Bought with points:",
     },
     "ru": {
-        "menu.gemine": "💎 Аккаунт Gemini",
+        "menu.gemine": "�💎 Аккаунт Gemini",
         "menu.chatgpt": "🚀 ChatGPT Business",
         "menu.topup": "💳 Пополнить баланс",
         "menu.top": "🏆 Топ",
@@ -168,6 +246,45 @@ _TEXTS: dict[str, dict[str, str]] = {
         "top.period.all": "За всё время",
         "top.contest": "Конкурс",
         "products.buy_points": "🎁 Купить за баллы (7 баллов)",
+        "sub.join": "📢 Вступить в канал",
+        "sub.check": "✅ Проверить",
+        "sub.lock": (
+            "🔒 Чтобы пользоваться ботом, вступите в канал:\n"
+            "{channel}\n\n"
+            "После вступления нажмите ✅ Проверить."
+        ),
+        "stats.body": (
+            "{title}\n\n"
+            "🧾 <b>Всего заказов:</b> {orders_count}\n"
+            "👥 <b>Приглашено:</b> {invited}\n"
+            "🏆 <b>Ваше место:</b> {rank}/{total}\n\n"
+            "⭐ <b>Баллы:</b> {points}"
+        ),
+        "referral.body": (
+            "👥 <b>Реферальная система</b>\n\n"
+            "⁉️ <b>Как это работает?</b>\n"
+            "<blockquote>🎁 Пригласите друга. Когда он вступит в канал и нажмёт \"Проверить\" и воспользуется меню, вам начисляется бонус. 5000 UZS за каждого друга.</blockquote>\n\n"
+            "📊 <b>Приглашённые друзья:</b> {invited}\n\n"
+            "🔗 <b>Ваша реферальная ссылка</b>\n"
+            "<code>{link}</code>"
+        ),
+        "profile.body": "🆔 <b>User ID:</b> <code>[{user_id}]</code>\n💰 <b>Баланс:</b> {money} UZS",
+        "profile.accounts_title": "<b>🧾 Аккаунты (7 дней):</b>",
+        "profile.login": "Логин",
+        "profile.password": "Пароль",
+        "products.choose_plan": "Выберите вариант 👇",
+        "products.no_stock": "❌ Сейчас нет аккаунтов в наличии.\n\nПопробуйте позже.",
+        "products.race": "❌ Произошла ошибка.\n\nПопробуйте позже.",
+        "products.buy.selected": "Выбрано:",
+        "products.buy.price": "Цена:",
+        "products.buy.success_admin": "📞 Админ свяжется с вами.",
+        "points.no_balance": (
+            "❌ Недостаточно баллов.\n"
+            "У вас: {points} баллов\n"
+            "Нужно: {need} баллов\n\n"
+            "🎁 Приглашайте друзей в разделе Referral, чтобы получить баллы."
+        ),
+        "points.bought": "✅ Куплено за баллы:",
     },
 }
 

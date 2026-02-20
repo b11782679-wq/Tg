@@ -56,11 +56,10 @@ def setup(repo: Repo):
         # ✅ Kanalga a’zo bo‘lmasa — bot ishlamaydi
         ok = await is_subscribed(message.bot, user_id)
         if not ok:
+            lang = await repo.get_language(user_id)
             await message.answer(
-                "🔒 Botdan foydalanish uchun kanalga a’zo bo‘ling:\n"
-                f"{REQUIRED_CHANNEL}\n\n"
-                "A’zo bo‘lgach ✅ Tekshirish ni bosing.",
-                reply_markup=subscribe_kb(),
+                t(lang, "sub.lock", channel=REQUIRED_CHANNEL),
+                reply_markup=subscribe_kb(lang),
             )
             return
 
