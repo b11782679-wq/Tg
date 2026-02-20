@@ -122,6 +122,15 @@ class Repo:
             )
             return await cur.fetchall()
 
+    async def admin_delete_product_account(self, product_key: str, account_id: int) -> bool:
+        async with await self._conn() as db:
+            cur = await db.execute(
+                "DELETE FROM product_accounts WHERE id=? AND product_key=? AND status='available'",
+                (int(account_id), str(product_key)),
+            )
+            await db.commit()
+            return (cur.rowcount or 0) > 0
+
     async def admin_list_purchases(self, limit: int = 200):
         limit = min(max(int(limit), 1), 500)
         query = """
