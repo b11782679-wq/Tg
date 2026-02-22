@@ -9,6 +9,7 @@ def main_menu_kb(lang: str = "uz"):
 
     kb.button(text=t(lang, "menu.gemine"), callback_data="p:open:gemine")
     kb.button(text=t(lang, "menu.chatgpt"), callback_data="p:open:chatgpt_business")
+    kb.button(text=t(lang, "menu.chatgpt_plus"), callback_data="p:open:chatgpt_plus")
 
     kb.button(text=t(lang, "menu.topup"), callback_data="t:open")
     kb.button(text=t(lang, "menu.top"), callback_data="top:open")
@@ -23,7 +24,7 @@ def main_menu_kb(lang: str = "uz"):
     # ✅ Admin eng pastda va URL orqali ochiladi
     kb.button(text=t(lang, "menu.contact_admin"), url=f"https://t.me/{ADMIN_USERNAME}")
 
-    kb.adjust(2, 2, 2, 2, 1)
+    kb.adjust(2, 1, 2, 2, 2, 1)
     return kb.as_markup()
 
 def back_only_kb(lang: str = "uz"):

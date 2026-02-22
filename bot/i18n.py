@@ -10,6 +10,7 @@ _TEXTS: dict[str, dict[str, str]] = {
     "uz": {
         "menu.gemine": "💎 Gemine akkaunt",
         "menu.chatgpt": "🚀 ChatGPT Business",
+        "menu.chatgpt_plus": "✨ ChatGPT Plus",
         "menu.topup": "💳 Hisob To'ldirish",
         "menu.top": "🏆 Top",
         "menu.stats": "📊 Statistikam",
@@ -103,6 +104,7 @@ _TEXTS: dict[str, dict[str, str]] = {
     "en": {
         "menu.gemine": "�💎 Gemini account",
         "menu.chatgpt": "🚀 ChatGPT Business",
+        "menu.chatgpt_plus": "✨ ChatGPT Plus",
         "menu.topup": "💳 Top up balance",
         "menu.top": "🏆 Top",
         "menu.stats": "📊 My stats",
@@ -196,6 +198,7 @@ _TEXTS: dict[str, dict[str, str]] = {
     "ru": {
         "menu.gemine": "�💎 Аккаунт Gemini",
         "menu.chatgpt": "🚀 ChatGPT Business",
+        "menu.chatgpt_plus": "✨ ChatGPT Plus",
         "menu.topup": "💳 Пополнить баланс",
         "menu.top": "🏆 Топ",
         "menu.stats": "📊 Моя статистика",
