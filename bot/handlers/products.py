@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
-from bot.keyboards.menu import main_menu_kb, back_only_kb
+from bot.keyboards.menu import main_menu_kb, back_only_kb, settings_menu_kb
 from bot.keyboards.products import product_plans_kb
 from bot.services.pricing import PRICING
 from bot.constants import ACCOUNT_COST_POINTS
@@ -31,6 +31,18 @@ def setup(repo: Repo):
         # message is not modified bo'lib qolsa ham yiqilmasin
         try:
             await call.message.edit_text(text, reply_markup=main_menu_kb(lang))
+        except Exception:
+            pass
+
+    @router.callback_query(F.data == "settings:open")
+    async def settings_open(call: CallbackQuery):
+        await call.answer()
+        lang = await repo.get_language(call.from_user.id)
+        try:
+            await call.message.edit_text(
+                t(lang, "settings.open"),
+                reply_markup=settings_menu_kb(lang),
+            )
         except Exception:
             pass
 
