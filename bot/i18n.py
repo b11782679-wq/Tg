@@ -93,6 +93,12 @@ _TEXTS: dict[str, dict[str, str]] = {
         "products.buy.selected": "Tanlandi:",
         "products.buy.price": "Narx:",
         "products.buy.success_admin": "📞 Admin siz bilan bog‘lanadi.",
+        "money.no_balance": (
+            "❌ Hisobingizda mablag‘ yetarli emas.\n"
+            "Hozirgi balansingiz ushbu amalni bajarish uchun kamlik qiladi.\n"
+            "Iltimos, davom etishdan oldin hisobingizni to‘ldiring 💳\n\n"
+            "🔄 “Hisobni to‘ldirish” bo‘limi orqali balans qo‘shishingiz mumkin."
+        ),
         "points.no_balance": (
             "❌ Ball yetarli emas.\n"
             "Sizda: {points} ball\n"
@@ -187,6 +193,12 @@ _TEXTS: dict[str, dict[str, str]] = {
         "products.buy.selected": "Selected:",
         "products.buy.price": "Price:",
         "products.buy.success_admin": "� Admin will contact you.",
+        "money.no_balance": (
+            "❌ Your balance is not enough.\n"
+            "Your current balance is insufficient for this action.\n"
+            "Please top up your balance before continuing 💳\n\n"
+            "🔄 You can add funds via the “Top up balance” section."
+        ),
         "points.no_balance": (
             "❌ Not enough points.\n"
             "You have: {points} points\n"
@@ -276,28 +288,32 @@ _TEXTS: dict[str, dict[str, str]] = {
         "profile.login": "Логин",
         "profile.password": "Пароль",
         "products.choose_plan": "Выберите вариант 👇",
-        "products.no_stock": "❌ Сейчас нет аккаунтов в наличии.\n\nПопробуйте позже.",
-        "products.race": "❌ Произошла ошибка.\n\nПопробуйте позже.",
+        "products.no_stock": "❌ Сейчас нет аккаунтов в наличии.\n\nПожалуйста, попробуйте позже.",
+        "products.race": "❌ Произошла ошибка.\n\nПожалуйста, попробуйте позже.",
         "products.buy.selected": "Выбрано:",
         "products.buy.price": "Цена:",
         "products.buy.success_admin": "📞 Админ свяжется с вами.",
+        "money.no_balance": (
+            "❌ Недостаточно средств на балансе.\n"
+            "Ваш текущий баланс недостаточен для выполнения этого действия.\n"
+            "Пожалуйста, пополните баланс перед продолжением 💳\n\n"
+            "🔄 Вы можете пополнить баланс в разделе “Пополнить баланс”."
+        ),
         "points.no_balance": (
             "❌ Недостаточно баллов.\n"
             "У вас: {points} баллов\n"
             "Нужно: {need} баллов\n\n"
-            "🎁 Приглашайте друзей в разделе Referral, чтобы получить баллы."
+            "🎁 Приглашайте друзей в разделе Реферал, чтобы получить баллы."
         ),
         "points.bought": "✅ Куплено за баллы:",
     },
 }
-
 
 def normalize_lang(lang: str | None) -> str:
     lang = (lang or "").strip().lower()
     if lang in _LANGS:
         return lang
     return "uz"
-
 
 def t(lang: str | None, key: str, **kwargs: Any) -> str:
     l = normalize_lang(lang)
