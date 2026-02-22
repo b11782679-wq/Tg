@@ -656,6 +656,12 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         failed = 0
         total = 0
 
+        blocked = 0
+        deactivated = 0
+        not_found = 0
+        flood = 0
+        other = 0
+
         offset = 0
         limit = 500
         while True:
@@ -667,8 +673,20 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 try:
                     await asyncio.to_thread(_tg_send_message, int(uid), text)
                     sent += 1
-                except Exception:
+                except Exception as e:
                     failed += 1
+
+                    emsg = str(e).lower()
+                    if "blocked" in emsg:
+                        blocked += 1
+                    elif "deactivated" in emsg:
+                        deactivated += 1
+                    elif "chat not found" in emsg or "user not found" in emsg:
+                        not_found += 1
+                    elif "too many requests" in emsg or "retry after" in emsg or "flood" in emsg:
+                        flood += 1
+                    else:
+                        other += 1
 
                 await asyncio.sleep(0.035)
 
@@ -676,6 +694,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
 
         body = (
             "<div class='stack'>"
+            "<div class='grid'>"
             "<div class='card'><b>Total users</b><div class='num'>"
             + str(int(total))
             + "</div></div>"
@@ -685,6 +704,24 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<div class='card'><b>Failed</b><div class='num'>"
             + str(int(failed))
             + "</div></div>"
+            "<div class='card'><b>Blocked</b><div class='num'>"
+            + str(int(blocked))
+            + "</div></div>"
+            "</div>"
+            "<div class='grid' style='margin-top:12px'>"
+            "<div class='card'><b>Deactivated</b><div class='num'>"
+            + str(int(deactivated))
+            + "</div></div>"
+            "<div class='card'><b>Chat not found</b><div class='num'>"
+            + str(int(not_found))
+            + "</div></div>"
+            "<div class='card'><b>Flood / Retry</b><div class='num'>"
+            + str(int(flood))
+            + "</div></div>"
+            "<div class='card'><b>Other</b><div class='num'>"
+            + str(int(other))
+            + "</div></div>"
+            "</div>"
             "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
             "</div>"
         )
