@@ -37,6 +37,8 @@ _TEXTS: dict[str, dict[str, str]] = {
         "profile.title": "👤 <b>Profil</b>",
         "topup.title": "💳 <b>Hisobni to‘ldirish</b>",
         "topup.open": "💳 Hisob To'ldirish\n\nUsulni tanlang 👇",
+        "topup.method.manual": "🧾 Admin orqali",
+        "topup.method.ton": "🪙 TON orqali",
         "topup.choose_amount": "💳 Summani tanlang 👇",
         "topup.custom.title": "💳 <b>Boshqa miqdor</b>",
         "topup.custom.body": (
@@ -57,6 +59,14 @@ _TEXTS: dict[str, dict[str, str]] = {
             "💰 Summa: <b>{amount} so'm</b>\n\n"
             "⚠️ Soxta chek yuborish botdan bloklanishga olib keladi.\n\n"
             "✅ Chek yuborilgandan so‘ng admin tomonidan tasdiqlanadi."
+        ),
+        "topup.ton.instructions": (
+            "🪙 <b>TON orqali to‘lov</b>\n\n"
+            "Quyidagi TON addressga to‘lov qiling:\n"
+            "<code>{address}</code>\n\n"
+            "So‘ng to‘lov chekini (screenshot yoki fayl) ushbu chatga yuboring 📩\n\n"
+            "🆔 Topup ID: <code>{topup_id}</code>\n"
+            "💰 Summa: <b>{amount} so'm</b>"
         ),
         "topup.proof.received": (
             "✅ Chek qabul qilindi. Admin tekshiradi va tasdiqlaydi.\n\n"
@@ -160,6 +170,8 @@ _TEXTS: dict[str, dict[str, str]] = {
         "profile.title": "👤 <b>Profile</b>",
         "topup.title": "💳 <b>Top up</b>",
         "topup.open": "💳 Top up\n\nChoose a method 👇",
+        "topup.method.manual": "🧾 Via admin",
+        "topup.method.ton": "🪙 Pay with TON",
         "topup.choose_amount": "💳 Choose an amount 👇",
         "topup.custom.title": "💳 <b>Custom amount</b>",
         "topup.custom.body": (
@@ -180,6 +192,14 @@ _TEXTS: dict[str, dict[str, str]] = {
             "💰 Amount: <b>{amount} UZS</b>\n\n"
             "⚠️ Fake receipts may result in a ban.\n\n"
             "✅ After you send the receipt, it will be confirmed by an admin."
+        ),
+        "topup.ton.instructions": (
+            "🪙 <b>TON payment</b>\n\n"
+            "Send payment to this TON address:\n"
+            "<code>{address}</code>\n\n"
+            "Then send the receipt (screenshot or file) to this chat 📩\n\n"
+            "🆔 Topup ID: <code>{topup_id}</code>\n"
+            "💰 Amount: <b>{amount} UZS</b>"
         ),
         "topup.proof.received": (
             "✅ Receipt received. Admin will review and confirm it.\n\n"
@@ -283,6 +303,8 @@ _TEXTS: dict[str, dict[str, str]] = {
         "profile.title": "👤 <b>Профиль</b>",
         "topup.title": "💳 <b>Пополнение</b>",
         "topup.open": "💳 Пополнение\n\nВыберите способ 👇",
+        "topup.method.manual": "🧾 Через админа",
+        "topup.method.ton": "🪙 Оплата TON",
         "topup.choose_amount": "💳 Выберите сумму 👇",
         "topup.custom.title": "💳 <b>Другая сумма</b>",
         "topup.custom.body": (
@@ -303,6 +325,14 @@ _TEXTS: dict[str, dict[str, str]] = {
             "💰 Сумма: <b>{amount} UZS</b>\n\n"
             "⚠️ Фальшивые чеки могут привести к блокировке.\n\n"
             "✅ После отправки чека админ проверит и подтвердит."
+        ),
+        "topup.ton.instructions": (
+            "🪙 <b>Оплата TON</b>\n\n"
+            "Отправьте оплату на этот TON адрес:\n"
+            "<code>{address}</code>\n\n"
+            "Затем отправьте чек (скриншот или файл) в этот чат 📩\n\n"
+            "🆔 Topup ID: <code>{topup_id}</code>\n"
+            "💰 Сумма: <b>{amount} UZS</b>"
         ),
         "topup.proof.received": (
             "✅ Чек получен. Админ проверит и подтвердит.\n\n"

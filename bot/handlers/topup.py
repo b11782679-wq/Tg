@@ -130,17 +130,29 @@ def setup(repo: Repo):
             except Exception:
                 pass
         lang = await repo.get_language(call.from_user.id)
-        await call.message.edit_text(
-            t(
-                lang,
-                "topup.manual.instructions",
-                card="5614 6887 1574 1061",
-                owner="Shonazarov Behruz",
-                topup_id=int(topup_id),
-                amount=_fmt_money(amount),
-            ),
-            reply_markup=manual_topup_kb(lang),
-        )
+        if str(provider) == "ton":
+            await call.message.edit_text(
+                t(
+                    lang,
+                    "topup.ton.instructions",
+                    address="UQCU7okk5FZHU7ZvlpE3SczmuGkqheuharMoQ_S_lS1F_UAr",
+                    topup_id=int(topup_id),
+                    amount=_fmt_money(amount),
+                ),
+                reply_markup=manual_topup_kb(lang),
+            )
+        else:
+            await call.message.edit_text(
+                t(
+                    lang,
+                    "topup.manual.instructions",
+                    card="5614 6887 1574 1061",
+                    owner="Shonazarov Behruz",
+                    topup_id=int(topup_id),
+                    amount=_fmt_money(amount),
+                ),
+                reply_markup=manual_topup_kb(lang),
+            )
         return
 
     @router.callback_query(F.data == "t:send_proof")
@@ -229,13 +241,23 @@ def setup(repo: Repo):
         topup_id = await repo.create_topup(user_id, provider, amount)
 
         await message.answer(
-            t(
-                lang,
-                "topup.manual.instructions",
-                card="5614 6887 1574 1061",
-                owner="Shonazarov Behruz",
-                topup_id=int(topup_id),
-                amount=_fmt_money(amount),
+            (
+                t(
+                    lang,
+                    "topup.ton.instructions",
+                    address="UQCU7okk5FZHU7ZvlpE3SczmuGkqheuharMoQ_S_lS1F_UAr",
+                    topup_id=int(topup_id),
+                    amount=_fmt_money(amount),
+                )
+                if str(provider) == "ton"
+                else t(
+                    lang,
+                    "topup.manual.instructions",
+                    card="5614 6887 1574 1061",
+                    owner="Shonazarov Behruz",
+                    topup_id=int(topup_id),
+                    amount=_fmt_money(amount),
+                )
             ),
             reply_markup=manual_topup_kb(lang),
         )

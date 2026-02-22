@@ -19,9 +19,10 @@ def top_leaderboard_kb(active: str = "today", lang: str = "uz"):
 
 def topup_methods_kb(lang: str = "uz"):
     kb = InlineKeyboardBuilder()
-    kb.button(text=" Admin orqali", callback_data="t:method:manual")
+    kb.button(text=t(lang, "topup.method.manual"), callback_data="t:method:manual")
+    kb.button(text=t(lang, "topup.method.ton"), callback_data="t:method:ton")
     kb.button(text=t(lang, "kb.back"), callback_data="m:home")
-    kb.adjust(1, 1)
+    kb.adjust(1, 1, 1)
     return kb.as_markup()
 
 def topup_amounts_kb(provider: str, lang: str = "uz"):
