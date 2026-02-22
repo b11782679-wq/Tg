@@ -108,7 +108,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "points.bought": "✅ Ball bilan olindi:",
     },
     "en": {
-        "menu.gemine": "�💎 Gemini account",
+        "menu.gemine": "💎 Gemini account",
         "menu.chatgpt": "🚀 ChatGPT Business",
         "menu.chatgpt_plus": "✨ ChatGPT Plus",
         "menu.topup": "💳 Top up balance",
@@ -192,7 +192,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "products.race": "❌ Something went wrong.\n\nPlease try again later.",
         "products.buy.selected": "Selected:",
         "products.buy.price": "Price:",
-        "products.buy.success_admin": "� Admin will contact you.",
+        "products.buy.success_admin": "📞 Admin will contact you.",
         "money.no_balance": (
             "❌ Your balance is not enough.\n"
             "Your current balance is insufficient for this action.\n"
@@ -208,7 +208,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "points.bought": "✅ Bought with points:",
     },
     "ru": {
-        "menu.gemine": "�💎 Аккаунт Gemini",
+        "menu.gemine": "💎 Аккаунт Gemini",
         "menu.chatgpt": "🚀 ChatGPT Business",
         "menu.chatgpt_plus": "✨ ChatGPT Plus",
         "menu.topup": "💳 Пополнить баланс",
