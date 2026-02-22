@@ -49,6 +49,18 @@ async def _show_top(call: CallbackQuery, repo: Repo, period: str):
 
 def setup(repo: Repo):
 
+    def _amount_label(amount_uzs: int, lang: str) -> str:
+        uzs_per_usd_env = (os.getenv("UZS_PER_USD") or "").strip()
+        try:
+            uzs_per_usd = float(uzs_per_usd_env) if uzs_per_usd_env else 12200.0
+        except Exception:
+            uzs_per_usd = 12200.0
+
+        if str(lang) in ("en", "ru"):
+            usd = float(int(amount_uzs)) / max(float(uzs_per_usd), 1.0)
+            return f"${usd:,.2f}".replace(",", " ")
+        return f"{_fmt_money(int(amount_uzs))} so'm"
+
     awaiting_custom_amount: dict[int, str] = {}
     log_chat = (os.getenv("LOG_CHANNEL") or "@brainrot_videos").strip() or "@brainrot_videos"
 
@@ -137,7 +149,7 @@ def setup(repo: Repo):
                     "topup.ton.instructions",
                     address="UQCU7okk5FZHU7ZvlpE3SczmuGkqheuharMoQ_S_lS1F_UAr",
                     topup_id=int(topup_id),
-                    amount=_fmt_money(amount),
+                    amount_label=_amount_label(amount, lang),
                 ),
                 reply_markup=manual_topup_kb(lang),
             )
@@ -247,7 +259,7 @@ def setup(repo: Repo):
                     "topup.ton.instructions",
                     address="UQCU7okk5FZHU7ZvlpE3SczmuGkqheuharMoQ_S_lS1F_UAr",
                     topup_id=int(topup_id),
-                    amount=_fmt_money(amount),
+                    amount_label=_amount_label(amount, lang),
                 )
                 if str(provider) == "ton"
                 else t(

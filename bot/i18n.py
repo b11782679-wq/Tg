@@ -66,7 +66,7 @@ _TEXTS: dict[str, dict[str, str]] = {
             "<code>{address}</code>\n\n"
             "So‘ng to‘lov chekini (screenshot yoki fayl) ushbu chatga yuboring 📩\n\n"
             "🆔 Topup ID: <code>{topup_id}</code>\n"
-            "💰 Summa: <b>{amount} so'm</b>"
+            "💰 Summa: <b>{amount_label}</b>"
         ),
         "topup.proof.received": (
             "✅ Chek qabul qilindi. Admin tekshiradi va tasdiqlaydi.\n\n"
@@ -200,7 +200,7 @@ _TEXTS: dict[str, dict[str, str]] = {
             "<code>{address}</code>\n\n"
             "Then send the receipt (screenshot or file) to this chat 📩\n\n"
             "🆔 Topup ID: <code>{topup_id}</code>\n"
-            "💰 Amount: <b>{amount} UZS</b>"
+            "💰 Amount: <b>{amount_label}</b>"
         ),
         "topup.proof.received": (
             "✅ Receipt received. Admin will review and confirm it.\n\n"
@@ -334,7 +334,7 @@ _TEXTS: dict[str, dict[str, str]] = {
             "<code>{address}</code>\n\n"
             "Затем отправьте чек (скриншот или файл) в этот чат 📩\n\n"
             "🆔 Topup ID: <code>{topup_id}</code>\n"
-            "💰 Сумма: <b>{amount} UZS</b>"
+            "💰 Сумма: <b>{amount_label}</b>"
         ),
         "topup.proof.received": (
             "✅ Чек получен. Админ проверит и подтвердит.\n\n"
