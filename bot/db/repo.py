@@ -464,6 +464,18 @@ class Repo:
             cur = await db.execute(query, (*params, limit))
             return await cur.fetchall()
 
+    async def admin_list_user_ids_chunk(self, limit: int = 500, offset: int = 0) -> list[int]:
+        limit = min(max(int(limit), 1), 5000)
+        offset = max(int(offset), 0)
+        async with await self._conn() as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute(
+                "SELECT id FROM users ORDER BY id ASC LIMIT ? OFFSET ?",
+                (limit, offset),
+            )
+            rows = await cur.fetchall()
+            return [int(r["id"]) for r in rows]
+
     async def admin_get_topup(self, topup_id: int):
         async with await self._conn() as db:
             db.row_factory = aiosqlite.Row

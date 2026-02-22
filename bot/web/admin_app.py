@@ -49,6 +49,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             + _nav_item("Sotib olganlar", "/admin/buyers", "buyers")
             + _nav_item("Purchases", "/admin/purchases", "purchases")
             + _nav_item("Topups", "/admin/topups", "topups")
+            + _nav_item("Broadcast", "/admin/broadcast", "broadcast")
             + _nav_item("ChatGPT", "/admin/accounts/chatgpt", "chatgpt")
             + _nav_item("Gemini", "/admin/accounts/gemini", "gemini")
             + "</nav>"
@@ -622,6 +623,72 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         async with aiosqlite.connect(cfg.db_path) as db:
             await db.execute("SELECT 1")
         return _layout("Health", "<div>OK</div>", active="dashboard")
+
+    @router.get("/broadcast", response_class=HTMLResponse)
+    async def admin_broadcast(credentials: HTTPBasicCredentials = Depends(_auth)):
+        body = (
+            "<div class='stack'>"
+            "<form method='post' action='/admin/broadcast/send' class='stack'>"
+            "<div class='field'>"
+            "<b>Message (HTML)</b>"
+            "<textarea class='input textarea' name='text' placeholder='Write message...'></textarea>"
+            "</div>"
+            "<div class='rowform'>"
+            "<button class='btn' type='submit' onclick=\"return confirm('Hamma userlarga yuborilsinmi?')\">Send</button>"
+            "</div>"
+            "</form>"
+            "<div class='meta'>Eslatma: matn HTML parse_mode bilan yuboriladi.</div>"
+            "</div>"
+        )
+        return _layout("Broadcast", body, active="broadcast")
+
+    @router.post("/broadcast/send", response_class=HTMLResponse)
+    async def admin_broadcast_send(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        text: str = Form(""),
+    ):
+        text = (text or "").strip()
+        if text == "":
+            raise HTTPException(status_code=400, detail="Empty text")
+
+        sent = 0
+        failed = 0
+        total = 0
+
+        offset = 0
+        limit = 500
+        while True:
+            ids = await repo.admin_list_user_ids_chunk(limit=limit, offset=offset)
+            if not ids:
+                break
+            total += len(ids)
+            for uid in ids:
+                try:
+                    await asyncio.to_thread(_tg_send_message, int(uid), text)
+                    sent += 1
+                except Exception:
+                    failed += 1
+
+                await asyncio.sleep(0.035)
+
+            offset += len(ids)
+
+        body = (
+            "<div class='stack'>"
+            "<div class='card'><b>Total users</b><div class='num'>"
+            + str(int(total))
+            + "</div></div>"
+            "<div class='card'><b>Sent</b><div class='num'>"
+            + str(int(sent))
+            + "</div></div>"
+            "<div class='card'><b>Failed</b><div class='num'>"
+            + str(int(failed))
+            + "</div></div>"
+            "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
+            "</div>"
+        )
+        return _layout("Broadcast result", body, active="broadcast")
 
     def _escape_textarea(s: str) -> str:
         return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
