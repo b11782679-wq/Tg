@@ -255,6 +255,15 @@ class Repo:
                 )
 
                 cur = await db.execute(
+                    "UPDATE balances SET money_uzs = money_uzs - ?, updated_at=datetime('now') "
+                    "WHERE user_id = ? AND money_uzs >= ?",
+                    (price_uzs, user_id, price_uzs),
+                )
+                if (cur.rowcount or 0) <= 0:
+                    await db.execute("ROLLBACK")
+                    return False, "no_money", None
+
+                cur = await db.execute(
                     "SELECT id, login, password FROM product_accounts "
                     "WHERE product_key=? AND status='available' ORDER BY id ASC LIMIT 1",
                     (product_key,),
@@ -263,15 +272,6 @@ class Repo:
                 if not acc:
                     await db.execute("ROLLBACK")
                     return False, "no_stock", None
-
-                cur = await db.execute(
-                    "UPDATE balances SET money_uzs = money_uzs - ?, updated_at=datetime('now') "
-                    "WHERE user_id = ? AND money_uzs >= ?",
-                    (price_uzs, user_id, price_uzs),
-                )
-                if (cur.rowcount or 0) <= 0:
-                    await db.execute("ROLLBACK")
-                    return False, "no_money", None
 
                 cur = await db.execute(
                     "INSERT INTO product_orders(user_id, product_key, plan_key, price_uzs, status) VALUES(?,?,?,?, 'paid')",
