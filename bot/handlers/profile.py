@@ -5,6 +5,7 @@ from bot.db.repo import Repo
 from bot.keyboards.menu import back_only_kb
 from bot.services.pricing import PRICING
 from bot.i18n import t
+import os
 
 router = Router()
 
@@ -20,11 +21,23 @@ def setup(repo: Repo):
 
         lang = await repo.get_language(call.from_user.id)
 
+        uzs_per_usd_env = (os.getenv("UZS_PER_USD") or "").strip()
+        try:
+            uzs_per_usd = float(uzs_per_usd_env) if uzs_per_usd_env else 12200.0
+        except Exception:
+            uzs_per_usd = 12200.0
+
+        if str(lang) in ("en", "ru"):
+            usd = float(int(money)) / max(float(uzs_per_usd), 1.0)
+            money_label = f"${usd:,.2f}".replace(",", " ")
+        else:
+            money_label = f"{money:,}".replace(",", " ")
+
         await repo.expire_old_assigned_accounts(days=7)
         accs = await repo.get_recent_user_accounts(user_id=call.from_user.id, days=7, limit=10)
 
         # RASMDAGIDEK FORMAT
-        text = t(lang, "profile.body", user_id=int(call.from_user.id), money=f"{money:,}".replace(",", " "))
+        text = t(lang, "profile.body", user_id=int(call.from_user.id), money=money_label)
 
         if accs:
             text += "\n\n" + t(lang, "profile.accounts_title")

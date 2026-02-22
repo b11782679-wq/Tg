@@ -245,7 +245,7 @@ _TEXTS: dict[str, dict[str, str]] = {
             "🔗 <b>Share this referral link</b>\n"
             "<code>{link}</code>"
         ),
-        "profile.body": "🆔 <b>User ID:</b> <code>[{user_id}]</code>\n💰 <b>Balance:</b> {money} UZS",
+        "profile.body": "🆔 <b>User ID:</b> <code>[{user_id}]</code>\n💰 <b>Balance:</b> {money}",
         "profile.accounts_title": "<b>🧾 Accounts (7 days):</b>",
         "profile.login": "Login",
         "profile.password": "Password",
@@ -379,7 +379,7 @@ _TEXTS: dict[str, dict[str, str]] = {
             "🔗 <b>Ваша реферальная ссылка</b>\n"
             "<code>{link}</code>"
         ),
-        "profile.body": "🆔 <b>User ID:</b> <code>[{user_id}]</code>\n💰 <b>Баланс:</b> {money} UZS",
+        "profile.body": "🆔 <b>User ID:</b> <code>[{user_id}]</code>\n💰 <b>Баланс:</b> {money}",
         "profile.accounts_title": "<b>🧾 Аккаунты (7 дней):</b>",
         "profile.login": "Логин",
         "profile.password": "Пароль",
