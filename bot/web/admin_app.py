@@ -53,6 +53,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             + _nav_item("Broadcast", "/admin/broadcast", "broadcast")
             + _nav_item("ChatGPT", "/admin/accounts/chatgpt", "chatgpt")
             + _nav_item("ChatGPT Plus", "/admin/accounts/chatgpt_plus", "chatgpt_plus")
+            + _nav_item("Super Grok", "/admin/accounts/super_grok", "super_grok")
             + _nav_item("Gemini", "/admin/accounts/gemini", "gemini")
             + "</nav>"
         )
@@ -1091,6 +1092,59 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
     ):
         await repo.admin_delete_product_account("chatgpt_plus", account_id=account_id)
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/chatgpt_plus"), status_code=303)
+
+    @router.get("/accounts/super_grok", response_class=HTMLResponse)
+    async def admin_super_grok(credentials: HTTPBasicCredentials = Depends(_auth)):
+        return await _account_page(
+            "Super Grok",
+            product_key="super_grok",
+            active="super_grok",
+            post_url="/admin/accounts/super_grok",
+            delete_post_url="/admin/accounts/super_grok/delete",
+            edit_post_url="/admin/accounts/super_grok/edit",
+        )
+
+    @router.post("/accounts/super_grok")
+    async def admin_super_grok_save(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        login: str = Form(""),
+        password: str = Form(""),
+    ):
+        acc_id = await repo.admin_add_product_account("super_grok", login=login, password=password)
+        if request.headers.get("X-Requested-With") == "fetch":
+            return JSONResponse(
+                {
+                    "ok": True,
+                    "id": acc_id,
+                    "login": login,
+                    "password": password,
+                    "created_at": "",
+                    "delete_url": "/admin/accounts/super_grok/delete",
+                    "edit_url": "/admin/accounts/super_grok/edit",
+                }
+            )
+        return RedirectResponse(url="/admin/accounts/super_grok", status_code=303)
+
+    @router.post("/accounts/super_grok/edit")
+    async def admin_super_grok_edit(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+        login: str = Form(""),
+        password: str = Form(""),
+    ):
+        await repo.admin_update_product_account("super_grok", account_id=account_id, login=login, password=password)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/super_grok"), status_code=303)
+
+    @router.post("/accounts/super_grok/delete")
+    async def admin_super_grok_delete(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+    ):
+        await repo.admin_delete_product_account("super_grok", account_id=account_id)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/super_grok"), status_code=303)
 
     @router.get("/accounts/gemini", response_class=HTMLResponse)
     async def admin_gemini(credentials: HTTPBasicCredentials = Depends(_auth)):
