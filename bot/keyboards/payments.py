@@ -1,5 +1,7 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+import os
+
 from bot.i18n import t
 
 def top_leaderboard_kb(active: str = "today", lang: str = "uz"):
@@ -27,8 +29,19 @@ def topup_methods_kb(lang: str = "uz"):
 
 def topup_amounts_kb(provider: str, lang: str = "uz"):
     kb = InlineKeyboardBuilder()
+    uzs_per_usd_env = (os.getenv("UZS_PER_USD") or "").strip()
+    try:
+        uzs_per_usd = float(uzs_per_usd_env) if uzs_per_usd_env else 12200.0
+    except Exception:
+        uzs_per_usd = 12200.0
+
     for a in (20000, 50000, 100000, 200000):
-        kb.button(text=f"➕ {a:,} so'm".replace(",", " "), callback_data=f"t:amount:{provider}:{a}")
+        if str(lang) in ("en", "ru"):
+            usd = float(a) / max(uzs_per_usd, 1.0)
+            label = f"➕ ${usd:,.2f}".replace(",", " ")
+        else:
+            label = f"➕ {a:,} so'm".replace(",", " ")
+        kb.button(text=label, callback_data=f"t:amount:{provider}:{a}")
     kb.button(text=t(lang, "kb.other_amount"), callback_data=f"t:custom:{provider}")
     kb.button(text=t(lang, "kb.back"), callback_data="t:open")
     kb.adjust(2, 2, 1, 1)
