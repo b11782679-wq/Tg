@@ -27,22 +27,34 @@ def _now_hhmm() -> str:
         return ""
 
 
-def _render_top5(rows) -> str:
+def _render_top5(rows, lang: str, uzs_per_usd: float) -> str:
     if not rows:
         return "-"
     lines = []
     for i, (_, name, total) in enumerate(rows, start=1):
-        lines.append(f"{i}. {name} — {_fmt_money(total)} so'm")
+        lines.append(f"{i}. {name} — {_fmt_amount(int(total), uzs_per_usd, lang=lang)}")
     return "\n".join(lines)
+
+
+def _fmt_amount(amount_uzs: int, uzs_per_usd: float, lang: str = "uz") -> str:
+    if str(lang) in ("en", "ru"):
+        usd = float(int(amount_uzs)) / max(float(uzs_per_usd), 1.0)
+        return f"${usd:,.2f}".replace(",", " ")
+    return f"{_fmt_money(int(amount_uzs))} so'm"
 
 
 async def _show_top(call: CallbackQuery, repo: Repo, period: str):
     rows = await repo.get_topup_leaderboard(period=period, limit=5)
     lang = await repo.get_language(call.from_user.id)
+    uzs_per_usd_env = (os.getenv("UZS_PER_USD") or "").strip()
+    try:
+        uzs_per_usd = float(uzs_per_usd_env) if uzs_per_usd_env else 12200.0
+    except Exception:
+        uzs_per_usd = 12200.0
     text = (
         f"{t(lang, 'top.leaderboard.title')}\n"
         f"{t(lang, 'top.leaderboard.desc')}\n\n"
-        f"{_render_top5(rows)}"
+        f"{_render_top5(rows, lang=lang, uzs_per_usd=uzs_per_usd)}"
     )
     await call.message.edit_text(text, reply_markup=top_leaderboard_kb(active=period, lang=lang))
 
