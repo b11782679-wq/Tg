@@ -26,6 +26,8 @@ def product_plans_kb(product_key: str, lang: str = "uz"):
         label = str(p.get("label") or "")
         if str(plan_key) == "1m":
             label = t(lang, "plan.1m")
+        if str(plan_key) == "1w":
+            label = t(lang, "plan.1w")
         price_uzs = int(p["price_uzs"])
         if str(lang) in ("en", "ru"):
             usd = float(price_uzs) / max(uzs_per_usd, 1.0)

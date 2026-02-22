@@ -20,7 +20,7 @@ PRICING = {
     "super_grok": {
         "title": "⚡ Super Grok",
         "plans": {
-            "1m": {"label": "1 oy", "price_uzs": 30000},
+            "1w": {"label": "1 hafta", "price_uzs": 30000},
         },
     },
 }
