@@ -22,6 +22,9 @@ def product_plans_kb(product_key: str, lang: str = "uz"):
         uzs_per_usd = 12200.0
 
     for plan_key, p in product["plans"].items():
+        label = str(p.get("label") or "")
+        if str(plan_key) == "1m":
+            label = t(lang, "plan.1m")
         price_uzs = int(p["price_uzs"])
         if str(lang) in ("en", "ru"):
             usd = float(price_uzs) / max(uzs_per_usd, 1.0)
@@ -29,7 +32,7 @@ def product_plans_kb(product_key: str, lang: str = "uz"):
         else:
             price_label = f"{price_uzs:,} so'm".replace(",", " ")
         kb.button(
-            text=f"✅ {p['label']} — {price_label}",
+            text=f"✅ {label} — {price_label}",
             callback_data=f"p:buy:{product_key}:{plan_key}",
         )
     if product_key not in ("chatgpt_business", "chatgpt_plus", "gemine"):
