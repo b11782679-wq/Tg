@@ -6,9 +6,10 @@ import json
 import urllib.request
 from pathlib import Path
 from typing import Annotated
+import mimetypes
 
 import aiosqlite
-from fastapi import Depends, Form, HTTPException, Request
+from fastapi import Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -127,6 +128,44 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=15) as _:
+            return
+
+    def _tg_send_photo(chat_id: int, photo_bytes: bytes, filename: str, caption: str | None = None):
+        boundary = "----tgform" + secrets.token_hex(16)
+
+        def _part(name: str, value: str) -> bytes:
+            return (
+                f"--{boundary}\r\n"
+                f"Content-Disposition: form-data; name=\"{name}\"\r\n\r\n"
+                f"{value}\r\n"
+            ).encode("utf-8")
+
+        mime = mimetypes.guess_type(filename or "photo.jpg")[0] or "application/octet-stream"
+        file_header = (
+            f"--{boundary}\r\n"
+            f"Content-Disposition: form-data; name=\"photo\"; filename=\"{filename or 'photo.jpg'}\"\r\n"
+            f"Content-Type: {mime}\r\n\r\n"
+        ).encode("utf-8")
+        end = f"\r\n--{boundary}--\r\n".encode("utf-8")
+
+        body = b"".join(
+            [
+                _part("chat_id", str(int(chat_id))),
+                _part("parse_mode", "HTML"),
+                _part("caption", str(caption or "")),
+                file_header,
+                photo_bytes,
+                end,
+            ]
+        )
+
+        req = urllib.request.Request(
+            _tg_api_url("sendPhoto"),
+            data=body,
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as _:
             return
 
     @router.get("/", response_class=HTMLResponse)
@@ -637,6 +676,20 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<button class='btn' type='submit' onclick=\"return confirm('Hamma userlarga yuborilsinmi?')\">Send</button>"
             "</div>"
             "</form>"
+            "<div style='height:1px;background:rgba(148,163,184,.18);margin:12px 0'></div>"
+            "<form method='post' action='/admin/broadcast/send_photo' class='stack' enctype='multipart/form-data'>"
+            "<div class='field'>"
+            "<b>Photo</b>"
+            "<input class='input' type='file' name='photo' accept='image/*' required>"
+            "</div>"
+            "<div class='field'>"
+            "<b>Caption (HTML, optional)</b>"
+            "<textarea class='input textarea' name='caption' placeholder='Caption...'></textarea>"
+            "</div>"
+            "<div class='rowform'>"
+            "<button class='btn' type='submit' onclick=\"return confirm('Rasm hamma userlarga yuborilsinmi?')\">Send photo</button>"
+            "</div>"
+            "</form>"
             "<div class='meta'>Eslatma: matn HTML parse_mode bilan yuboriladi.</div>"
             "</div>"
         )
@@ -726,6 +779,94 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "</div>"
         )
         return _layout("Broadcast result", body, active="broadcast")
+
+    @router.post("/broadcast/send_photo", response_class=HTMLResponse)
+    async def admin_broadcast_send_photo(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        photo: UploadFile = File(...),
+        caption: str = Form(""),
+    ):
+        caption = (caption or "").strip()
+        file_bytes = await photo.read()
+        if not file_bytes:
+            raise HTTPException(status_code=400, detail="Empty photo")
+
+        filename = str(photo.filename or "photo.jpg")
+
+        sent = 0
+        failed = 0
+        total = 0
+
+        blocked = 0
+        deactivated = 0
+        not_found = 0
+        flood = 0
+        other = 0
+
+        offset = 0
+        limit = 300
+        while True:
+            ids = await repo.admin_list_user_ids_chunk(limit=limit, offset=offset)
+            if not ids:
+                break
+            total += len(ids)
+            for uid in ids:
+                try:
+                    await asyncio.to_thread(_tg_send_photo, int(uid), file_bytes, filename, caption)
+                    sent += 1
+                except Exception as e:
+                    failed += 1
+                    emsg = str(e).lower()
+                    if "blocked" in emsg:
+                        blocked += 1
+                    elif "deactivated" in emsg:
+                        deactivated += 1
+                    elif "chat not found" in emsg or "user not found" in emsg:
+                        not_found += 1
+                    elif "too many requests" in emsg or "retry after" in emsg or "flood" in emsg:
+                        flood += 1
+                    else:
+                        other += 1
+
+                await asyncio.sleep(0.05)
+
+            offset += len(ids)
+
+        body = (
+            "<div class='stack'>"
+            "<div class='grid'>"
+            "<div class='card'><b>Total users</b><div class='num'>"
+            + str(int(total))
+            + "</div></div>"
+            "<div class='card'><b>Sent</b><div class='num'>"
+            + str(int(sent))
+            + "</div></div>"
+            "<div class='card'><b>Failed</b><div class='num'>"
+            + str(int(failed))
+            + "</div></div>"
+            "<div class='card'><b>Blocked</b><div class='num'>"
+            + str(int(blocked))
+            + "</div></div>"
+            "</div>"
+            "<div class='grid' style='margin-top:12px'>"
+            "<div class='card'><b>Deactivated</b><div class='num'>"
+            + str(int(deactivated))
+            + "</div></div>"
+            "<div class='card'><b>Chat not found</b><div class='num'>"
+            + str(int(not_found))
+            + "</div></div>"
+            "<div class='card'><b>Flood / Retry</b><div class='num'>"
+            + str(int(flood))
+            + "</div></div>"
+            "<div class='card'><b>Other</b><div class='num'>"
+            + str(int(other))
+            + "</div></div>"
+            "</div>"
+            "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
+            "</div>"
+        )
+        return _layout("Broadcast photo result", body, active="broadcast")
 
     def _escape_textarea(s: str) -> str:
         return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
