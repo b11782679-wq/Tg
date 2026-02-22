@@ -129,17 +129,17 @@ def setup(repo: Repo):
                 asyncio.create_task(call.bot.send_message(log_chat, log_text))
             except Exception:
                 pass
+        lang = await repo.get_language(call.from_user.id)
         await call.message.edit_text(
-            "👤 <b>To‘lov tartibi:</b>\n"
-            "1️⃣ Admin ko‘rsatgan karta raqamiga to‘lovni amalga oshiring:\n"
-            "💳 <code>5614 6887 1574 1061</code>\n"
-            "👤 Shonazarov Behruz\n\n"
-            "2️⃣ To‘lov chekini (screenshot yoki fayl) ushbu chatga yuboring 📩\n\n"
-            f"🆔 Topup ID: <code>{topup_id}</code>\n"
-            f"💰 Summa: <b>{_fmt_money(amount)} so'm</b>\n\n"
-            "⚠️ Soxta chek yuborish botdan bloklanishga olib keladi.\n\n"
-            "✅ Chek yuborilgandan so‘ng admin tomonidan tasdiqlanadi.",
-            reply_markup=manual_topup_kb(await repo.get_language(call.from_user.id)),
+            t(
+                lang,
+                "topup.manual.instructions",
+                card="5614 6887 1574 1061",
+                owner="Shonazarov Behruz",
+                topup_id=int(topup_id),
+                amount=_fmt_money(amount),
+            ),
+            reply_markup=manual_topup_kb(lang),
         )
         return
 
@@ -193,8 +193,11 @@ def setup(repo: Repo):
                 except Exception:
                     pass
             await message.answer(
-                "✅ Chek qabul qilindi. Admin tekshiradi va tasdiqlaydi.\n\n"
-                f"Topup ID: <code>{int(pending['id'])}</code>"
+                t(
+                    await repo.get_language(message.from_user.id),
+                    "topup.proof.received",
+                    topup_id=int(pending["id"]),
+                )
             )
 
     @router.message(F.text)
@@ -211,31 +214,28 @@ def setup(repo: Repo):
         raw = (message.text or "").strip()
         cleaned = raw.replace(" ", "").replace("'", "")
         if not cleaned.isdigit():
-            await message.answer(
-                "❗️ Summani faqat raqam bilan yuboring. Masalan: <code>25000</code> yoki <code>25 000</code>"
-            )
+            await message.answer(t(lang, "topup.custom.only_digits"))
             return
 
         amount = int(cleaned)
         if amount < 1000:
-            await message.answer("❗️ Eng kam hisob to‘ldirish miqdori <b>1000 so'm</b>.")
+            await message.answer(t(lang, "topup.custom.min_amount"))
             return
         if amount > 50_000_000:
-            await message.answer("❗️ Noto‘g‘ri summa. Qaytadan kiriting.")
+            await message.answer(t(lang, "topup.custom.invalid_amount"))
             return
 
         awaiting_custom_amount.pop(user_id, None)
         topup_id = await repo.create_topup(user_id, provider, amount)
 
         await message.answer(
-            "👤 <b>To‘lov tartibi:</b>\n"
-            "1️⃣ Admin ko‘rsatgan karta raqamiga to‘lovni amalga oshiring:\n"
-            "💳 <code>5614 6887 1574 1061</code>\n"
-            "👤 Shonazarov Behruz\n\n"
-            "2️⃣ To‘lov chekini (screenshot yoki fayl) ushbu chatga yuboring 📩\n\n"
-            f"🆔 Topup ID: <code>{topup_id}</code>\n"
-            f"💰 Summa: <b>{_fmt_money(amount)} so'm</b>\n\n"
-            "⚠️ Soxta chek yuborish botdan bloklanishga olib keladi.\n\n"
-            "✅ Chek yuborilgandan so‘ng admin tomonidan tasdiqlanadi.",
+            t(
+                lang,
+                "topup.manual.instructions",
+                card="5614 6887 1574 1061",
+                owner="Shonazarov Behruz",
+                topup_id=int(topup_id),
+                amount=_fmt_money(amount),
+            ),
             reply_markup=manual_topup_kb(lang),
         )

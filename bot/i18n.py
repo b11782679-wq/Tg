@@ -47,6 +47,24 @@ _TEXTS: dict[str, dict[str, str]] = {
             "Eng kam hisob to‘ldirish miqdori: <b>1000 so'm</b>\n\n"
             "Faqat raqam kiriting (so'm yozmang)."
         ),
+        "topup.manual.instructions": (
+            "👤 <b>To‘lov tartibi:</b>\n"
+            "1️⃣ Admin ko‘rsatgan karta raqamiga to‘lovni amalga oshiring:\n"
+            "💳 <code>{card}</code>\n"
+            "👤 {owner}\n\n"
+            "2️⃣ To‘lov chekini (screenshot yoki fayl) ushbu chatga yuboring 📩\n\n"
+            "🆔 Topup ID: <code>{topup_id}</code>\n"
+            "💰 Summa: <b>{amount} so'm</b>\n\n"
+            "⚠️ Soxta chek yuborish botdan bloklanishga olib keladi.\n\n"
+            "✅ Chek yuborilgandan so‘ng admin tomonidan tasdiqlanadi."
+        ),
+        "topup.proof.received": (
+            "✅ Chek qabul qilindi. Admin tekshiradi va tasdiqlaydi.\n\n"
+            "Topup ID: <code>{topup_id}</code>"
+        ),
+        "topup.custom.only_digits": "❗️ Summani faqat raqam bilan yuboring. Masalan: <code>25000</code> yoki <code>25 000</code>",
+        "topup.custom.min_amount": "❗️ Eng kam hisob to‘ldirish miqdori <b>1000 so'm</b>.",
+        "topup.custom.invalid_amount": "❗️ Noto‘g‘ri summa. Qaytadan kiriting.",
         "kb.back_menu": "⬅️ Menyu",
         "kb.back": "⬅️ Ortga",
         "kb.check": "🔄 Tekshirish",
@@ -152,6 +170,24 @@ _TEXTS: dict[str, dict[str, str]] = {
             "Minimum top up: <b>1000 UZS</b>\n\n"
             "Digits only (no currency text)."
         ),
+        "topup.manual.instructions": (
+            "👤 <b>Payment instructions:</b>\n"
+            "1️⃣ Make a payment to the card number below:\n"
+            "💳 <code>{card}</code>\n"
+            "👤 {owner}\n\n"
+            "2️⃣ Send the payment receipt (screenshot or file) to this chat 📩\n\n"
+            "🆔 Topup ID: <code>{topup_id}</code>\n"
+            "💰 Amount: <b>{amount} UZS</b>\n\n"
+            "⚠️ Fake receipts may result in a ban.\n\n"
+            "✅ After you send the receipt, it will be confirmed by an admin."
+        ),
+        "topup.proof.received": (
+            "✅ Receipt received. Admin will review and confirm it.\n\n"
+            "Topup ID: <code>{topup_id}</code>"
+        ),
+        "topup.custom.only_digits": "❗️ Send amount as digits only. Example: <code>25000</code> or <code>25 000</code>",
+        "topup.custom.min_amount": "❗️ Minimum top up amount is <b>1000 UZS</b>.",
+        "topup.custom.invalid_amount": "❗️ Invalid amount. Please try again.",
         "kb.back_menu": "⬅️ Menu",
         "kb.back": "⬅️ Back",
         "kb.check": "🔄 Check",
@@ -257,6 +293,24 @@ _TEXTS: dict[str, dict[str, str]] = {
             "Минимум: <b>1000 UZS</b>\n\n"
             "Только цифры (без текста валюты)."
         ),
+        "topup.manual.instructions": (
+            "👤 <b>Инструкция по оплате:</b>\n"
+            "1️⃣ Переведите оплату на карту ниже:\n"
+            "💳 <code>{card}</code>\n"
+            "👤 {owner}\n\n"
+            "2️⃣ Отправьте чек (скриншот или файл) в этот чат 📩\n\n"
+            "🆔 Topup ID: <code>{topup_id}</code>\n"
+            "💰 Сумма: <b>{amount} UZS</b>\n\n"
+            "⚠️ Фальшивые чеки могут привести к блокировке.\n\n"
+            "✅ После отправки чека админ проверит и подтвердит."
+        ),
+        "topup.proof.received": (
+            "✅ Чек получен. Админ проверит и подтвердит.\n\n"
+            "Topup ID: <code>{topup_id}</code>"
+        ),
+        "topup.custom.only_digits": "❗️ Отправьте сумму только цифрами. Например: <code>25000</code> или <code>25 000</code>",
+        "topup.custom.min_amount": "❗️ Минимальная сумма пополнения <b>1000 UZS</b>.",
+        "topup.custom.invalid_amount": "❗️ Неверная сумма. Попробуйте снова.",
         "kb.back_menu": "⬅️ Меню",
         "kb.back": "⬅️ Назад",
         "kb.check": "🔄 Проверить",
