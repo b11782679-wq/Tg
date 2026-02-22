@@ -87,7 +87,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "profile.accounts_title": "<b>🧾 Akkauntlar (7 kun):</b>",
         "profile.login": "Login",
         "profile.password": "Parol",
-        "products.choose_plan": "Quyidagilardan birini tanlang �",
+        "products.choose_plan": "📌 Quyidagilardan birini tanlang 👇",
         "products.no_stock": "❌ Hozircha akkaunt qolmagan.\n\nKeyinroq qayta urinib ko‘ring.",
         "products.race": "❌ Xatolik yuz berdi.\n\nKeyinroq qayta urinib ko‘ring.",
         "products.buy.selected": "Tanlandi:",
