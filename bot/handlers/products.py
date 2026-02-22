@@ -41,11 +41,7 @@ def setup(repo: Repo):
         lang = await repo.get_language(call.from_user.id)
 
         if product_key == "gemine":
-            text = (
-                "💎 <b>Gemini Pro akkaunt</b>\n"
-                "Ushbu akkauntni xarid qilsangiz, Gemini’ning barcha Pro funksiyalaridan to‘liq foydalanish imkoniyatiga ega bo‘lasiz.\n\n"
-                "📌 Kerakli tarifni quyidagilardan tanlang 👇"
-            )
+            text = t(lang, "products.gemine.open")
         else:
             text = (
                 f"{product['title']}\n\n" + t(lang, "products.choose_plan")

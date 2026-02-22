@@ -90,6 +90,11 @@ _TEXTS: dict[str, dict[str, str]] = {
         "products.choose_plan": "📌 Quyidagilardan birini tanlang 👇",
         "products.no_stock": "❌ Hozircha akkaunt qolmagan.\n\nKeyinroq qayta urinib ko‘ring.",
         "products.race": "❌ Xatolik yuz berdi.\n\nKeyinroq qayta urinib ko‘ring.",
+        "products.gemine.open": (
+            "💎 <b>Gemini Pro akkaunt</b>\n"
+            "Ushbu akkauntni xarid qilsangiz, Gemini’ning barcha Pro funksiyalaridan to‘liq foydalanish imkoniyatiga ega bo‘lasiz.\n\n"
+            "📌 Kerakli tarifni quyidagilardan tanlang 👇"
+        ),
         "products.buy.selected": "Tanlandi:",
         "products.buy.price": "Narx:",
         "products.buy.success_admin": "📞 Admin siz bilan bog‘lanadi.",
@@ -190,6 +195,11 @@ _TEXTS: dict[str, dict[str, str]] = {
         "products.choose_plan": "Choose one 👇",
         "products.no_stock": "❌ No accounts in stock right now.\n\nPlease try again later.",
         "products.race": "❌ Something went wrong.\n\nPlease try again later.",
+        "products.gemine.open": (
+            "💎 <b>Gemini Pro account</b>\n"
+            "If you purchase this account, you'll get full access to Gemini Pro features.\n\n"
+            "📌 Choose a plan below 👇"
+        ),
         "products.buy.selected": "Selected:",
         "products.buy.price": "Price:",
         "products.buy.success_admin": "📞 Admin will contact you.",
@@ -290,6 +300,11 @@ _TEXTS: dict[str, dict[str, str]] = {
         "products.choose_plan": "Выберите вариант 👇",
         "products.no_stock": "❌ Сейчас нет аккаунтов в наличии.\n\nПожалуйста, попробуйте позже.",
         "products.race": "❌ Произошла ошибка.\n\nПожалуйста, попробуйте позже.",
+        "products.gemine.open": (
+            "💎 <b>Аккаунт Gemini Pro</b>\n"
+            "Если вы купите этот аккаунт, вы получите полный доступ к функциям Gemini Pro.\n\n"
+            "📌 Выберите тариф ниже 👇"
+        ),
         "products.buy.selected": "Выбрано:",
         "products.buy.price": "Цена:",
         "products.buy.success_admin": "📞 Админ свяжется с вами.",
