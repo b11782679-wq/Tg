@@ -7,19 +7,14 @@ ADMIN_USERNAME = "behruz_0887"
 def main_menu_kb(lang: str = "uz"):
     kb = InlineKeyboardBuilder()
 
-    kb.button(text=t(lang, "menu.gemine"), callback_data="p:open:gemine")
-    kb.button(text=t(lang, "menu.chatgpt"), callback_data="p:open:chatgpt_business")
-    kb.button(text=t(lang, "menu.chatgpt_plus"), callback_data="p:open:chatgpt_plus")
-    kb.button(text=t(lang, "menu.super_grok"), callback_data="p:open:super_grok")
-    kb.button(text=t(lang, "menu.canva_pro"), callback_data="p:open:canva_pro")
-    kb.button(text=t(lang, "menu.capcut_pro"), callback_data="p:open:capcut_pro")
+    kb.button(text=t(lang, "menu.premium"), callback_data="p:menu")
 
     kb.button(text=t(lang, "menu.topup"), callback_data="t:open")
     kb.button(text=t(lang, "menu.top"), callback_data="top:open")
 
     kb.button(text=t(lang, "menu.settings"), callback_data="settings:open")
 
-    kb.adjust(2, 2, 2, 2, 1)
+    kb.adjust(1, 2, 1)
     return kb.as_markup()
 
 
