@@ -7,6 +7,7 @@ import urllib.request
 from pathlib import Path
 from typing import Annotated
 import mimetypes
+import re
 
 import aiosqlite
 from fastapi import Depends, File, Form, HTTPException, Request, UploadFile
@@ -878,6 +879,53 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
     def _escape_attr(s: str) -> str:
         return _escape_textarea(s).replace("\"", "&quot;").replace("'", "&#39;")
 
+    async def _bulk_add_from_txt(product_key: str, accounts_file: UploadFile) -> dict:
+        raw = await accounts_file.read()
+        text = ""
+        for enc in ("utf-8-sig", "utf-8", "cp1251", "latin-1"):
+            try:
+                text = raw.decode(enc)
+                break
+            except Exception:
+                continue
+
+        added = 0
+        skipped = 0
+        seen: set[str] = set()
+
+        for line in (text or "").splitlines():
+            s = (line or "").strip()
+            if not s:
+                continue
+            if s.startswith("#"):
+                continue
+
+            s = re.sub(r"\s*\|\s*", "|", s)
+            if "|" not in s:
+                skipped += 1
+                continue
+
+            login, password = s.split("|", 1)
+            login = (login or "").strip()
+            password = (password or "").strip()
+            if not login or not password:
+                skipped += 1
+                continue
+
+            key = f"{login}|{password}".lower()
+            if key in seen:
+                skipped += 1
+                continue
+            seen.add(key)
+
+            try:
+                await repo.admin_add_product_account(product_key, login=login, password=password)
+                added += 1
+            except Exception:
+                skipped += 1
+
+        return {"added": added, "skipped": skipped, "total": added + skipped}
+
     async def _account_page(
         title: str,
         product_key: str,
@@ -890,7 +938,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         body = (
             "<div class='stack'>"
             "<div id='acct-forms' class='stack'>"
-            f"<form method='post' action='{post_url}' class='stack acct-form'>"
+            f"<form method='post' action='{post_url}' class='stack acct-form' enctype='multipart/form-data'>"
             "<div class='field'>"
             "<b>Login</b>"
             "<input class='input' name='login' placeholder='Login' value=''>"
@@ -898,6 +946,10 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<div class='field'>"
             "<b>Parol</b>"
             "<input class='input' name='password' placeholder='Parol' value=''>"
+            "</div>"
+            "<div class='field'>"
+            "<b>.txt file (login|password)</b>"
+            "<input class='input' type='file' name='accounts_file' accept='.txt,text/plain'>"
             "</div>"
             "<div>"
             "<button class='btn' type='submit'>Saqlash</button>"
@@ -908,7 +960,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<button class='btn' type='button' id='btn-add-acct'>+ Yangi Login/Parol</button>"
             "</div>"
             "<template id='acct-form-template'>"
-            f"<form method='post' action='{post_url}' class='stack acct-form' style='margin-top:10px'>"
+            f"<form method='post' action='{post_url}' class='stack acct-form' style='margin-top:10px' enctype='multipart/form-data'>"
             "<div class='field'>"
             "<b>Login</b>"
             "<input class='input' name='login' placeholder='Login' value=''>"
@@ -916,6 +968,10 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<div class='field'>"
             "<b>Parol</b>"
             "<input class='input' name='password' placeholder='Parol' value=''>"
+            "</div>"
+            "<div class='field'>"
+            "<b>.txt file (login|password)</b>"
+            "<input class='input' type='file' name='accounts_file' accept='.txt,text/plain'>"
             "</div>"
             "<div>"
             "<button class='btn' type='submit'>Saqlash</button>"
@@ -942,6 +998,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             ".then(r=>r.json())"
             ".then(d=>{"
             "if(!d||!d.ok){alert('Xato'); return;}"
+            "if(d.bulk){alert('Yuklandi: '+(d.added||0)+' ta. Skip: '+(d.skipped||0)+' ta'); window.location.reload(); return;}"
             "var tb=document.getElementById('acct-table-body');"
             "if(tb){"
             "var tr=document.createElement('tr');"
@@ -1006,7 +1063,14 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         credentials: HTTPBasicCredentials = Depends(_auth),
         login: str = Form(""),
         password: str = Form(""),
+        accounts_file: UploadFile | None = File(None),
     ):
+        if accounts_file and (accounts_file.filename or ""):
+            res = await _bulk_add_from_txt("chatgpt_business", accounts_file)
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": True, "bulk": True, **res})
+            return RedirectResponse(url="/admin/accounts/chatgpt", status_code=303)
+
         acc_id = await repo.admin_add_product_account("chatgpt_business", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse(
@@ -1059,7 +1123,14 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         credentials: HTTPBasicCredentials = Depends(_auth),
         login: str = Form(""),
         password: str = Form(""),
+        accounts_file: UploadFile | None = File(None),
     ):
+        if accounts_file and (accounts_file.filename or ""):
+            res = await _bulk_add_from_txt("chatgpt_plus", accounts_file)
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": True, "bulk": True, **res})
+            return RedirectResponse(url="/admin/accounts/chatgpt_plus", status_code=303)
+
         acc_id = await repo.admin_add_product_account("chatgpt_plus", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse(
@@ -1112,7 +1183,14 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         credentials: HTTPBasicCredentials = Depends(_auth),
         login: str = Form(""),
         password: str = Form(""),
+        accounts_file: UploadFile | None = File(None),
     ):
+        if accounts_file and (accounts_file.filename or ""):
+            res = await _bulk_add_from_txt("super_grok", accounts_file)
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": True, "bulk": True, **res})
+            return RedirectResponse(url="/admin/accounts/super_grok", status_code=303)
+
         acc_id = await repo.admin_add_product_account("super_grok", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse(
@@ -1165,7 +1243,14 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         credentials: HTTPBasicCredentials = Depends(_auth),
         login: str = Form(""),
         password: str = Form(""),
+        accounts_file: UploadFile | None = File(None),
     ):
+        if accounts_file and (accounts_file.filename or ""):
+            res = await _bulk_add_from_txt("canva_pro", accounts_file)
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": True, "bulk": True, **res})
+            return RedirectResponse(url="/admin/accounts/canva_pro", status_code=303)
+
         acc_id = await repo.admin_add_product_account("canva_pro", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse(
@@ -1218,7 +1303,14 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         credentials: HTTPBasicCredentials = Depends(_auth),
         login: str = Form(""),
         password: str = Form(""),
+        accounts_file: UploadFile | None = File(None),
     ):
+        if accounts_file and (accounts_file.filename or ""):
+            res = await _bulk_add_from_txt("capcut_pro", accounts_file)
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": True, "bulk": True, **res})
+            return RedirectResponse(url="/admin/accounts/capcut_pro", status_code=303)
+
         acc_id = await repo.admin_add_product_account("capcut_pro", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse(
@@ -1271,7 +1363,14 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         credentials: HTTPBasicCredentials = Depends(_auth),
         login: str = Form(""),
         password: str = Form(""),
+        accounts_file: UploadFile | None = File(None),
     ):
+        if accounts_file and (accounts_file.filename or ""):
+            res = await _bulk_add_from_txt("gemine", accounts_file)
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": True, "bulk": True, **res})
+            return RedirectResponse(url="/admin/accounts/gemini", status_code=303)
+
         acc_id = await repo.admin_add_product_account("gemine", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse(
