@@ -891,6 +891,8 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
 
         added = 0
         skipped = 0
+        dup_file = 0
+        dup_db = 0
         seen: set[str] = set()
 
         for line in (text or "").splitlines():
@@ -914,9 +916,17 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
 
             key = f"{login}|{password}".lower()
             if key in seen:
-                skipped += 1
+                dup_file += 1
                 continue
             seen.add(key)
+
+            try:
+                if await repo.admin_exists_available_product_account(product_key, login=login, password=password):
+                    dup_db += 1
+                    continue
+            except Exception:
+                skipped += 1
+                continue
 
             try:
                 await repo.admin_add_product_account(product_key, login=login, password=password)
@@ -924,7 +934,13 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             except Exception:
                 skipped += 1
 
-        return {"added": added, "skipped": skipped, "total": added + skipped}
+        return {
+            "added": added,
+            "skipped": skipped,
+            "dup_file": dup_file,
+            "dup_db": dup_db,
+            "total": added + skipped + dup_file + dup_db,
+        }
 
     async def _account_page(
         title: str,
@@ -997,8 +1013,8 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "fetch(f.action,{method:'POST',body:fd,headers:{'X-Requested-With':'fetch'}})"
             ".then(r=>r.json())"
             ".then(d=>{"
-            "if(!d||!d.ok){alert('Xato'); return;}"
-            "if(d.bulk){alert('Yuklandi: '+(d.added||0)+' ta. Skip: '+(d.skipped||0)+' ta'); window.location.reload(); return;}"
+            "if(!d||!d.ok){alert((d&&d.error)?d.error:'Xato'); return;}"
+            "if(d.bulk){alert('Yuklandi: '+(d.added||0)+' ta. Dublikat(file): '+(d.dup_file||0)+' ta. Dublikat(baza): '+(d.dup_db||0)+' ta. Skip: '+(d.skipped||0)+' ta'); window.location.reload(); return;}"
             "var tb=document.getElementById('acct-table-body');"
             "if(tb){"
             "var tr=document.createElement('tr');"
@@ -1071,6 +1087,11 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 return JSONResponse({"ok": True, "bulk": True, **res})
             return RedirectResponse(url="/admin/accounts/chatgpt", status_code=303)
 
+        if await repo.admin_exists_available_product_account("chatgpt_business", login=login, password=password):
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": False, "error": "Dublikat login/parol (bazada bor)"})
+            return RedirectResponse(url="/admin/accounts/chatgpt", status_code=303)
+
         acc_id = await repo.admin_add_product_account("chatgpt_business", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse(
@@ -1129,6 +1150,11 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             res = await _bulk_add_from_txt("chatgpt_plus", accounts_file)
             if request.headers.get("X-Requested-With") == "fetch":
                 return JSONResponse({"ok": True, "bulk": True, **res})
+            return RedirectResponse(url="/admin/accounts/chatgpt_plus", status_code=303)
+
+        if await repo.admin_exists_available_product_account("chatgpt_plus", login=login, password=password):
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": False, "error": "Dublikat login/parol (bazada bor)"})
             return RedirectResponse(url="/admin/accounts/chatgpt_plus", status_code=303)
 
         acc_id = await repo.admin_add_product_account("chatgpt_plus", login=login, password=password)
@@ -1191,6 +1217,11 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 return JSONResponse({"ok": True, "bulk": True, **res})
             return RedirectResponse(url="/admin/accounts/super_grok", status_code=303)
 
+        if await repo.admin_exists_available_product_account("super_grok", login=login, password=password):
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": False, "error": "Dublikat login/parol (bazada bor)"})
+            return RedirectResponse(url="/admin/accounts/super_grok", status_code=303)
+
         acc_id = await repo.admin_add_product_account("super_grok", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse(
@@ -1249,6 +1280,11 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             res = await _bulk_add_from_txt("canva_pro", accounts_file)
             if request.headers.get("X-Requested-With") == "fetch":
                 return JSONResponse({"ok": True, "bulk": True, **res})
+            return RedirectResponse(url="/admin/accounts/canva_pro", status_code=303)
+
+        if await repo.admin_exists_available_product_account("canva_pro", login=login, password=password):
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": False, "error": "Dublikat login/parol (bazada bor)"})
             return RedirectResponse(url="/admin/accounts/canva_pro", status_code=303)
 
         acc_id = await repo.admin_add_product_account("canva_pro", login=login, password=password)
@@ -1311,6 +1347,11 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 return JSONResponse({"ok": True, "bulk": True, **res})
             return RedirectResponse(url="/admin/accounts/capcut_pro", status_code=303)
 
+        if await repo.admin_exists_available_product_account("capcut_pro", login=login, password=password):
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": False, "error": "Dublikat login/parol (bazada bor)"})
+            return RedirectResponse(url="/admin/accounts/capcut_pro", status_code=303)
+
         acc_id = await repo.admin_add_product_account("capcut_pro", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse(
@@ -1369,6 +1410,11 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             res = await _bulk_add_from_txt("gemine", accounts_file)
             if request.headers.get("X-Requested-With") == "fetch":
                 return JSONResponse({"ok": True, "bulk": True, **res})
+            return RedirectResponse(url="/admin/accounts/gemini", status_code=303)
+
+        if await repo.admin_exists_available_product_account("gemine", login=login, password=password):
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": False, "error": "Dublikat login/parol (bazada bor)"})
             return RedirectResponse(url="/admin/accounts/gemini", status_code=303)
 
         acc_id = await repo.admin_add_product_account("gemine", login=login, password=password)

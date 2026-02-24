@@ -126,6 +126,15 @@ class Repo:
             await db.commit()
             return int(cur.lastrowid or 0)
 
+    async def admin_exists_available_product_account(self, product_key: str, login: str, password: str) -> bool:
+        async with await self._conn() as db:
+            cur = await db.execute(
+                "SELECT 1 FROM product_accounts WHERE product_key=? AND login=? AND password=? AND status='available' LIMIT 1",
+                (str(product_key), login or "", password or ""),
+            )
+            row = await cur.fetchone()
+            return bool(row)
+
     async def admin_list_available_product_accounts(self, product_key: str, limit: int = 200):
         limit = min(max(int(limit), 1), 500)
         async with await self._conn() as db:
