@@ -17,6 +17,18 @@ PRICING = {
             "1m": {"label": "1 oy", "price_uzs": 30000},
         },
     },
+    "canva_pro": {
+        "title": "🎨 Canva Pro",
+        "plans": {
+            "1m": {"label": "1 oy", "price_uzs": 30000},
+        },
+    },
+    "capcut_pro": {
+        "title": "🎬 CapCut Pro",
+        "plans": {
+            "1m": {"label": "1 oy", "price_uzs": 30000},
+        },
+    },
     "super_grok": {
         "title": "⚡ Super Grok",
         "plans": {

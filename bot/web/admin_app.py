@@ -54,6 +54,8 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             + _nav_item("ChatGPT", "/admin/accounts/chatgpt", "chatgpt")
             + _nav_item("ChatGPT Plus", "/admin/accounts/chatgpt_plus", "chatgpt_plus")
             + _nav_item("Super Grok", "/admin/accounts/super_grok", "super_grok")
+            + _nav_item("Canva Pro", "/admin/accounts/canva_pro", "canva_pro")
+            + _nav_item("CapCut Pro", "/admin/accounts/capcut_pro", "capcut_pro")
             + _nav_item("Gemini", "/admin/accounts/gemini", "gemini")
             + "</nav>"
         )
@@ -1145,6 +1147,112 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
     ):
         await repo.admin_delete_product_account("super_grok", account_id=account_id)
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/super_grok"), status_code=303)
+
+    @router.get("/accounts/canva_pro", response_class=HTMLResponse)
+    async def admin_canva_pro(credentials: HTTPBasicCredentials = Depends(_auth)):
+        return await _account_page(
+            "Canva Pro",
+            product_key="canva_pro",
+            active="canva_pro",
+            post_url="/admin/accounts/canva_pro",
+            delete_post_url="/admin/accounts/canva_pro/delete",
+            edit_post_url="/admin/accounts/canva_pro/edit",
+        )
+
+    @router.post("/accounts/canva_pro")
+    async def admin_canva_pro_save(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        login: str = Form(""),
+        password: str = Form(""),
+    ):
+        acc_id = await repo.admin_add_product_account("canva_pro", login=login, password=password)
+        if request.headers.get("X-Requested-With") == "fetch":
+            return JSONResponse(
+                {
+                    "ok": True,
+                    "id": acc_id,
+                    "login": login,
+                    "password": password,
+                    "created_at": "",
+                    "delete_url": "/admin/accounts/canva_pro/delete",
+                    "edit_url": "/admin/accounts/canva_pro/edit",
+                }
+            )
+        return RedirectResponse(url="/admin/accounts/canva_pro", status_code=303)
+
+    @router.post("/accounts/canva_pro/edit")
+    async def admin_canva_pro_edit(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+        login: str = Form(""),
+        password: str = Form(""),
+    ):
+        await repo.admin_update_product_account("canva_pro", account_id=account_id, login=login, password=password)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/canva_pro"), status_code=303)
+
+    @router.post("/accounts/canva_pro/delete")
+    async def admin_canva_pro_delete(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+    ):
+        await repo.admin_delete_product_account("canva_pro", account_id=account_id)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/canva_pro"), status_code=303)
+
+    @router.get("/accounts/capcut_pro", response_class=HTMLResponse)
+    async def admin_capcut_pro(credentials: HTTPBasicCredentials = Depends(_auth)):
+        return await _account_page(
+            "CapCut Pro",
+            product_key="capcut_pro",
+            active="capcut_pro",
+            post_url="/admin/accounts/capcut_pro",
+            delete_post_url="/admin/accounts/capcut_pro/delete",
+            edit_post_url="/admin/accounts/capcut_pro/edit",
+        )
+
+    @router.post("/accounts/capcut_pro")
+    async def admin_capcut_pro_save(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        login: str = Form(""),
+        password: str = Form(""),
+    ):
+        acc_id = await repo.admin_add_product_account("capcut_pro", login=login, password=password)
+        if request.headers.get("X-Requested-With") == "fetch":
+            return JSONResponse(
+                {
+                    "ok": True,
+                    "id": acc_id,
+                    "login": login,
+                    "password": password,
+                    "created_at": "",
+                    "delete_url": "/admin/accounts/capcut_pro/delete",
+                    "edit_url": "/admin/accounts/capcut_pro/edit",
+                }
+            )
+        return RedirectResponse(url="/admin/accounts/capcut_pro", status_code=303)
+
+    @router.post("/accounts/capcut_pro/edit")
+    async def admin_capcut_pro_edit(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+        login: str = Form(""),
+        password: str = Form(""),
+    ):
+        await repo.admin_update_product_account("capcut_pro", account_id=account_id, login=login, password=password)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/capcut_pro"), status_code=303)
+
+    @router.post("/accounts/capcut_pro/delete")
+    async def admin_capcut_pro_delete(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+    ):
+        await repo.admin_delete_product_account("capcut_pro", account_id=account_id)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/capcut_pro"), status_code=303)
 
     @router.get("/accounts/gemini", response_class=HTMLResponse)
     async def admin_gemini(credentials: HTTPBasicCredentials = Depends(_auth)):
