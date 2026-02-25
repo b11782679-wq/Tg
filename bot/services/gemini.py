@@ -1,15 +1,23 @@
 import os
 from typing import Any
+import asyncio
 
 from openai import AsyncOpenAI
 
 # OpenRouter API configuration
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "mistralai/mistral-small-3.1-24b-instruct:free")
 BASE_URL = "https://openrouter.ai/api/v1"
 # Optional: Add your site URL and name for OpenRouter rankings
 OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "")
 OPENROUTER_SITE_NAME = os.getenv("OPENROUTER_SITE_NAME", "Telegram YouTube Bot")
+
+# List of free models to try in order (fallback system)
+FREE_MODELS = [
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+    "google/gemini-2.0-flash-exp:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "nousresearch/hermes-3-llama-3.1-405b:free",
+]
 
 
 class GeminiError(Exception):
@@ -20,6 +28,27 @@ class GeminiTimeoutError(GeminiError):
     pass
 
 
+async def _try_model(client: AsyncOpenAI, model: str, messages: list, extra_headers: dict) -> str:
+    """Try a single model and return the response content."""
+    response = await client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=0.7,
+        max_tokens=2048,
+        extra_headers=extra_headers,
+    )
+    
+    if not response.choices:
+        raise GeminiError(f"No response from model {model}")
+    
+    message = response.choices[0].message
+    content = message.content
+    if not content:
+        raise GeminiError(f"Empty response from model {model}")
+    
+    return content.strip()
+
+
 async def generate_audit(
     channel_data: dict[str, Any],
     user_goal: str = "",
@@ -28,7 +57,7 @@ async def generate_audit(
 ) -> str:
     """
     Generate YouTube channel audit using OpenRouter AI based on real channel data.
-    Uses Step 3.5 Flash model.
+    Tries multiple free models in case of rate limits.
     """
     if not OPENROUTER_API_KEY:
         raise GeminiError("OPENROUTER_API_KEY not configured")
@@ -49,46 +78,46 @@ async def generate_audit(
     if OPENROUTER_SITE_NAME:
         extra_headers["X-Title"] = OPENROUTER_SITE_NAME
     
-    try:
-        response = await client.chat.completions.create(
-            model=OPENROUTER_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a YouTube growth expert. Provide detailed, actionable advice for growing YouTube channels. Be specific and use data provided."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.7,
-            max_tokens=2048,
-            extra_headers=extra_headers,
-        )
-        
-        # Extract the generated text
-        if not response.choices:
-            raise GeminiError("No response from OpenRouter")
-        
-        message = response.choices[0].message
-        content = message.content
-        if not content:
-            raise GeminiError("Empty response from OpenRouter")
-        
-        return content.strip()
-        
-    except Exception as e:
-        error_msg = str(e).lower()
-        if "rate limit" in error_msg or "429" in error_msg:
-            raise GeminiError("OpenRouter API rate limit exceeded. Please try again in a few minutes.")
-        elif "timeout" in error_msg:
-            raise GeminiTimeoutError("OpenRouter request timed out") from e
-        elif "401" in error_msg or "unauthorized" in error_msg:
-            raise GeminiError(f"OpenRouter API key invalid: {e}")
-        elif "400" in error_msg:
-            raise GeminiError(f"Invalid request to OpenRouter API: {e}")
-        raise GeminiError(f"OpenRouter API error: {e}")
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a YouTube growth expert. Provide detailed, actionable advice for growing YouTube channels. Be specific and use data provided."
+        },
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
+    
+    # Try each model in sequence
+    last_error = None
+    for i, model in enumerate(FREE_MODELS):
+        try:
+            # Add small delay between retries (except first)
+            if i > 0:
+                await asyncio.sleep(1)
+            
+            return await _try_model(client, model, messages, extra_headers)
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            last_error = e
+            
+            # If it's a rate limit, try next model
+            if "rate limit" in error_msg or "429" in error_msg:
+                continue
+            
+            # For other errors, stop trying
+            if "timeout" in error_msg:
+                raise GeminiTimeoutError("OpenRouter request timed out") from e
+            elif "401" in error_msg or "unauthorized" in error_msg:
+                raise GeminiError(f"OpenRouter API key invalid: {e}")
+            elif "400" in error_msg:
+                raise GeminiError(f"Invalid request to OpenRouter API: {e}")
+            raise GeminiError(f"OpenRouter API error: {e}")
+    
+    # All models exhausted
+    raise GeminiError("Barcha bepul modellar band. Iltimos, 5 daqiqa kutib qayta urinib ko'ring.")
 
 
 def _build_prompt(
