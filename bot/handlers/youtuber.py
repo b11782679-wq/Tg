@@ -209,31 +209,57 @@ def _is_valid_youtube_url(url: str) -> bool:
 
 
 async def _send_long_message(message: Message, text: str, lang: str):
-    """Send long message split into chunks if needed."""
+    """Send long message split into chunks by sections."""
     MAX_LENGTH = 4000  # Leave room for formatting
     
     if len(text) <= MAX_LENGTH:
         await message.answer(text)
         return
     
-    # Split by sections (assuming markdown headers)
+    # Split by sections (markdown headers like ** or ##)
+    # Try to find section boundaries
+    sections = []
+    lines = text.split("\n")
+    current_section = ""
+    
+    for line in lines:
+        # Check if this is a new section header
+        is_header = line.startswith("**") or line.startswith("##") or line.startswith("---") or line.startswith("===")
+        
+        if is_header and current_section and len(current_section) > 100:
+            # Save current section and start new one
+            sections.append(current_section.strip())
+            current_section = line + "\n"
+        else:
+            current_section += line + "\n"
+    
+    if current_section:
+        sections.append(current_section.strip())
+    
+    # Now combine sections into chunks that fit within MAX_LENGTH
     chunks = []
     current_chunk = ""
     
-    lines = text.split("\n")
-    for line in lines:
-        if len(current_chunk) + len(line) + 1 > MAX_LENGTH:
+    for section in sections:
+        if len(current_chunk) + len(section) + 2 > MAX_LENGTH:
             if current_chunk:
-                chunks.append(current_chunk)
-            current_chunk = line + "\n"
+                chunks.append(current_chunk.strip())
+            current_chunk = section
         else:
-            current_chunk += line + "\n"
+            if current_chunk:
+                current_chunk += "\n\n" + section
+            else:
+                current_chunk = section
     
     if current_chunk:
-        chunks.append(current_chunk)
+        chunks.append(current_chunk.strip())
     
+    # Send each chunk
     for i, chunk in enumerate(chunks):
-        await message.answer(chunk)
+        if chunk:  # Only send non-empty chunks
+            await message.answer(chunk)
+            # Small delay to maintain order
+            await asyncio.sleep(0.1)
 
 
 async def _get_daily_usage(user_id: int) -> int:
