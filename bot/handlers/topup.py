@@ -226,6 +226,13 @@ def setup(repo: Repo):
                         f"<b>Tur:</b> <code>{proof_type}</code>"
                     )
                     asyncio.create_task(message.bot.send_message(log_chat, log_text))
+                    asyncio.create_task(
+                        message.bot.copy_message(
+                            chat_id=log_chat,
+                            from_chat_id=message.chat.id,
+                            message_id=message.message_id,
+                        )
+                    )
                 except Exception:
                     pass
             await message.answer(
