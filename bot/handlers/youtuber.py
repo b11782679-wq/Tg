@@ -153,7 +153,7 @@ async def receive_problem_and_generate_audit(message: Message, state: FSMContext
         logger.error(f"Gemini error for user {message.from_user.id}: {e}")
         await processing_msg.delete()
         await message.answer(
-            t(lang, "youtuber.gemini_error"),
+            f"❌ {t(lang, 'youtuber.gemini_error')}\n\n<code>{str(e)[:200]}</code>",
             reply_markup=back_only_kb(lang)
         )
     except YouTubeError as e:

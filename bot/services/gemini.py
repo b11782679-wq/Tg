@@ -86,13 +86,18 @@ async def generate_audit(
     except httpx.TimeoutException as e:
         raise GeminiTimeoutError("Gemini request timed out") from e
     except httpx.HTTPStatusError as e:
+        error_body = ""
+        try:
+            error_body = e.response.text[:500]  # Get first 500 chars of error
+        except Exception:
+            pass
         if e.response.status_code == 429:
             raise GeminiError("Gemini API rate limit exceeded. Please try again later.")
         elif e.response.status_code == 400:
-            raise GeminiError("Invalid request to Gemini API")
+            raise GeminiError(f"Invalid request to Gemini API: {error_body}")
         elif e.response.status_code == 403:
-            raise GeminiError("Gemini API key invalid or expired")
-        raise GeminiError(f"Gemini API error: {e.response.status_code}")
+            raise GeminiError(f"Gemini API key invalid or expired: {error_body}")
+        raise GeminiError(f"Gemini API error {e.response.status_code}: {error_body}")
 
 
 def _build_prompt(
