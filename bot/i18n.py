@@ -8,6 +8,7 @@ _LANGS = {"uz", "en", "ru"}
 
 _TEXTS: dict[str, dict[str, str]] = {
     "uz": {
+        "menu.youtuber": "📺 YouTuberlar uchun",
         "menu.gemine": "💎 Gemine akkaunt",
         "menu.chatgpt": "🚀 ChatGPT Business",
         "menu.chatgpt_plus": "✨ ChatGPT Plus",
@@ -148,8 +149,79 @@ _TEXTS: dict[str, dict[str, str]] = {
             "🎁 Referal bo‘limidan do‘st taklif qilib ball yig‘ing."
         ),
         "points.bought": "✅ Ball bilan olindi:",
+        "youtuber.welcome": (
+            "📺 <b>YouTube kanal tahlili</b>\n\n"
+            "Bugun: {used}/{limit} ta bepul audit\n\n"
+            "YouTube kanalingiz linkini yuboring:\n"
+            "• youtube.com/@username\n"
+            "• youtube.com/channel/UC...\n"
+            "• @username"
+        ),
+        "youtuber.invalid_link": (
+            "❗️ Noto‘g‘ri YouTube link.\n\n"
+            "Misol uchun:\n"
+            "• youtube.com/@username\n"
+            "• youtube.com/c/channelname\n"
+            "• @username"
+        ),
+        "youtuber.ask_goal": (
+            "🎯 <b>Maqsadingiz nima?</b>\n\n"
+            "Nima erishmoqchisiz?\n"
+            "• Ko‘p obunachi\n"
+            "• Ko‘p ko‘rilish\n"
+            "• Monetizatsiya\n"
+            "• Boshqa...\n\n"
+            "Yozib yuboring:"
+        ),
+        "youtuber.ask_problem": (
+            "🔍 <b>Muammolaringiz qanday?</b>\n\n"
+            "Kanalingizda nimalar yaxshi ketmayapti?\n"
+            "• Views past\n"
+            "• Retention kam\n"
+            "• CTR past\n"
+            "• Shorts ishlamayapti\n"
+            "• Boshqa...\n\n"
+            "Yozib yuboring (ixtiyoriy):"
+        ),
+        "youtuber.processing": (
+            "⏳ Kanalingiz tekshirilmoqda...\n"
+            "Bu bir necha soniya davom etadi."
+        ),
+        "youtuber.limit_reached": (
+            "❗️ Bugungi audit limitidan o‘tdingiz.\n"
+            "Kunlik limit: {limit} ta\n\n"
+            "Ertaga qayta urinib ko‘ring yoki premium oling."
+        ),
+        "youtuber.channel_not_found": (
+            "❌ Kanal topilmadi.\n\n"
+            "Linkni tekshirib qaytadan yuboring:\n"
+            "• Kanal ochiq bo‘lishi kerak\n"
+            "• To‘g‘ri link yuboring"
+        ),
+        "youtuber.api_quota_exceeded": (
+            "⚠️ YouTube API limit tugadi.\n"
+            "Iltimos, birozdan so‘ng qayta urinib ko‘ring."
+        ),
+        "youtuber.timeout": (
+            "⏱️ So‘rov vaqtidan o‘tdi.\n"
+            "Qayta urinib ko‘ring."
+        ),
+        "youtuber.gemini_error": (
+            "❌ AI tahlil qilishda xatolik.\n"
+            "Qayta urinib ko‘ring."
+        ),
+        "youtuber.youtube_error": (
+            "❌ YouTube ma’lumotlarini olishda xatolik.\n"
+            "Qayta urinib ko‘ring."
+        ),
+        "youtuber.generic_error": (
+            "❌ Xatolik yuz berdi.\n"
+            "Qayta urinib ko‘ring."
+        ),
+        "youtuber.done": "✅ Tahlil tayyor! Yuqorida ko‘rib chiqing.",
     },
     "en": {
+        "menu.youtuber": "📺 For YouTubers",
         "menu.gemine": "💎 Gemini account",
         "menu.chatgpt": "🚀 ChatGPT Business",
         "menu.chatgpt_plus": "✨ ChatGPT Plus",
@@ -289,8 +361,79 @@ _TEXTS: dict[str, dict[str, str]] = {
             "🎁 Invite friends from Referral section to earn points."
         ),
         "points.bought": "✅ Bought with points:",
+        "youtuber.welcome": (
+            "📺 <b>YouTube Channel Audit</b>\n\n"
+            "Today: {used}/{limit} free audits\n\n"
+            "Send your YouTube channel link:\n"
+            "• youtube.com/@username\n"
+            "• youtube.com/channel/UC...\n"
+            "• @username"
+        ),
+        "youtuber.invalid_link": (
+            "❗️ Invalid YouTube link.\n\n"
+            "Examples:\n"
+            "• youtube.com/@username\n"
+            "• youtube.com/c/channelname\n"
+            "• @username"
+        ),
+        "youtuber.ask_goal": (
+            "🎯 <b>What's your goal?</b>\n\n"
+            "What do you want to achieve?\n"
+            "• More subscribers\n"
+            "• More views\n"
+            "• Monetization\n"
+            "• Other...\n\n"
+            "Type your answer:"
+        ),
+        "youtuber.ask_problem": (
+            "🔍 <b>What problems are you facing?</b>\n\n"
+            "What's not working well on your channel?\n"
+            "• Low views\n"
+            "• Low retention\n"
+            "• Low CTR\n"
+            "• Shorts not working\n"
+            "• Other...\n\n"
+            "Type your answer (optional):"
+        ),
+        "youtuber.processing": (
+            "⏳ Analyzing your channel...\n"
+            "This will take a few seconds."
+        ),
+        "youtuber.limit_reached": (
+            "❗️ You've reached today's audit limit.\n"
+            "Daily limit: {limit}\n\n"
+            "Try again tomorrow or upgrade to premium."
+        ),
+        "youtuber.channel_not_found": (
+            "❌ Channel not found.\n\n"
+            "Please check the link and try again:\n"
+            "• Channel must be public\n"
+            "• Use correct link format"
+        ),
+        "youtuber.api_quota_exceeded": (
+            "⚠️ YouTube API quota exceeded.\n"
+            "Please try again later."
+        ),
+        "youtuber.timeout": (
+            "⏱️ Request timed out.\n"
+            "Please try again."
+        ),
+        "youtuber.gemini_error": (
+            "❌ Error generating AI analysis.\n"
+            "Please try again."
+        ),
+        "youtuber.youtube_error": (
+            "❌ Error fetching YouTube data.\n"
+            "Please try again."
+        ),
+        "youtuber.generic_error": (
+            "❌ An error occurred.\n"
+            "Please try again."
+        ),
+        "youtuber.done": "✅ Analysis complete! Check it out above.",
     },
     "ru": {
+        "menu.youtuber": "📺 Для YouTuberов",
         "menu.gemine": "💎 Аккаунт Gemini",
         "menu.chatgpt": "🚀 ChatGPT Business",
         "menu.chatgpt_plus": "✨ ChatGPT Plus",
@@ -431,6 +574,76 @@ _TEXTS: dict[str, dict[str, str]] = {
             "🎁 Приглашайте друзей в разделе Реферал, чтобы получить баллы."
         ),
         "points.bought": "✅ Куплено за баллы:",
+        "youtuber.welcome": (
+            "📺 <b>Анализ YouTube канала</b>\n\n"
+            "Сегодня: {used}/{limit} бесплатных аудитов\n\n"
+            "Отправьте ссылку на канал:\n"
+            "• youtube.com/@username\n"
+            "• youtube.com/channel/UC...\n"
+            "• @username"
+        ),
+        "youtuber.invalid_link": (
+            "❗️ Неверная ссылка YouTube.\n\n"
+            "Примеры:\n"
+            "• youtube.com/@username\n"
+            "• youtube.com/c/channelname\n"
+            "• @username"
+        ),
+        "youtuber.ask_goal": (
+            "🎯 <b>Какая у вас цель?</b>\n\n"
+            "Чего хотите добиться?\n"
+            "• Больше подписчиков\n"
+            "• Больше просмотров\n"
+            "• Монетизация\n"
+            "• Другое...\n\n"
+            "Напишите ответ:"
+        ),
+        "youtuber.ask_problem": (
+            "🔍 <b>С какими проблемами столкнулись?</b>\n\n"
+            "Что не работает на канале?\n"
+            "• Мало просмотров\n"
+            "• Низкое удержание\n"
+            "• Низкий CTR\n"
+            "• Shorts не работают\n"
+            "• Другое...\n\n"
+            "Напишите ответ (необязательно):"
+        ),
+        "youtuber.processing": (
+            "⏳ Анализирую канал...\n"
+            "Это займет несколько секунд."
+        ),
+        "youtuber.limit_reached": (
+            "❗️ Вы достигли лимита аудитов на сегодня.\n"
+            "Дневной лимит: {limit}\n\n"
+            "Попробуйте завтра или обновитесь до премиума."
+        ),
+        "youtuber.channel_not_found": (
+            "❌ Канал не найден.\n\n"
+            "Проверьте ссылку и попробуйте снова:\n"
+            "• Канал должен быть публичным\n"
+            "• Используйте правильный формат"
+        ),
+        "youtuber.api_quota_exceeded": (
+            "⚠️ Квота YouTube API исчерпана.\n"
+            "Попробуйте позже."
+        ),
+        "youtuber.timeout": (
+            "⏱️ Время запроса истекло.\n"
+            "Попробуйте снова."
+        ),
+        "youtuber.gemini_error": (
+            "❌ Ошибка генерации AI анализа.\n"
+            "Попробуйте снова."
+        ),
+        "youtuber.youtube_error": (
+            "❌ Ошибка получения данных YouTube.\n"
+            "Попробуйте снова."
+        ),
+        "youtuber.generic_error": (
+            "❌ Произошла ошибка.\n"
+            "Попробуйте снова."
+        ),
+        "youtuber.done": "✅ Анализ готов! Посмотрите выше.",
     },
 }
 

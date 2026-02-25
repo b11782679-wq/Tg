@@ -19,6 +19,7 @@ from bot.middlewares.activity_log import ActivityLogMiddleware
 from bot.handlers import subscription as h_subscription
 from bot.handlers import start as h_start
 from bot.handlers import products as h_products
+from bot.handlers import youtuber as h_youtuber
 from bot.handlers import language as h_language
 from bot.handlers import referral as h_referral
 from bot.handlers import stats as h_stats
@@ -54,6 +55,7 @@ async def start():
     # qolgan handlerlar
     h_start.setup(repo)
     h_products.setup(repo)
+    h_youtuber.setup(repo)
     h_language.setup(repo)
     h_referral.setup(repo)
     h_stats.setup(repo)
@@ -63,6 +65,7 @@ async def start():
 
     dp.include_router(h_start.router)
     dp.include_router(h_products.router)
+    dp.include_router(h_youtuber.router)
     dp.include_router(h_language.router)
     dp.include_router(h_referral.router)
     dp.include_router(h_stats.router)

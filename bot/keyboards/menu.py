@@ -4,17 +4,19 @@ from bot.i18n import t
 
 ADMIN_USERNAME = "behruz_0887"
 
+
 def main_menu_kb(lang: str = "uz"):
     kb = InlineKeyboardBuilder()
 
     kb.button(text=t(lang, "menu.premium"), callback_data="p:menu")
+    kb.button(text=t(lang, "menu.youtuber"), callback_data="youtuber:open")
 
     kb.button(text=t(lang, "menu.topup"), callback_data="t:open")
     kb.button(text=t(lang, "menu.top"), callback_data="top:open")
 
     kb.button(text=t(lang, "menu.settings"), callback_data="settings:open")
 
-    kb.adjust(1, 2, 1)
+    kb.adjust(1, 1, 2, 1)
     return kb.as_markup()
 
 
