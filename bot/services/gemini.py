@@ -3,9 +3,13 @@ from typing import Any
 
 import httpx
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+# OpenRouter API configuration
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-1.5-flash")
+BASE_URL = "https://openrouter.ai/api/v1"
+# Optional: Add your site URL and name for OpenRouter rankings
+OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "")
+OPENROUTER_SITE_NAME = os.getenv("OPENROUTER_SITE_NAME", "Telegram YouTube Bot")
 
 
 class GeminiError(Exception):
@@ -22,38 +26,39 @@ async def generate_audit(
     user_problem: str = "",
     lang: str = "uz",
 ) -> str:
-    """
-    Generate YouTube channel audit using Gemini based on real channel data.
-    
-    Args:
-        channel_data: Data from YouTube Data API
-        user_goal: What the user wants to achieve (subscribers, views, monetization, etc.)
-        user_problem: Specific issues the user is facing
-        lang: Language for the response (uz, en, ru)
-    
-    Returns:
-        Formatted audit text with actionable recommendations
-    """
-    if not GEMINI_API_KEY:
-        raise GeminiError("GEMINI_API_KEY not configured")
+    """Generate YouTube channel audit using OpenRouter AI based on real channel data."""
+    if not OPENROUTER_API_KEY:
+        raise GeminiError("OPENROUTER_API_KEY not configured")
     
     prompt = _build_prompt(channel_data, user_goal, user_problem, lang)
     
-    url = f"{BASE_URL}/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    url = f"{BASE_URL}/chat/completions"
+    
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    
+    # Optional headers for OpenRouter rankings
+    if OPENROUTER_SITE_URL:
+        headers["HTTP-Referer"] = OPENROUTER_SITE_URL
+    if OPENROUTER_SITE_NAME:
+        headers["X-Title"] = OPENROUTER_SITE_NAME
     
     payload = {
-        "contents": [
+        "model": OPENROUTER_MODEL,
+        "messages": [
             {
-                "parts": [
-                    {"text": prompt}
-                ]
+                "role": "system",
+                "content": "You are a YouTube growth expert. Provide detailed, actionable advice for growing YouTube channels. Be specific and use data provided."
+            },
+            {
+                "role": "user",
+                "content": prompt
             }
         ],
-        "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": 2048,
-            "topP": 0.95,
-        }
+        "temperature": 0.7,
+        "max_tokens": 2048,
     }
     
     try:
@@ -61,43 +66,43 @@ async def generate_audit(
             response = await client.post(
                 url,
                 json=payload,
-                headers={"Content-Type": "application/json"},
+                headers=headers,
             )
             response.raise_for_status()
             data = response.json()
             
             # Check for API errors in response
             if "error" in data:
-                error_msg = data["error"].get("message", "Unknown Gemini API error")
+                error_msg = data["error"].get("message", "Unknown OpenRouter API error")
                 raise GeminiError(error_msg)
             
-            # Extract the generated text
-            candidates = data.get("candidates", [])
-            if not candidates:
-                raise GeminiError("No response from Gemini")
+            # Extract the generated text (OpenAI format)
+            choices = data.get("choices", [])
+            if not choices:
+                raise GeminiError("No response from OpenRouter")
             
-            content = candidates[0].get("content", {})
-            parts = content.get("parts", [])
-            if not parts:
-                raise GeminiError("Empty response from Gemini")
+            message = choices[0].get("message", {})
+            content = message.get("content", "")
+            if not content:
+                raise GeminiError("Empty response from OpenRouter")
             
-            return parts[0].get("text", "").strip()
+            return content.strip()
             
     except httpx.TimeoutException as e:
-        raise GeminiTimeoutError("Gemini request timed out") from e
+        raise GeminiTimeoutError("OpenRouter request timed out") from e
     except httpx.HTTPStatusError as e:
         error_body = ""
         try:
-            error_body = e.response.text[:500]  # Get first 500 chars of error
+            error_body = e.response.text[:500]
         except Exception:
             pass
         if e.response.status_code == 429:
-            raise GeminiError("Gemini API rate limit exceeded. Please try again later.")
+            raise GeminiError("OpenRouter API rate limit exceeded. Please try again later.")
+        elif e.response.status_code == 401:
+            raise GeminiError(f"OpenRouter API key invalid: {error_body}")
         elif e.response.status_code == 400:
-            raise GeminiError(f"Invalid request to Gemini API: {error_body}")
-        elif e.response.status_code == 403:
-            raise GeminiError(f"Gemini API key invalid or expired: {error_body}")
-        raise GeminiError(f"Gemini API error {e.response.status_code}: {error_body}")
+            raise GeminiError(f"Invalid request to OpenRouter API: {error_body}")
+        raise GeminiError(f"OpenRouter API error {e.response.status_code}: {error_body}")
 
 
 def _build_prompt(
@@ -110,17 +115,11 @@ def _build_prompt(
     
     # Language-specific instructions
     if lang == "uz":
-        lang_instructions = """
-Javobni O'zbek tilida yozing. Professional, ammo tushunarli bo'lsin.
-"""
+        lang_instructions = """Javobni O'zbek tilida yozing. Professional, ammo tushunarli bo'lsin."""
     elif lang == "ru":
-        lang_instructions = """
-Ответ должен быть на русском языке. Профессиональный, но понятный стиль.
-"""
+        lang_instructions = """Ответ должен быть на русском языке. Профессиональный, но понятный стиль."""
     else:  # en
-        lang_instructions = """
-Write the response in English. Professional yet approachable style.
-"""
+        lang_instructions = """Write the response in English. Professional yet approachable style."""
     
     videos_text = "\n".join([
         f"- {v['title']} (published: {v['published_at'][:10]})"
@@ -161,6 +160,5 @@ Please provide a comprehensive audit with these sections:
 9. **IMMEDIATE ACTIONS** - 5 things to do THIS WEEK
 10. **30-DAY GROWTH PLAN** - Week-by-week roadmap
 
-Be specific, use data from the channel, and give practical examples. Don't be generic.
-"""
+Be specific, use data from the channel, and give practical examples. Don't be generic."""
     return prompt
