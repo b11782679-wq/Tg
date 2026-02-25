@@ -12,11 +12,11 @@ OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "")
 OPENROUTER_SITE_NAME = os.getenv("OPENROUTER_SITE_NAME", "Telegram YouTube Bot")
 
 # List of free models to try in order (fallback system)
+# These are verified working free models on OpenRouter
 FREE_MODELS = [
-    "mistralai/mistral-small-3.1-24b-instruct:free",
-    "meta-llama/llama-3.1-8b-instruct:free",
-    "nousresearch/hermes-3-llama-3.1-405b:free",
-    "deepseek/deepseek-chat:free",
+    "mistralai/mistral-7b-instruct:free",
+    "huggingfaceh4/zephyr-7b-beta:free",
+    "gryphe/mythomax-l2-13b:free",
 ]
 
 
