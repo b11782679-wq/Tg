@@ -80,9 +80,10 @@ async def receive_channel_link(message: Message, state: FSMContext):
     await state.set_state(YouTuberAuditStates.waiting_for_goal)
 
 
-@router.callback_query(StateFilter(YouTuberAuditStates.waiting_for_goal), F.data.startswith("goal:"))
+@router.callback_query(F.data.startswith("goal:"), StateFilter(YouTuberAuditStates.waiting_for_goal))
 async def receive_goal_callback(call: CallbackQuery, state: FSMContext):
     """Receive user's goal from inline keyboard."""
+    logger.info(f"Goal callback received: {call.data} from user {call.from_user.id}")
     lang = await _repo.get_language(call.from_user.id)
     goal_key = call.data.split(":")[1]
     
@@ -96,6 +97,7 @@ async def receive_goal_callback(call: CallbackQuery, state: FSMContext):
     goal = goal_map.get(goal_key, goal_key)
     
     await state.update_data(goal=goal, goal_key=goal_key)
+    await state.set_state(YouTuberAuditStates.waiting_for_problem)
     await call.message.edit_text(
         t(lang, "youtuber.ask_problem"),
         reply_markup=problem_selection_kb(lang)
@@ -103,9 +105,10 @@ async def receive_goal_callback(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-@router.callback_query(StateFilter(YouTuberAuditStates.waiting_for_problem), F.data.startswith("problem:"))
+@router.callback_query(F.data.startswith("problem:"), StateFilter(YouTuberAuditStates.waiting_for_problem))
 async def receive_problem_callback(call: CallbackQuery, state: FSMContext):
     """Receive user's problem from inline keyboard and generate audit."""
+    logger.info(f"Problem callback received: {call.data} from user {call.from_user.id}")
     lang = await _repo.get_language(call.from_user.id)
     problem_key = call.data.split(":")[1]
     
