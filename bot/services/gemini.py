@@ -1,11 +1,11 @@
 import os
 from typing import Any
 
-import httpx
+from openai import AsyncOpenAI
 
 # OpenRouter API configuration
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-2.0-flash-exp:free")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "stepfun/step-3.5-flash:free")
 BASE_URL = "https://openrouter.ai/api/v1"
 # Optional: Add your site URL and name for OpenRouter rankings
 OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "")
@@ -26,83 +26,69 @@ async def generate_audit(
     user_problem: str = "",
     lang: str = "uz",
 ) -> str:
-    """Generate YouTube channel audit using OpenRouter AI based on real channel data."""
+    """
+    Generate YouTube channel audit using OpenRouter AI based on real channel data.
+    Uses Step 3.5 Flash model.
+    """
     if not OPENROUTER_API_KEY:
         raise GeminiError("OPENROUTER_API_KEY not configured")
     
     prompt = _build_prompt(channel_data, user_goal, user_problem, lang)
     
-    url = f"{BASE_URL}/chat/completions"
-    
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-    }
+    # Initialize OpenAI client with OpenRouter base URL
+    client = AsyncOpenAI(
+        base_url=BASE_URL,
+        api_key=OPENROUTER_API_KEY,
+        timeout=60.0,
+    )
     
     # Optional headers for OpenRouter rankings
+    extra_headers = {}
     if OPENROUTER_SITE_URL:
-        headers["HTTP-Referer"] = OPENROUTER_SITE_URL
+        extra_headers["HTTP-Referer"] = OPENROUTER_SITE_URL
     if OPENROUTER_SITE_NAME:
-        headers["X-Title"] = OPENROUTER_SITE_NAME
-    
-    payload = {
-        "model": OPENROUTER_MODEL,
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a YouTube growth expert. Provide detailed, actionable advice for growing YouTube channels. Be specific and use data provided."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        "temperature": 0.7,
-        "max_tokens": 2048,
-    }
+        extra_headers["X-Title"] = OPENROUTER_SITE_NAME
     
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                url,
-                json=payload,
-                headers=headers,
-            )
-            response.raise_for_status()
-            data = response.json()
-            
-            # Check for API errors in response
-            if "error" in data:
-                error_msg = data["error"].get("message", "Unknown OpenRouter API error")
-                raise GeminiError(error_msg)
-            
-            # Extract the generated text (OpenAI format)
-            choices = data.get("choices", [])
-            if not choices:
-                raise GeminiError("No response from OpenRouter")
-            
-            message = choices[0].get("message", {})
-            content = message.get("content", "")
-            if not content:
-                raise GeminiError("Empty response from OpenRouter")
-            
-            return content.strip()
-            
-    except httpx.TimeoutException as e:
-        raise GeminiTimeoutError("OpenRouter request timed out") from e
-    except httpx.HTTPStatusError as e:
-        error_body = ""
-        try:
-            error_body = e.response.text[:500]
-        except Exception:
-            pass
-        if e.response.status_code == 429:
-            raise GeminiError("OpenRouter API rate limit exceeded. Please try again later.")
-        elif e.response.status_code == 401:
-            raise GeminiError(f"OpenRouter API key invalid: {error_body}")
-        elif e.response.status_code == 400:
-            raise GeminiError(f"Invalid request to OpenRouter API: {error_body}")
-        raise GeminiError(f"OpenRouter API error {e.response.status_code}: {error_body}")
+        response = await client.chat.completions.create(
+            model=OPENROUTER_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a YouTube growth expert. Provide detailed, actionable advice for growing YouTube channels. Be specific and use data provided."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+            max_tokens=2048,
+            extra_headers=extra_headers,
+        )
+        
+        # Extract the generated text
+        if not response.choices:
+            raise GeminiError("No response from OpenRouter")
+        
+        message = response.choices[0].message
+        content = message.content
+        if not content:
+            raise GeminiError("Empty response from OpenRouter")
+        
+        return content.strip()
+        
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "rate limit" in error_msg or "429" in error_msg:
+            raise GeminiError("OpenRouter API rate limit exceeded. Please try again in a few minutes.")
+        elif "timeout" in error_msg:
+            raise GeminiTimeoutError("OpenRouter request timed out") from e
+        elif "401" in error_msg or "unauthorized" in error_msg:
+            raise GeminiError(f"OpenRouter API key invalid: {e}")
+        elif "400" in error_msg:
+            raise GeminiError(f"Invalid request to OpenRouter API: {e}")
+        raise GeminiError(f"OpenRouter API error: {e}")
 
 
 def _build_prompt(
