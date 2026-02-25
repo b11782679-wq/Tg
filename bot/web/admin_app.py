@@ -682,6 +682,20 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "</div>"
             "</form>"
             "<div style='height:1px;background:rgba(148,163,184,.18);margin:12px 0'></div>"
+            "<form method='post' action='/admin/broadcast/send_user' class='stack'>"
+            "<div class='field'>"
+            "<b>Username</b>"
+            "<input class='input' name='username' placeholder='@username yoki username' value=''>"
+            "</div>"
+            "<div class='field'>"
+            "<b>Message (HTML)</b>"
+            "<textarea class='input textarea' name='text' placeholder='Write message...'></textarea>"
+            "</div>"
+            "<div class='rowform'>"
+            "<button class='btn' type='submit'>Send to user</button>"
+            "</div>"
+            "</form>"
+            "<div style='height:1px;background:rgba(148,163,184,.18);margin:12px 0'></div>"
             "<form method='post' action='/admin/broadcast/send_photo' class='stack' enctype='multipart/form-data'>"
             "<div class='field'>"
             "<b>Photo</b>"
@@ -695,10 +709,72 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<button class='btn' type='submit' onclick=\"return confirm('Rasm hamma userlarga yuborilsinmi?')\">Send photo</button>"
             "</div>"
             "</form>"
+            "<div style='height:1px;background:rgba(148,163,184,.18);margin:12px 0'></div>"
+            "<form method='post' action='/admin/broadcast/send_user_photo' class='stack' enctype='multipart/form-data'>"
+            "<div class='field'>"
+            "<b>Username</b>"
+            "<input class='input' name='username' placeholder='@username yoki username' value=''>"
+            "</div>"
+            "<div class='field'>"
+            "<b>Photo</b>"
+            "<input class='input' type='file' name='photo' accept='image/*' required>"
+            "</div>"
+            "<div class='field'>"
+            "<b>Caption (HTML, optional)</b>"
+            "<textarea class='input textarea' name='caption' placeholder='Caption...'></textarea>"
+            "</div>"
+            "<div class='rowform'>"
+            "<button class='btn' type='submit'>Send photo to user</button>"
+            "</div>"
+            "</form>"
             "<div class='meta'>Eslatma: matn HTML parse_mode bilan yuboriladi.</div>"
             "</div>"
         )
         return _layout("Broadcast", body, active="broadcast")
+
+    @router.post("/broadcast/send_user", response_class=HTMLResponse)
+    async def admin_broadcast_send_user(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        username: str = Form(""),
+        text: str = Form(""),
+    ):
+        text = (text or "").strip()
+        username = (username or "").strip()
+        if not username:
+            raise HTTPException(status_code=400, detail="Empty username")
+        if text == "":
+            raise HTTPException(status_code=400, detail="Empty text")
+
+        uid = await repo.admin_get_user_id_by_username(username)
+        if not uid:
+            body = (
+                "<div class='stack'>"
+                "<div class='card'><b>Status</b><div class='num'>User not found</div></div>"
+                f"<div class='meta'>Username: <code>{_escape_textarea(username)}</code></div>"
+                "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
+                "</div>"
+            )
+            return _layout("Send to user", body, active="broadcast")
+
+        ok = True
+        error = ""
+        try:
+            await asyncio.to_thread(_tg_send_message, int(uid), text)
+        except Exception as e:
+            ok = False
+            error = str(e)
+
+        body = (
+            "<div class='stack'>"
+            + ("<div class='card'><b>Status</b><div class='num'>Sent</div></div>" if ok else "<div class='card'><b>Status</b><div class='num'>Failed</div></div>")
+            + f"<div class='meta'>Username: <code>{_escape_textarea(username)}</code></div>"
+            + f"<div class='meta'>User ID: <code>{int(uid)}</code></div>"
+            + (f"<div class='meta'>Error: <code>{_escape_textarea(error)}</code></div>" if (not ok and error) else "")
+            + "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
+            + "</div>"
+        )
+        return _layout("Send to user", body, active="broadcast")
 
     @router.post("/broadcast/send", response_class=HTMLResponse)
     async def admin_broadcast_send(
@@ -872,6 +948,54 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "</div>"
         )
         return _layout("Broadcast photo result", body, active="broadcast")
+
+    @router.post("/broadcast/send_user_photo", response_class=HTMLResponse)
+    async def admin_broadcast_send_user_photo(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        username: str = Form(""),
+        photo: UploadFile = File(...),
+        caption: str = Form(""),
+    ):
+        username = (username or "").strip()
+        if not username:
+            raise HTTPException(status_code=400, detail="Empty username")
+
+        file_bytes = await photo.read()
+        if not file_bytes:
+            raise HTTPException(status_code=400, detail="Empty photo")
+
+        uid = await repo.admin_get_user_id_by_username(username)
+        if not uid:
+            body = (
+                "<div class='stack'>"
+                "<div class='card'><b>Status</b><div class='num'>User not found</div></div>"
+                f"<div class='meta'>Username: <code>{_escape_textarea(username)}</code></div>"
+                "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
+                "</div>"
+            )
+            return _layout("Send photo to user", body, active="broadcast")
+
+        filename = str(photo.filename or "photo.jpg")
+
+        ok = True
+        error = ""
+        try:
+            await asyncio.to_thread(_tg_send_photo, int(uid), file_bytes, filename, (caption or "").strip())
+        except Exception as e:
+            ok = False
+            error = str(e)
+
+        body = (
+            "<div class='stack'>"
+            + ("<div class='card'><b>Status</b><div class='num'>Sent</div></div>" if ok else "<div class='card'><b>Status</b><div class='num'>Failed</div></div>")
+            + f"<div class='meta'>Username: <code>{_escape_textarea(username)}</code></div>"
+            + f"<div class='meta'>User ID: <code>{int(uid)}</code></div>"
+            + (f"<div class='meta'>Error: <code>{_escape_textarea(error)}</code></div>" if (not ok and error) else "")
+            + "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
+            + "</div>"
+        )
+        return _layout("Send photo to user", body, active="broadcast")
 
     def _escape_textarea(s: str) -> str:
         return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

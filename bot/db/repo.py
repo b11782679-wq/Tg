@@ -146,6 +146,22 @@ class Repo:
             )
             return await cur.fetchall()
 
+    async def admin_get_user_id_by_username(self, username: str) -> int | None:
+        u = (username or "").strip()
+        if u.startswith("@"):  # admin may paste @username
+            u = u[1:]
+        u = u.strip()
+        if not u:
+            return None
+        async with await self._conn() as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute(
+                "SELECT id FROM users WHERE lower(username)=lower(?) LIMIT 1",
+                (u,),
+            )
+            row = await cur.fetchone()
+            return int(row["id"]) if row else None
+
     async def admin_delete_product_account(self, product_key: str, account_id: int) -> bool:
         async with await self._conn() as db:
             cur = await db.execute(
