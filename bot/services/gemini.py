@@ -5,7 +5,7 @@ import httpx
 
 # OpenRouter API configuration
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-1.5-flash")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-flash-1.5")
 BASE_URL = "https://openrouter.ai/api/v1"
 # Optional: Add your site URL and name for OpenRouter rankings
 OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "")
