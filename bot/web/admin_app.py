@@ -274,63 +274,91 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
     async def admin_orders(
         credentials: HTTPBasicCredentials = Depends(_auth),
         status: str | None = None,
+        pay_type: str | None = None,
         limit: int = 200,
     ):
-        rows = await repo.admin_list_orders(status=status, limit=min(max(limit, 1), 500))
+        pay_type = (pay_type or "money").strip() or "money"
+        if pay_type not in ("money", "points"):
+            pay_type = "money"
+
+        rows = await repo.admin_list_orders(
+            status=status,
+            pay_type=pay_type,
+            limit=min(max(limit, 1), 500),
+        )
 
         def _opt(label: str, v: str | None):
             sel = " selected" if v == status else ""
             return f"<option value='{v or ''}'{sel}>{label}</option>"
 
-        body = (
-            "<form method='get' class='toolbar'>"
-            "<span class='meta'>Status</span>"
-            "<select class='select' name='status'>"
-            + _opt("All", None)
-            + _opt("new", "new")
-            + _opt("paid", "paid")
-            + _opt("delivered", "delivered")
-            + _opt("cancelled", "cancelled")
-            + "</select>"
-            "<span class='meta'>Limit</span>"
-            f"<input class='input' name='limit' value='{limit}' style='width:90px'>"
-            "<button class='btn' type='submit'>Apply</button>"
-            "</form>"
-            "<div class='table-wrap'>"
-            "<table>"
-            "<thead><tr>"
-            "<th>ID</th>"
-            "<th>User</th>"
-            "<th>Product</th>"
-            "<th>Plan</th>"
-            "<th>Price</th>"
-            "<th>Status</th>"
-            "<th>Update</th>"
-            "</tr></thead><tbody>"
+        def _tab(label: str, v: str) -> str:
+            cls = "btn" if v == pay_type else "btn btn--ghost"
+            href = f"/admin/orders?pay_type={v}&status={_escape_attr(str(status or ''))}&limit={int(limit)}"
+            return f"<a class='{cls}' href='{href}' style='text-decoration:none'>" + label + "</a>"
+
+        body = "".join(
+            [
+                "<div class='rowform' style='justify-content:flex-start;margin-bottom:10px'>",
+                _tab("Pul bilan", "money"),
+                _tab("Referal (ball)", "points"),
+                "</div>",
+                "<form method='get' class='toolbar'>",
+                f"<input type='hidden' name='pay_type' value='{_escape_attr(str(pay_type))}'>",
+                "<span class='meta'>Status</span>",
+                "<select class='select' name='status'>",
+                _opt("All", None),
+                _opt("new", "new"),
+                _opt("paid", "paid"),
+                _opt("delivered", "delivered"),
+                _opt("cancelled", "cancelled"),
+                "</select>",
+                "<span class='meta'>Limit</span>",
+                f"<input class='input' name='limit' value='{int(limit)}' style='width:90px'>",
+                "<button class='btn' type='submit'>Apply</button>",
+                "</form>",
+                "<div class='table-wrap'>",
+                "<table>",
+                "<thead><tr>",
+                "<th>ID</th>",
+                "<th>User</th>",
+                "<th>Product</th>",
+                "<th>Plan</th>",
+                ("<th>Price</th>" if pay_type == "money" else "<th>Points</th>"),
+                "<th>Status</th>",
+                "<th>Update</th>",
+                "</tr></thead><tbody>",
+            ]
         )
 
         for r in rows:
-            body += (
-                "<tr>"
-                f"<td><code>{int(r['id'])}</code></td>"
-                f"<td><code>{int(r['user_id'])}</code></td>"
-                f"<td>{r['product_key']}</td>"
-                f"<td>{r['plan_key']}</td>"
-                f"<td>{_fmt_money(int(r['price_uzs']))}</td>"
-                f"<td>{r['status']}</td>"
-                "<td>"
-                "<form method='post' action='/admin/orders/update' class='rowform'>"
-                f"<input type='hidden' name='order_id' value='{int(r['id'])}'>"
-                "<select class='select' name='status'>"
-                "<option value='new'>new</option>"
-                "<option value='paid'>paid</option>"
-                "<option value='delivered'>delivered</option>"
-                "<option value='cancelled'>cancelled</option>"
-                "</select>"
-                "<button class='btn' type='submit'>Set</button>"
-                "</form>"
-                "</td>"
-                "</tr>"
+            price_cell = (
+                f"<td>{_fmt_money(int(r['price_uzs'] or 0))}</td>"
+                if pay_type == "money"
+                else f"<td>{int(r['points_cost'] or 0)}</td>"
+            )
+            body += "".join(
+                [
+                    "<tr>",
+                    f"<td><code>{int(r['id'])}</code></td>",
+                    f"<td><code>{int(r['user_id'])}</code></td>",
+                    f"<td>{r['product_key']}</td>",
+                    f"<td>{r['plan_key']}</td>",
+                    price_cell,
+                    f"<td>{r['status']}</td>",
+                    "<td>",
+                    "<form method='post' action='/admin/orders/update' class='rowform'>",
+                    f"<input type='hidden' name='order_id' value='{int(r['id'])}'>",
+                    "<select class='select' name='status'>",
+                    "<option value='new'>new</option>",
+                    "<option value='paid'>paid</option>",
+                    "<option value='delivered'>delivered</option>",
+                    "<option value='cancelled'>cancelled</option>",
+                    "</select>",
+                    "<button class='btn' type='submit'>Set</button>",
+                    "</form>",
+                    "</td>",
+                    "</tr>",
+                ]
             )
 
         body += "</tbody></table></div>"

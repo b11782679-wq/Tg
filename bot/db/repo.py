@@ -299,7 +299,8 @@ class Repo:
                     return False, "no_stock", None
 
                 cur = await db.execute(
-                    "INSERT INTO product_orders(user_id, product_key, plan_key, price_uzs, status) VALUES(?,?,?,?, 'paid')",
+                    "INSERT INTO product_orders(user_id, product_key, plan_key, price_uzs, status, pay_type, points_cost) "
+                    "VALUES(?,?,?,?, 'paid', 'money', 0)",
                     (user_id, product_key, plan_key, price_uzs),
                 )
                 order_id = int(cur.lastrowid or 0)
@@ -321,6 +322,16 @@ class Repo:
                 }
 
             return False, "race", None
+
+    async def create_points_order(self, user_id: int, product_key: str, points_cost: int) -> int:
+        async with await self._conn() as db:
+            cur = await db.execute(
+                "INSERT INTO product_orders(user_id, product_key, plan_key, price_uzs, status, pay_type, points_cost) "
+                "VALUES(?, ?, 'points', 0, 'new', 'points', ?)",
+                (int(user_id), str(product_key), int(points_cost)),
+            )
+            await db.commit()
+            return int(cur.lastrowid or 0)
 
     async def deduct_points(self, user_id: int, points: int) -> bool:
         async with await self._conn() as db:
@@ -555,9 +566,12 @@ class Repo:
             await db.commit()
             return int(cur.rowcount or 0)
 
-    async def admin_list_orders(self, status: str | None, limit: int = 200):
+    async def admin_list_orders(self, status: str | None, limit: int = 200, pay_type: str | None = None):
         status = (status or "").strip()
         limit = min(max(int(limit), 1), 500)
+
+        pay_type = (pay_type or "").strip()
+        pay_type_for_query: str | None = None if pay_type == "" else pay_type
 
         where = "1=1"
         params: list[object] = []
@@ -565,17 +579,21 @@ class Repo:
             where = "status = ?"
             params.append(status)
 
+        if pay_type_for_query is not None:
+            where += " AND pay_type=?"
+            params.append(pay_type_for_query)
+
         query = f"""
-        SELECT id, user_id, product_key, plan_key, price_uzs, status, created_at
+        SELECT id, user_id, product_key, plan_key, price_uzs, points_cost, pay_type, status, created_at
         FROM product_orders
         WHERE {where}
         ORDER BY created_at DESC
         LIMIT ?
         """
-
+        params.append(limit)
         async with await self._conn() as db:
             db.row_factory = aiosqlite.Row
-            cur = await db.execute(query, (*params, limit))
+            cur = await db.execute(query, (*params,))
             return await cur.fetchall()
 
     async def admin_set_order_status(self, order_id: int, status: str):

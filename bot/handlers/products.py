@@ -157,6 +157,15 @@ def setup(repo: Repo):
             )
             return
 
+        try:
+            await repo.create_points_order(
+                user_id=call.from_user.id,
+                product_key=product_key,
+                points_cost=ACCOUNT_COST_POINTS,
+            )
+        except Exception:
+            pass
+
         await call.message.edit_text(
             f"{t(await repo.get_language(call.from_user.id), 'points.bought')}\n"
             f"{PRICING[product_key]['title']}\n\n"

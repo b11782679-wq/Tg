@@ -105,4 +105,11 @@ async def init_db(db_path: str):
         if "proof_caption" not in topup_cols:
             await db.execute("ALTER TABLE topups ADD COLUMN proof_caption TEXT")
 
+        cur = await db.execute("PRAGMA table_info(product_orders)")
+        order_cols = {str(r[1]).lower() for r in await cur.fetchall()}
+        if "pay_type" not in order_cols:
+            await db.execute("ALTER TABLE product_orders ADD COLUMN pay_type TEXT NOT NULL DEFAULT 'money'")
+        if "points_cost" not in order_cols:
+            await db.execute("ALTER TABLE product_orders ADD COLUMN points_cost INTEGER NOT NULL DEFAULT 0")
+
         await db.commit()
