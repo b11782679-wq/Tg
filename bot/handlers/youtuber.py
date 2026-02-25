@@ -11,6 +11,7 @@ from aiogram.types import CallbackQuery, Message
 from bot.db.repo import Repo
 from bot.i18n import t
 from bot.keyboards.menu import main_menu_kb, back_only_kb
+from bot.keyboards.youtuber import goal_selection_kb, problem_selection_kb, confirm_audit_kb
 from bot.services import youtube, gemini
 from bot.services.youtube import YouTubeError, ChannelNotFoundError, QuotaExceededError
 from bot.services.gemini import GeminiError, GeminiTimeoutError
@@ -74,34 +75,74 @@ async def receive_channel_link(message: Message, state: FSMContext):
     await state.update_data(channel_url=channel_url)
     await message.answer(
         t(lang, "youtuber.ask_goal"),
-        reply_markup=back_only_kb(lang)
+        reply_markup=goal_selection_kb(lang)
     )
     await state.set_state(YouTuberAuditStates.waiting_for_goal)
 
 
-@router.message(StateFilter(YouTuberAuditStates.waiting_for_goal))
-async def receive_goal(message: Message, state: FSMContext):
-    """Receive user's goal."""
-    lang = await _repo.get_language(message.from_user.id)
-    goal = message.text.strip() if message.text else ""
+@router.callback_query(StateFilter(YouTuberAuditStates.waiting_for_goal), F.data.startswith("goal:"))
+async def receive_goal_callback(call: CallbackQuery, state: FSMContext):
+    """Receive user's goal from inline keyboard."""
+    lang = await _repo.get_language(call.from_user.id)
+    goal_key = call.data.split(":")[1]
     
-    await state.update_data(goal=goal)
-    await message.answer(
+    # Map goal keys to full text
+    goal_map = {
+        "subscribers": "Ko'p obunachi",
+        "views": "Ko'p ko'rish",
+        "monetization": "Monetizatsiya",
+        "other": "Boshqa",
+    }
+    goal = goal_map.get(goal_key, goal_key)
+    
+    await state.update_data(goal=goal, goal_key=goal_key)
+    await call.message.edit_text(
         t(lang, "youtuber.ask_problem"),
-        reply_markup=back_only_kb(lang)
+        reply_markup=problem_selection_kb(lang)
     )
-    await state.set_state(YouTuberAuditStates.waiting_for_problem)
+    await call.answer()
 
 
-@router.message(StateFilter(YouTuberAuditStates.waiting_for_problem))
-async def receive_problem_and_generate_audit(message: Message, state: FSMContext):
-    """Receive user's problem and generate the audit."""
-    lang = await _repo.get_language(message.from_user.id)
-    problem = message.text.strip() if message.text else ""
+@router.callback_query(StateFilter(YouTuberAuditStates.waiting_for_problem), F.data.startswith("problem:"))
+async def receive_problem_callback(call: CallbackQuery, state: FSMContext):
+    """Receive user's problem from inline keyboard and generate audit."""
+    lang = await _repo.get_language(call.from_user.id)
+    problem_key = call.data.split(":")[1]
     
+    # Map problem keys to full text
+    problem_map = {
+        "views": "Views past",
+        "retention": "Retention kam",
+        "ctr": "CTR past",
+        "shorts": "Shorts ishlmayapti",
+        "other": "Boshqa",
+    }
+    problem = problem_map.get(problem_key, problem_key)
+    
+    await state.update_data(problem=problem, problem_key=problem_key)
+    
+    # Show confirmation and start processing
+    await call.message.edit_text(
+        t(lang, "youtuber.processing"),
+        reply_markup=None
+    )
+    await call.answer()
+    
+    # Get all data and generate audit
     data = await state.get_data()
+    await _generate_and_send_audit(call.message, data, lang, state)
+
+
+async def _generate_and_send_audit(
+    message: Message,
+    data: dict[str, Any],
+    lang: str,
+    state: FSMContext
+) -> None:
+    """Generate and send the audit report."""
     channel_url = data.get("channel_url", "")
     goal = data.get("goal", "")
+    problem = data.get("problem", "")
     
     # Show processing message
     processing_msg = await message.answer(t(lang, "youtuber.processing"))
