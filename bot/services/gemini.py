@@ -1,8 +1,11 @@
 import os
 from typing import Any
 import asyncio
+import logging
 
 from openai import AsyncOpenAI
+
+logger = logging.getLogger(__name__)
 
 # OpenRouter API configuration
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
@@ -31,6 +34,7 @@ class GeminiTimeoutError(GeminiError):
 
 async def _try_model(client: AsyncOpenAI, model: str, messages: list, extra_headers: dict) -> str:
     """Try a single model and return the response content."""
+    logger.info(f"Trying model: {model}")
     response = await client.chat.completions.create(
         model=model,
         messages=messages,
@@ -40,13 +44,16 @@ async def _try_model(client: AsyncOpenAI, model: str, messages: list, extra_head
     )
     
     if not response.choices:
+        logger.warning(f"No response from model: {model}")
         raise GeminiError(f"No response from model {model}")
     
     message = response.choices[0].message
     content = message.content
     if not content:
+        logger.warning(f"Empty response from model: {model}")
         raise GeminiError(f"Empty response from model {model}")
     
+    logger.info(f"Successfully used model: {model}")
     return content.strip()
 
 
@@ -103,9 +110,16 @@ async def generate_audit(
         except Exception as e:
             error_msg = str(e).lower()
             last_error = e
+            logger.warning(f"Model {model} failed: {e}")
             
             # If it's a rate limit, try next model
             if "rate limit" in error_msg or "429" in error_msg:
+                logger.info(f"Model {model} rate limited, trying next...")
+                continue
+            
+            # For 404 errors, log and continue to next model
+            if "404" in error_msg or "no endpoints found" in error_msg:
+                logger.warning(f"Model {model} not found (404), trying next...")
                 continue
             
             # For other errors, stop trying
