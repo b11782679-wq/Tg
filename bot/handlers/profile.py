@@ -60,4 +60,8 @@ def setup(repo: Repo):
                         f"\n{t(lang, 'profile.password')}: <code>{password}</code>"
                     )
 
-        await call.message.edit_text(text, reply_markup=back_only_kb(await repo.get_language(call.from_user.id)))
+        await call.message.edit_text(
+            text,
+            reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
+            disable_web_page_preview=True,
+        )

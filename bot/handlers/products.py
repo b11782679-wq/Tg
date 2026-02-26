@@ -12,12 +12,20 @@ router = Router()
 
 def setup(repo: Repo):
 
-    async def _safe_show(call: CallbackQuery, text: str, reply_markup):
+    async def _safe_show(call: CallbackQuery, text: str, reply_markup, disable_web_page_preview: bool = False):
         try:
-            await call.message.edit_text(text, reply_markup=reply_markup)
+            await call.message.edit_text(
+                text,
+                reply_markup=reply_markup,
+                disable_web_page_preview=bool(disable_web_page_preview),
+            )
         except Exception:
             try:
-                await call.message.answer(text, reply_markup=reply_markup)
+                await call.message.answer(
+                    text,
+                    reply_markup=reply_markup,
+                    disable_web_page_preview=bool(disable_web_page_preview),
+                )
             except Exception:
                 pass
 
@@ -131,7 +139,12 @@ def setup(repo: Repo):
             else:
                 msg += "⚠️ Link hozircha admin tomonidan qo‘yilmagan. Iltimos, keyinroq urinib ko‘ring."
 
-            await _safe_show(call, msg, reply_markup=back_only_kb(await repo.get_language(call.from_user.id)))
+            await _safe_show(
+                call,
+                msg,
+                reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
+                disable_web_page_preview=True,
+            )
             return
 
         ok, reason, payload = await repo.purchase_account(
