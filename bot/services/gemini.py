@@ -251,18 +251,114 @@ USER INPUT:
 - Goal: {user_goal or 'Not specified'}
 - Problems: {user_problem or 'Not specified'}
 
-Structure your response as follows:
+YOU MUST FOLLOW THIS EXACT STRUCTURE WITH EMOJI HEADERS:
 
-1. **CHANNEL OVERVIEW** - Brief summary of current state
-2. **STRENGTHS** - List 3-4 things working well  
-3. **CRITICAL ISSUES** - List 3-5 problems holding growth
-4. **CONTENT STRATEGY** - Video ideas for next 30 days
-5. **SEO OPTIMIZATION** - Title, description, tag tips with examples
-6. **THUMBNAIL STRATEGY** - Design tips and 3 example concepts
-7. **UPLOAD SCHEDULE** - Best frequency and timing
-8. **SHORTS vs LONG-FORM** - Strategy for both formats
-9. **IMMEDIATE ACTIONS** - 5 things to do THIS WEEK
-10. **30-DAY GROWTH PLAN** - Week-by-week roadmap
+🔥 1. ENG KATTA MUAMMO – [KONKRET SON] [MUAMMO NOMI]
+Bu yerda muammo:
+- [1-muammo]
+- [2-muammo]
+- [3-muammo]
 
-Use simple formatting. Write clearly."""
+⚠️ YouTube 2026 algoritmi 3 narsaga qaraydi:
+1. CTR (bosish foizi)
+2. Watch Time (qancha minut ko'rildi)
+3. Retention % (necha % gacha yetdi)
+
+Senda hali bu ko'rsatkichlar shakllanmagan.
+
+🚀 2. KANALNI "BEGINNER"DAN "GROWTH MODE"GA O'TKAZISH
+2.1 Kanal Pozitsiyalash (Niche Positioning)
+
+Hozir kanal [umumiy/tor/tartibsiz].
+
+❌ Bu [sabab].
+✔️ Sen torlashtirishing kerak.
+
+Masalan:
+- [Misol 1]
+- [Misol 2]
+- [Misol 3]
+
+👉 Tavsiya: "[Konkret tavsiya]"
+
+🎯 3. THUMBNAILNI PRO DARAJAGA OLIB CHIQISH
+
+Professional Thumbnail formulasi:
+1 ta obyekt + 2-3 so'z + kuchli kontrast
+
+Masalan:
+❌ "[Yomon misol]"
+✔️ "[Yaxshi misol]"
+
+Thumbnail qoidalari:
+1. 3 ta rangdan ko'p ishlatma
+2. Orqa fon blur
+3. Yuz ifodasi (agar bor bo'lsa)
+4. 1 ta katta obyekt
+
+🎯 Maqsad: CTR 8%+
+
+🧠 4. VIDEO STRUKTURASI (Retention uchun)
+
+0-5 sekund: Hook (eng hayajonli joyni boshida ko'rsat)
+5-20 sekund: Tez intro (max 7 sekund)
+O'rta qism: Har 30-40 sekundda yangi voqea/muammo/kulgili moment
+Oxiri: Cliffhanger
+
+📈 5. SEO NI PROFESSIONAL QILISH
+
+Title formulasi: [Kuchli so'z] + [Asosiy keyword] + [Qiziqish]
+Description: Birinchi 2 qatorda keyword bo'lishi shart
+
+📊 6. SHORTS STRATEGIYASINI KUCHAYTIRISH
+
+Strategiya: Har bir long video → 3 ta Shorts
+Shorts hook: "[Misollar]"
+
+💰 7. 30 KUNLIK AGRESSIV REJA (PRO VERSION)
+
+1-hafta:
+- 2 ta long video
+- 5 ta Shorts
+- Thumbnail A/B test
+
+2-hafta:
+- 2 ta challenge video
+- 5 ta Shorts
+- 1 kollab
+
+3-hafta:
+- [Reja]
+
+4-hafta:
+- [Reja]
+
+🧲 8. LOYAL COMMUNITY YARATISH
+
+"Craze Crew" g'oyasi:
+- Har video boshida: "Craze Crew, bugun biz..."
+- Comment pin qil
+
+📉 9. ENG KATTA XATO – SABR QILMASLIK
+
+Hozir [N] obunachi – bu normal.
+Senga kerak: kamida 25–30 ta video.
+
+🏆 10. AGAR MEN SENING O'RNINGDA BO'LSAM…
+
+Men shunday qilardim:
+1. [Harakat 1]
+2. [Harakat 2]
+3. [Harakat 3]
+4. [Harakat 4]
+5. [Harakat 5]
+
+📊 REALISTIK NATIJA (Agar to'g'ri qilinsa)
+
+30 kunda:
+[N] → [N+progress] obunachi
+1 video [N]k+ ko'rish chiqishi mumkin
+
+90 kunda:
+[N] subscriber real"""
     return prompt
