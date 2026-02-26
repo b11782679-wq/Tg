@@ -242,7 +242,13 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         )
 
         for r in rows:
-            is_blocked = int(r.get("blocked") or 0) == 1
+            blocked_val = 0
+            try:
+                blocked_val = int(r["blocked"] or 0)
+            except Exception:
+                blocked_val = 0
+
+            is_blocked = blocked_val == 1
             status_label = "Blocked" if is_blocked else "Active"
             block_btn = "Unblock" if is_blocked else "Block"
             block_action = "/admin/users/unblock" if is_blocked else "/admin/users/block"
