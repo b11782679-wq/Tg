@@ -122,6 +122,11 @@ def setup(repo: Repo):
             )
 
             if link:
+                # Save link to user_accounts for profile display
+                try:
+                    await repo.save_canva_pro_link(call.from_user.id, link)
+                except Exception:
+                    pass
                 msg += f"🔗 Link:\n<a href='{link}'>🔗 Canva Pro ga o'tish</a>\n\n<code>{link}</code>"
             else:
                 msg += "⚠️ Link hozircha admin tomonidan qo‘yilmagan. Iltimos, keyinroq urinib ko‘ring."

@@ -268,8 +268,9 @@ class Repo:
         limit = min(max(int(limit), 1), 50)
         async with await self._conn() as db:
             db.row_factory = aiosqlite.Row
+            # Get regular accounts from product_accounts
             cur = await db.execute(
-                "SELECT product_key, login, password, assigned_at, assigned_order_id "
+                "SELECT product_key, login, password, assigned_at as updated_at, assigned_order_id "
                 "FROM product_accounts "
                 "WHERE assigned_user_id=? AND status='assigned' AND assigned_at IS NOT NULL "
                 "AND assigned_at >= datetime('now', ?) "
@@ -277,7 +278,23 @@ class Repo:
                 "LIMIT ?",
                 (int(user_id), f"-{days} days", limit),
             )
-            return await cur.fetchall()
+            product_accs = await cur.fetchall()
+            
+            # Get Canva Pro Links from user_accounts (no time limit)
+            cur2 = await db.execute(
+                "SELECT product_key, login, password, updated_at, NULL as assigned_order_id "
+                "FROM user_accounts "
+                "WHERE user_id=? AND product_key='canva_pro_link' AND (login IS NOT NULL AND login != '') "
+                "ORDER BY updated_at DESC",
+                (int(user_id),),
+            )
+            user_accs = await cur2.fetchall()
+            
+            # Combine results
+            combined = list(product_accs) + list(user_accs)
+            # Sort by updated_at desc
+            combined.sort(key=lambda x: x["updated_at"] or "", reverse=True)
+            return combined[:limit]
 
     async def purchase_account(self, user_id: int, product_key: str, plan_key: str, price_uzs: int) -> tuple[bool, str, dict | None]:
         """Returns (ok, reason, payload).
@@ -478,12 +495,35 @@ class Repo:
                 return "", ""
             return str(row["login"] or ""), str(row["password"] or "")
 
-    async def admin_set_user_account(self, user_id: int, product_key: str, login: str, password: str):
+    async def get_user_accounts(self, user_id: int) -> list[dict]:
+        """Get all user accounts (including Canva Pro Links) for profile display"""
+        query = """
+        SELECT product_key, login, password, updated_at
+        FROM user_accounts
+        WHERE user_id = ? AND (login IS NOT NULL AND login != '')
+        ORDER BY updated_at DESC
+        """
+        async with await self._conn() as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute(query, (int(user_id),))
+            rows = await cur.fetchall()
+            return [
+                {
+                    "product_key": str(r["product_key"]),
+                    "login": str(r["login"] or ""),
+                    "password": str(r["password"] or ""),
+                    "updated_at": str(r["updated_at"] or ""),
+                }
+                for r in rows
+            ]
+
+    async def save_canva_pro_link(self, user_id: int, link: str) -> None:
+        """Save Canva Pro Link to user_accounts table"""
         async with await self._conn() as db:
             await db.execute(
                 "INSERT INTO user_accounts(user_id, product_key, login, password) VALUES(?,?,?,?) "
-                "ON CONFLICT(user_id, product_key) DO UPDATE SET login=excluded.login, password=excluded.password, updated_at=datetime('now')",
-                (int(user_id), str(product_key), login or "", password or ""),
+                "ON CONFLICT(user_id, product_key) DO UPDATE SET login=excluded.login, updated_at=datetime('now')",
+                (int(user_id), "canva_pro_link", link, ""),
             )
             await db.commit()
 

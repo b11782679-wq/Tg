@@ -46,10 +46,18 @@ def setup(repo: Repo):
                 title = (PRICING.get(product_key) or {}).get("title") or product_key
                 login = str(a["login"] or "").strip()
                 password = str(a["password"] or "").strip()
-                text += (
-                    f"\n\n<b>{title}</b>"
-                    f"\n{t(lang, 'profile.login')}: <code>{login}</code>"
-                    f"\n{t(lang, 'profile.password')}: <code>{password}</code>"
-                )
+
+                # Special display for Canva Pro Link
+                if product_key == "canva_pro_link" and login:
+                    text += (
+                        f"\n\n<b>{title}</b>\n"
+                        f"🔗 <a href='{login}'>Canva Pro ga o'tish</a>"
+                    )
+                else:
+                    text += (
+                        f"\n\n<b>{title}</b>"
+                        f"\n{t(lang, 'profile.login')}: <code>{login}</code>"
+                        f"\n{t(lang, 'profile.password')}: <code>{password}</code>"
+                    )
 
         await call.message.edit_text(text, reply_markup=back_only_kb(await repo.get_language(call.from_user.id)))
