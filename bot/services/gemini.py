@@ -144,12 +144,73 @@ def _build_prompt(
 ) -> str:
     """Build the audit prompt based on language and channel data."""
     
-    # Language-specific instructions - STRICT language enforcement
+    # Language-specific instructions with EXACT style example
     if lang == "uz":
         lang_instructions = """FAQAT va FAQAT O'zbek tilida javob yozing. Boshqa tillar (rus, ingliz) aralashtirmang!
-Tushunarli, sodda va professional uslubda yozing.
-YouTube atamalarini o'zbek tilida: "obunachi" (subscriber), "video", "ko'rish" (view), "muallif" (creator).
-Jadvallar o'rniga oddiy ro'yxatlar va tavsiyalar yozing."""
+
+TAVSIYA ETILGAN STIL (MISOL):
+
+🔥 1. ENG KATTA MUAMMO – [KONKRET SON] [MUAMMO NOMI]
+
+Bu yerda muammo:
+- [1-muammo]
+- [2-muammo]
+- [3-muammo]
+
+⚠️ YouTube 2026 algoritmi [N] narsaga qaraydi:
+1. [Ko'rsatkich 1]
+2. [Ko'rsatkich 2]
+3. [Ko'rsatkich 3]
+
+Senda hali bu ko'rsatkichlar shakllanmagan.
+
+🚀 2. KANALNI "[HOLAT]"DAN "[MAQSAD]"GA O'TKAZISH
+
+Hozir kanal [umumiy/tor/tartibsiz].
+
+❌ Bu [sabab].
+✔️ Sen [harakat] qilishing kerak.
+
+Masalan:
+- [Misol 1]
+- [Misol 2]
+- [Misol 3]
+
+👉 Tavsiya: "[Konkret tavsiya]"
+
+🎯 3. [BO'LIM NOMI]
+
+Professional formulasi:
+[Aniq formula]
+
+Masalan:
+❌ "[Yomon misol]"
+✔️ "[Yaxshi misol]"
+
+Qoidalari:
+1. [Qoida 1]
+2. [Qoida 2]
+3. [Qoida 3]
+
+🎯 Maqsad: [Konkret raqamli maqsad]
+
+📊 FORMATLASH QOIDALARI:
+- Sarlavhalar: 🔥, 🚀, 🎯, 📈, 💰, 🧠, ⚠️, ✅, ❌ emoji bilan boshlanadi
+- Muhim sonlar va faktlar: **Qalin** qiling
+- ❌ va ✔️ belgilari xato/to'g'ri narsalarni ko'rsatadi
+- Ro'yxatlar: Raqamli (1, 2, 3) yoki bullet (-) bilan
+- Har bir bo'limda konkret raqamli maqsadlar ko'rsatiladi (CTR 8%+, 1000 subscriber, etc.)
+- Til: Professional, lekin tushunarli. "O'zingizga xos", "odamlar", "siz" kabi murojaatlar.
+- Eng oxirida: REALISTIK NATIJA bo'lishi shart (30 kun, 90 kun)
+
+YouTube atamalarini o'zbek tilida:
+- Subscribers = Obunachilar
+- Views = Ko'rishlar
+- CTR = Bosish foizi
+- Retention = Videoni ko'rish davomiyligi
+- Watch Time = Umumiy ko'rish vaqti
+- Thumbnail = Video rasmi
+- SEO = Qidiruv optimizatsiyasi"""
     elif lang == "ru":
         lang_instructions = """Отвечай ТОЛЬКО на русском языке. Не смешивай с другими языками!
 Профессиональный, но понятный стиль. Простые списки вместо сложных таблиц."""
