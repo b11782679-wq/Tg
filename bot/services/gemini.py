@@ -144,22 +144,34 @@ def _build_prompt(
 ) -> str:
     """Build the audit prompt based on language and channel data."""
     
-    # Language-specific instructions
+    # Language-specific instructions - STRICT language enforcement
     if lang == "uz":
-        lang_instructions = """Javobni O'zbek tilida yozing. Professional, ammo tushunarli bo'lsin."""
+        lang_instructions = """FAQAT va FAQAT O'zbek tilida javob yozing. Boshqa tillar (rus, ingliz) aralashtirmang!
+Tushunarli, sodda va professional uslubda yozing.
+YouTube atamalarini o'zbek tilida: "obunachi" (subscriber), "video", "ko'rish" (view), "muallif" (creator).
+Jadvallar o'rniga oddiy ro'yxatlar va tavsiyalar yozing."""
     elif lang == "ru":
-        lang_instructions = """Ответ должен быть на русском языке. Профессиональный, но понятный стиль."""
+        lang_instructions = """Отвечай ТОЛЬКО на русском языке. Не смешивай с другими языками!
+Профессиональный, но понятный стиль. Простые списки вместо сложных таблиц."""
     else:  # en
-        lang_instructions = """Write the response in English. Professional yet approachable style."""
+        lang_instructions = """Write ONLY in English. Do not mix other languages!
+Professional yet simple style. Use clear bullet points, avoid complex tables."""
     
     videos_text = "\n".join([
         f"- {v['title']} (published: {v['published_at'][:10]})"
         for v in channel_data.get("recent_videos", [])
     ])
     
-    prompt = f"""You are a YouTube growth expert. Analyze this YouTube channel and provide actionable recommendations.
+    prompt = f"""You are a YouTube expert. Analyze this channel and give practical advice.
 
+IMPORTANT RULES:
 {lang_instructions}
+
+- Write in ONE language only, do not mix languages
+- Use simple bullet points and clear sections
+- Avoid markdown tables - use plain lists instead
+- Be specific with channel data provided
+- Give actionable recommendations, not generic advice
 
 CHANNEL DATA:
 - Name: {channel_data.get('title', 'N/A')}
@@ -178,18 +190,18 @@ USER INPUT:
 - Goal: {user_goal or 'Not specified'}
 - Problems: {user_problem or 'Not specified'}
 
-Please provide a comprehensive audit with these sections:
+Structure your response as follows:
 
 1. **CHANNEL OVERVIEW** - Brief summary of current state
-2. **STRENGTHS** - What's working well
-3. **CRITICAL ISSUES** - 3-5 biggest problems holding growth
-4. **CONTENT STRATEGY** - Video ideas and content plan for next 30 days
-5. **SEO OPTIMIZATION** - Title, description, tag recommendations with examples
-6. **THUMBNAIL STRATEGY** - Design principles and 3 example concepts
-7. **UPLOAD SCHEDULE** - Optimal frequency and timing
+2. **STRENGTHS** - List 3-4 things working well  
+3. **CRITICAL ISSUES** - List 3-5 problems holding growth
+4. **CONTENT STRATEGY** - Video ideas for next 30 days
+5. **SEO OPTIMIZATION** - Title, description, tag tips with examples
+6. **THUMBNAIL STRATEGY** - Design tips and 3 example concepts
+7. **UPLOAD SCHEDULE** - Best frequency and timing
 8. **SHORTS vs LONG-FORM** - Strategy for both formats
 9. **IMMEDIATE ACTIONS** - 5 things to do THIS WEEK
 10. **30-DAY GROWTH PLAN** - Week-by-week roadmap
 
-Be specific, use data from the channel, and give practical examples. Don't be generic."""
+Use simple formatting. Write clearly."""
     return prompt
