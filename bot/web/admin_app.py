@@ -56,6 +56,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             + _nav_item("ChatGPT Plus", "/admin/accounts/chatgpt_plus", "chatgpt_plus")
             + _nav_item("Super Grok", "/admin/accounts/super_grok", "super_grok")
             + _nav_item("Canva Pro", "/admin/accounts/canva_pro", "canva_pro")
+            + _nav_item("Canva Pro Link", "/admin/canva_pro_link", "canva_pro_link")
             + _nav_item("CapCut Pro", "/admin/accounts/capcut_pro", "capcut_pro")
             + _nav_item("Gemini", "/admin/accounts/gemini", "gemini")
             + "</nav>"
@@ -115,6 +116,33 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
 
     def _fmt_money(n: int) -> str:
         return f"{int(n):,}".replace(",", " ")
+
+    @router.get("/canva_pro_link", response_class=HTMLResponse)
+    async def admin_canva_pro_link(credentials: HTTPBasicCredentials = Depends(_auth)):
+        link, _ = await repo.admin_get_texts("canva_pro_link")
+        body = (
+            "<div class='stack'>"
+            "<div class='field'><b>Canva Pro Link</b>"
+            "<div class='meta'>Bu yerga bitta link saqlaysiz. Botda Canva Pro Link sotib olganlarga shu link ko‘rsatiladi.</div>"
+            "</div>"
+            "<form method='post' action='/admin/canva_pro_link' class='stack'>"
+            "<textarea class='input textarea' name='link' placeholder='https://...' >"
+            + _escape_textarea(str(link or ""))
+            + "</textarea>"
+            "<div><button class='btn' type='submit'>Saqlash</button></div>"
+            "</form>"
+            "</div>"
+        )
+        return _layout("Canva Pro Link", body, active="canva_pro_link")
+
+    @router.post("/canva_pro_link")
+    async def admin_canva_pro_link_save(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        link: str = Form(""),
+    ):
+        await repo.admin_set_texts("canva_pro_link", save_text=str(link or ""), send_text="")
+        return RedirectResponse(url="/admin/canva_pro_link", status_code=303)
 
     def _tg_api_url(path: str) -> str:
         token = cfg.bot_token

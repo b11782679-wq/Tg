@@ -23,6 +23,12 @@ PRICING = {
             "1m": {"label": "1 oy", "price_uzs": 30000},
         },
     },
+    "canva_pro_link": {
+        "title": "🔗 Canva Pro Link",
+        "plans": {
+            "1m": {"label": "1 oy", "price_uzs": 5000},
+        },
+    },
     "capcut_pro": {
         "title": "🎬 CapCut Pro",
         "plans": {

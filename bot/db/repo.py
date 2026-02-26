@@ -117,6 +117,28 @@ class Repo:
             await db.commit()
             return (cur.rowcount or 0) > 0
 
+    async def create_paid_money_order(self, user_id: int, product_key: str, plan_key: str, price_uzs: int) -> int:
+        async with await self._conn() as db:
+            cur = await db.execute(
+                "INSERT INTO product_orders(user_id, product_key, plan_key, price_uzs, status, pay_type, points_cost) "
+                "VALUES(?,?,?,?, 'paid', 'money', 0)",
+                (int(user_id), str(product_key), str(plan_key), int(price_uzs)),
+            )
+            await db.commit()
+            return int(cur.lastrowid or 0)
+
+    async def has_paid_order(self, user_id: int, product_key: str) -> bool:
+        async with await self._conn() as db:
+            cur = await db.execute(
+                "SELECT 1 FROM product_orders WHERE user_id=? AND product_key=? AND status='paid' LIMIT 1",
+                (int(user_id), str(product_key)),
+            )
+            return bool(await cur.fetchone())
+
+    async def get_canva_pro_link(self) -> str:
+        save_text, _ = await self.admin_get_texts("canva_pro_link")
+        return str(save_text or "").strip()
+
     async def admin_add_product_account(self, product_key: str, login: str, password: str) -> int:
         async with await self._conn() as db:
             cur = await db.execute(

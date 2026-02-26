@@ -84,6 +84,51 @@ def setup(repo: Repo):
         def _fmt_money(n: int) -> str:
             return f"{int(n):,}".replace(",", " ")
 
+        if product_key == "canva_pro_link":
+            ok = await repo.deduct_money(call.from_user.id, need_uzs)
+            if not ok:
+                bal = await repo.get_balance(call.from_user.id)
+                money_uzs = int(bal["money_uzs"] or 0) if bal else 0
+                lang = await repo.get_language(call.from_user.id)
+                await _safe_show(
+                    call,
+                    t(
+                        lang,
+                        "money.no_balance",
+                        balance=_fmt_money(money_uzs),
+                        need=_fmt_money(need_uzs),
+                    ),
+                    reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
+                )
+                return
+
+            await repo.create_paid_money_order(
+                user_id=call.from_user.id,
+                product_key=product_key,
+                plan_key=plan_key,
+                price_uzs=need_uzs,
+            )
+
+            link = ""
+            try:
+                link = await repo.get_canva_pro_link()
+            except Exception:
+                link = ""
+
+            msg = (
+                f"{t(await repo.get_language(call.from_user.id), 'products.buy.selected')}\n"
+                f"{PRICING[product_key]['title']} — {plan['label']}\n"
+                f"{t(await repo.get_language(call.from_user.id), 'products.buy.price')} {_fmt_money(need_uzs)} so'm\n\n"
+            )
+
+            if link:
+                msg += f"🔗 Link:\n<code>{link}</code>"
+            else:
+                msg += "⚠️ Link hozircha admin tomonidan qo‘yilmagan. Iltimos, keyinroq urinib ko‘ring."
+
+            await _safe_show(call, msg, reply_markup=back_only_kb(await repo.get_language(call.from_user.id)))
+            return
+
         ok, reason, payload = await repo.purchase_account(
             user_id=call.from_user.id,
             product_key=product_key,
