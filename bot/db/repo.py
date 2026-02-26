@@ -508,6 +508,7 @@ class Repo:
             u.id,
             u.full_name,
             u.username,
+            COALESCE(u.blocked, 0) AS blocked,
             COALESCE(b.money_uzs, 0) AS money_uzs,
             COALESCE(b.points, 0) AS points
         FROM users u
@@ -521,6 +522,23 @@ class Repo:
             db.row_factory = aiosqlite.Row
             cur = await db.execute(query, (*params, limit))
             return await cur.fetchall()
+
+    async def is_user_blocked(self, user_id: int) -> bool:
+        async with await self._conn() as db:
+            cur = await db.execute("SELECT COALESCE(blocked,0) FROM users WHERE id=?", (int(user_id),))
+            row = await cur.fetchone()
+            if not row:
+                return False
+            val = row[0]
+            try:
+                return int(val) == 1
+            except Exception:
+                return False
+
+    async def admin_set_user_blocked(self, user_id: int, blocked: bool) -> None:
+        async with await self._conn() as db:
+            await db.execute("UPDATE users SET blocked=? WHERE id=?", (1 if blocked else 0, int(user_id)))
+            await db.commit()
 
     async def admin_list_user_ids_chunk(self, limit: int = 500, offset: int = 0) -> list[int]:
         limit = min(max(int(limit), 1), 5000)

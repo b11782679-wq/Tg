@@ -150,6 +150,7 @@ _TEXTS: dict[str, dict[str, str]] = {
             "🎁 Referal bo‘limidan do‘st taklif qilib ball yig‘ing."
         ),
         "points.bought": "✅ Ball bilan olindi:",
+        "user.blocked": "⛔️ Siz botdan bloklangansiz.",
         "youtuber.welcome": (
             "📺 <b>YouTube kanal tahlili</b>\n\n"
             "Bugun: {used}/{limit} ta bepul audit\n\n"
@@ -239,6 +240,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "menu.language": "🌐 Til/Language",
         "menu.contact_admin": "📞 Contact admin",
         "back": "⬅️ Back",
+        "user.blocked": "⛔️ You are blocked from using this bot.",
         "lang.choose": "🌐 Choose language:",
         "lang.uz": "🇺🇿 Uzbek",
         "lang.en": "🇬🇧 English",

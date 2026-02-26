@@ -233,19 +233,25 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<th>ID</th>"
             "<th>Name</th>"
             "<th>Username</th>"
+            "<th>Status</th>"
             "<th>Money (so'm)</th>"
             "<th>Points</th>"
             "<th>Update</th>"
-            "<th>Kick</th>"
+            "<th>Block</th>"
             "</tr></thead><tbody>"
         )
 
         for r in rows:
+            is_blocked = int(r.get("blocked") or 0) == 1
+            status_label = "Blocked" if is_blocked else "Active"
+            block_btn = "Unblock" if is_blocked else "Block"
+            block_action = "/admin/users/unblock" if is_blocked else "/admin/users/block"
             body += (
                 "<tr>"
                 f"<td><code>{int(r['id'])}</code></td>"
                 f"<td>{(r['full_name'] or '')}</td>"
                 f"<td>{(r['username'] or '')}</td>"
+                f"<td><code>{status_label}</code></td>"
                 f"<td>{_fmt_money(int(r['money_uzs'] or 0))}</td>"
                 f"<td>{int(r['points'] or 0)}</td>"
                 "<td>"
@@ -257,9 +263,9 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 "</form>"
                 "</td>"
                 "<td>"
-                "<form method='post' action='/admin/users/delete' class='rowform'>"
+                f"<form method='post' action='{block_action}' class='rowform'>"
                 f"<input type='hidden' name='user_id' value='{int(r['id'])}'>"
-                "<button class='btn' type='submit' onclick=\"return confirm('User o\'chirilsinmi?')\" style='border-color:rgba(248,113,113,.65);background:rgba(248,113,113,.12)'>Delete</button>"
+                f"<button class='btn' type='submit' style='border-color:rgba(248,113,113,.65);background:rgba(248,113,113,.12)'>{block_btn}</button>"
                 "</form>"
                 "</td>"
                 "</tr>"
@@ -296,6 +302,24 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         user_id: int = Form(...),
     ):
         await repo.admin_delete_user(user_id=user_id)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/users"), status_code=303)
+
+    @router.post("/users/block")
+    async def admin_users_block(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        user_id: int = Form(...),
+    ):
+        await repo.admin_set_user_blocked(user_id=user_id, blocked=True)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/users"), status_code=303)
+
+    @router.post("/users/unblock")
+    async def admin_users_unblock(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        user_id: int = Form(...),
+    ):
+        await repo.admin_set_user_blocked(user_id=user_id, blocked=False)
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/users"), status_code=303)
 
     @router.get("/orders", response_class=HTMLResponse)

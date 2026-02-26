@@ -23,6 +23,31 @@ class SubscribeMiddleware(BaseMiddleware):
         bot = data["bot"]
         repo = self.repo
 
+        # Blocked users: stop all interactions
+        user_id = None
+        if isinstance(event, Message) and event.from_user:
+            user_id = event.from_user.id
+        elif isinstance(event, CallbackQuery) and event.from_user:
+            user_id = event.from_user.id
+
+        if user_id and repo is not None:
+            try:
+                if await repo.is_user_blocked(user_id):
+                    lang = "uz"
+                    try:
+                        lang = await repo.get_language(user_id)
+                    except Exception:
+                        lang = "uz"
+
+                    text = t(lang, "user.blocked")
+                    if isinstance(event, Message):
+                        await event.answer(text)
+                    else:
+                        await event.answer(text, show_alert=True)
+                    return
+            except Exception:
+                pass
+
         # ✅ /start ni bloklamaymiz (referral yozilishi kerak)
         if isinstance(event, Message):
             txt = (event.text or "").strip().lower()
@@ -31,16 +56,16 @@ class SubscribeMiddleware(BaseMiddleware):
 
         # ✅ sub:check ni ham bloklamaymiz (tekshiruv + bonus shu yerda)
         if isinstance(event, CallbackQuery):
-            if (event.data or "") == "sub:check":
+            data_str = event.data or ""
+            if data_str == "sub:check":
+                return await handler(event, data)
+            # ✅ youtuber inline keyboard callbacks ni bloklamaymiz
+            if data_str.startswith("goal:") or data_str.startswith("problem:"):
+                return await handler(event, data)
+            if data_str == "youtuber:open":
                 return await handler(event, data)
 
         # Qolgan hamma joyda kanalga a'zolik shart
-        user_id = None
-        if isinstance(event, Message) and event.from_user:
-            user_id = event.from_user.id
-        elif isinstance(event, CallbackQuery) and event.from_user:
-            user_id = event.from_user.id
-
         if user_id:
             ok = await is_subscribed(bot, user_id)
             if not ok:
