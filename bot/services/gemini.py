@@ -28,6 +28,11 @@ OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:27b")
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "")
 
+OLLAMA_CLOUD_FALLBACK_MODELS = [
+    "gpt-oss:120b",
+    "gpt-oss:120b-cloud",
+]
+
 # List of free models to try in order (fallback system) for OpenRouter
 FREE_MODELS = [
     "nvidia/nemotron-3-nano-30b-a3b:free",
@@ -126,33 +131,58 @@ async def _generate_with_ollama(messages: list[dict[str, str]]) -> str:
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {OLLAMA_API_KEY}"
             }
-            data = {
-                "model": OLLAMA_MODEL,
-                "messages": messages,
-                "stream": False
-            }
-            
+
+            model_candidates = [str(OLLAMA_MODEL)] + [
+                m for m in OLLAMA_CLOUD_FALLBACK_MODELS if str(m) != str(OLLAMA_MODEL)
+            ]
+
+            last_error: Exception | None = None
             async with httpx.AsyncClient(timeout=60.0) as client:
-                try:
-                    response = await client.post(url, json=data, headers=headers)
-                    response.raise_for_status()
-                except httpx.HTTPStatusError as e:
-                    # Include server response to make debugging (401/404) possible
-                    body = ""
+                for model_name in model_candidates:
+                    data = {
+                        "model": model_name,
+                        "messages": messages,
+                        "stream": False,
+                    }
                     try:
-                        body = e.response.text
-                    except Exception:
+                        response = await client.post(url, json=data, headers=headers)
+                        response.raise_for_status()
+                    except httpx.HTTPStatusError as e:
                         body = ""
-                    raise GeminiError(
-                        f"Ollama cloud HTTP {e.response.status_code} for url '{url}': {body}"
-                    ) from e
-                result = response.json()
-                
-                content = result.get('message', {}).get('content', '')
-                if not content:
-                    raise GeminiError("Ollama returned empty content")
-                logger.info(f"Successfully used Ollama cloud model: {OLLAMA_MODEL}")
-                return content.strip()
+                        try:
+                            body = e.response.text
+                        except Exception:
+                            body = ""
+
+                        # If chosen model doesn't exist in cloud, try fallback models
+                        if e.response.status_code == 404 and "model" in body and "not found" in body.lower():
+                            last_error = e
+                            logger.warning(
+                                f"Ollama cloud model '{model_name}' not found, trying next..."
+                            )
+                            continue
+
+                        raise GeminiError(
+                            f"Ollama cloud HTTP {e.response.status_code} for url '{url}': {body}"
+                        ) from e
+
+                    result = response.json()
+                    content = result.get("message", {}).get("content", "")
+                    if not content:
+                        raise GeminiError("Ollama returned empty content")
+                    logger.info(f"Successfully used Ollama cloud model: {model_name}")
+                    return content.strip()
+
+            if last_error is not None:
+                try:
+                    body = last_error.response.text  # type: ignore[attr-defined]
+                except Exception:
+                    body = ""
+                raise GeminiError(
+                    f"Ollama cloud HTTP 404 for url '{url}': {body}"
+                ) from last_error
+
+            raise GeminiError("Ollama cloud request failed")
         else:
             # Local Ollama server - use default client
             logger.info("Using local Ollama server")
