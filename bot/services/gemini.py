@@ -108,37 +108,56 @@ async def _generate_with_ollama(messages: list[dict[str, str]]) -> str:
         # Set OLLAMA_HOST environment variable if provided
         os.environ["OLLAMA_HOST"] = OLLAMA_HOST
         
-        # Create client with API key if provided (for ollama.com cloud)
-        client_kwargs = {"host": OLLAMA_HOST}
+        # Cloud API uses headers for authentication
         if OLLAMA_API_KEY:
-            client_kwargs["api_key"] = OLLAMA_API_KEY
             logger.info("Using Ollama cloud API with authentication")
-        else:
-            logger.info("Using local Ollama server")
-        
-        # Create custom client if API key provided
-        if OLLAMA_API_KEY:
-            client = ollama.Client(**client_kwargs)
-            response = client.chat(
-                model=OLLAMA_MODEL,
-                messages=messages,
+            # Create client with custom headers for auth
+            import urllib.request
+            import json
+            
+            url = f"{OLLAMA_HOST}/api/chat"
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {OLLAMA_API_KEY}"
+            }
+            data = {
+                "model": OLLAMA_MODEL,
+                "messages": messages,
+                "stream": False
+            }
+            
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(data).encode('utf-8'),
+                headers=headers,
+                method='POST'
             )
+            
+            with urllib.request.urlopen(req, timeout=60) as response:
+                result = json.loads(response.read().decode('utf-8'))
+                content = result.get('message', {}).get('content', '')
+                if not content:
+                    raise GeminiError("Ollama returned empty content")
+                logger.info(f"Successfully used Ollama cloud model: {OLLAMA_MODEL}")
+                return content.strip()
         else:
-            # Use default ollama.chat for local server
+            # Local Ollama server - use default client
+            logger.info("Using local Ollama server")
             response = ollama.chat(
                 model=OLLAMA_MODEL,
                 messages=messages,
             )
-        
-        if not response or not response.message:
-            raise GeminiError("Ollama returned empty response")
-        
-        content = response.message.content
-        if not content:
-            raise GeminiError("Ollama returned empty content")
-        
-        logger.info(f"Successfully used Ollama model: {OLLAMA_MODEL}")
-        return content.strip()
+            
+            if not response or not response.message:
+                raise GeminiError("Ollama returned empty response")
+            
+            content = response.message.content
+            if not content:
+                raise GeminiError("Ollama returned empty content")
+            
+            logger.info(f"Successfully used Ollama local model: {OLLAMA_MODEL}")
+            return content.strip()
+            
     except Exception as e:
         logger.error(f"Ollama error: {e}")
         raise GeminiError(f"Ollama API error: {e}")
