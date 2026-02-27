@@ -111,14 +111,13 @@ async def _generate_with_ollama(messages: list[dict[str, str]]) -> str:
         # Cloud API uses headers for authentication
         if OLLAMA_API_KEY:
             logger.info("Using Ollama cloud API with authentication")
-            # Create client with custom headers for auth
-            import urllib.request
-            import json
+            import httpx
             
-            url = f"{OLLAMA_HOST}/api/chat"
+            # Use httpx for async HTTP requests with proper auth
+            url = f"{OLLAMA_HOST.rstrip('/')}/api/chat"
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {OLLAMA_API_KEY}"
+                "x-api-key": OLLAMA_API_KEY
             }
             data = {
                 "model": OLLAMA_MODEL,
@@ -126,15 +125,11 @@ async def _generate_with_ollama(messages: list[dict[str, str]]) -> str:
                 "stream": False
             }
             
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(data).encode('utf-8'),
-                headers=headers,
-                method='POST'
-            )
-            
-            with urllib.request.urlopen(req, timeout=60) as response:
-                result = json.loads(response.read().decode('utf-8'))
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(url, json=data, headers=headers)
+                response.raise_for_status()
+                result = response.json()
+                
                 content = result.get('message', {}).get('content', '')
                 if not content:
                     raise GeminiError("Ollama returned empty content")
