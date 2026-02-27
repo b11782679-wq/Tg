@@ -228,7 +228,7 @@ async def _generate_and_send_audit(
     except Exception as e:
         logger.exception(f"Unexpected error in youtuber audit: {e}")
         await message.answer(
-            t(lang, "youtuber.generic_error"),
+            f"{t(lang, 'youtuber.generic_error')}\n\n<code>{str(e)[:250]}</code>",
             reply_markup=back_only_kb(lang)
         )
     finally:
@@ -241,6 +241,10 @@ async def _generate_and_send_audit(
 
 @router.callback_query(F.data.startswith("audit_issue:"))
 async def audit_issue_detail(call: CallbackQuery):
+    if _repo is None:
+        await call.answer("Xatolik: tizim sozlanmagan", show_alert=True)
+        return
+
     lang = await _repo.get_language(call.from_user.id)
     payload = _LAST_AUDITS.get(int(call.from_user.id))
     if not payload:
