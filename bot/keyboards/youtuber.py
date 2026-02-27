@@ -59,3 +59,20 @@ def confirm_audit_kb(lang: str = "uz") -> InlineKeyboardMarkup:
         ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def audit_issues_kb(issues: list[str], lang: str = "uz") -> InlineKeyboardMarkup:
+    buttons: list[list[InlineKeyboardButton]] = []
+
+    for i, title in enumerate(issues[:20]):
+        safe_title = (title or "").strip()
+        if len(safe_title) > 50:
+            safe_title = safe_title[:47] + "..."
+        buttons.append([
+            InlineKeyboardButton(text=safe_title or f"Kamchilik {i+1}", callback_data=f"audit_issue:{i}")
+        ])
+
+    buttons.append([
+        InlineKeyboardButton(text="🔙 Ortga", callback_data="m:home"),
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)

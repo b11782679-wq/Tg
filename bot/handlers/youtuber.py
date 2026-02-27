@@ -1,6 +1,8 @@
 import logging
 import os
 from typing import Any
+import asyncio
+import re
 
 from aiogram import F, Router
 from aiogram.filters import StateFilter
@@ -11,7 +13,7 @@ from aiogram.types import CallbackQuery, Message
 from bot.db.repo import Repo
 from bot.i18n import t
 from bot.keyboards.menu import main_menu_kb, back_only_kb
-from bot.keyboards.youtuber import goal_selection_kb, problem_selection_kb, confirm_audit_kb
+from bot.keyboards.youtuber import goal_selection_kb, problem_selection_kb, confirm_audit_kb, audit_issues_kb
 from bot.services import youtube, gemini
 from bot.services.youtube import YouTubeError, ChannelNotFoundError, QuotaExceededError
 from bot.services.gemini import GeminiError, GeminiTimeoutError
@@ -19,6 +21,8 @@ from bot.services.gemini import GeminiError, GeminiTimeoutError
 logger = logging.getLogger(__name__)
 router = Router()
 _repo: Repo | None = None
+
+_LAST_AUDITS: dict[int, dict[str, Any]] = {}
 
 # Daily usage limit per user
 DAILY_AUDIT_LIMIT = int(os.getenv("YOUTUBER_DAILY_LIMIT", "3"))
@@ -168,6 +172,19 @@ async def _generate_and_send_audit(
         # Step 4: Send audit (might be long, split if needed)
         await processing_msg.delete()
         await _send_long_message(message, audit_text, lang)
+
+        issues = _extract_audit_issues(audit_text)
+        if issues:
+            _LAST_AUDITS[int(message.from_user.id)] = {
+                "channel_data": channel_data,
+                "audit_text": audit_text,
+                "issues": issues,
+                "lang": lang,
+            }
+            await message.answer(
+                "👇 Kamchilikni tanlang (batafsil tushuntirish uchun):",
+                reply_markup=audit_issues_kb(issues, lang),
+            )
         
         # Show menu again
         await message.answer(
@@ -216,6 +233,72 @@ async def _generate_and_send_audit(
         )
     finally:
         await state.clear()
+
+
+@router.callback_query(F.data.startswith("audit_issue:"))
+async def audit_issue_detail(call: CallbackQuery):
+    lang = await _repo.get_language(call.from_user.id)
+    payload = _LAST_AUDITS.get(int(call.from_user.id))
+    if not payload:
+        await call.answer("Ma'lumot topilmadi. Qaytadan audit qiling.", show_alert=True)
+        return
+
+    try:
+        idx = int(call.data.split(":", 1)[1])
+    except Exception:
+        await call.answer("Noto'g'ri tanlov", show_alert=True)
+        return
+
+    issues: list[str] = payload.get("issues") or []
+    if idx < 0 or idx >= len(issues):
+        await call.answer("Noto'g'ri tanlov", show_alert=True)
+        return
+
+    issue_title = issues[idx]
+    await call.answer()
+    await call.message.answer("⏳ Batafsil tahlil tayyorlanyapti...")
+
+    try:
+        detail = await gemini.generate_audit_detail(
+            channel_data=payload.get("channel_data") or {},
+            issue_title=issue_title,
+            audit_text=payload.get("audit_text") or "",
+            lang=lang,
+        )
+        await _send_long_message(call.message, detail, lang)
+    except GeminiTimeoutError:
+        await call.message.answer(t(lang, "youtuber.timeout"), reply_markup=back_only_kb(lang))
+    except GeminiError as e:
+        await call.message.answer(
+            f"❌ {t(lang, 'youtuber.gemini_error')}\n\n<code>{str(e)[:400]}</code>",
+            reply_markup=back_only_kb(lang),
+        )
+
+
+def _extract_audit_issues(audit_text: str) -> list[str]:
+    if not audit_text:
+        return []
+
+    issues: list[str] = []
+    for raw in audit_text.splitlines():
+        line = (raw or "").strip()
+        if not line:
+            continue
+
+        if re.match(r"^[^\w\s]\s*\d+\.", line):
+            issues.append(line)
+            continue
+        if re.match(r"^\d+\.", line):
+            issues.append(line)
+
+    seen: set[str] = set()
+    out: list[str] = []
+    for it in issues:
+        if it in seen:
+            continue
+        seen.add(it)
+        out.append(it)
+    return out
 
 
 @router.callback_query(F.data == "m:home", StateFilter(YouTuberAuditStates))

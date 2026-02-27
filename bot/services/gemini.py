@@ -107,6 +107,30 @@ async def generate_audit(
     return await _generate_with_openrouter(messages)
 
 
+async def generate_audit_detail(
+    channel_data: dict[str, Any],
+    issue_title: str,
+    audit_text: str,
+    lang: str = "uz",
+) -> str:
+    detail_prompt = _build_detail_prompt(channel_data, issue_title, audit_text, lang)
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a YouTube growth expert. Provide detailed, actionable advice. Be specific and practical.",
+        },
+        {
+            "role": "user",
+            "content": detail_prompt,
+        },
+    ]
+
+    if AI_PROVIDER == "ollama" and OLLAMA_AVAILABLE:
+        return await _generate_with_ollama(messages)
+
+    return await _generate_with_openrouter(messages)
+
+
 async def _generate_with_ollama(messages: list[dict[str, str]]) -> str:
     """Generate audit using Ollama API (local or cloud)."""
     try:
@@ -118,10 +142,6 @@ async def _generate_with_ollama(messages: list[dict[str, str]]) -> str:
             logger.info("Using Ollama cloud API with authentication")
             import httpx
             
-            # Ollama cloud base is https://ollama.com (API served under /api)
-            # Allow OLLAMA_HOST to be either:
-            # - https://ollama.com
-            # - https://ollama.com/api
             base = (OLLAMA_HOST or "https://ollama.com").rstrip("/")
             if base.endswith("/api"):
                 url = f"{base}/chat"
@@ -154,7 +174,6 @@ async def _generate_with_ollama(messages: list[dict[str, str]]) -> str:
                         except Exception:
                             body = ""
 
-                        # If chosen model doesn't exist in cloud, try fallback models
                         if e.response.status_code == 404 and "model" in body and "not found" in body.lower():
                             last_error = e
                             logger.warning(
@@ -489,3 +508,44 @@ Men shunday qilardim:
 90 kunda:
 [N] subscriber real"""
     return prompt
+
+
+def _build_detail_prompt(
+    channel_data: dict[str, Any],
+    issue_title: str,
+    audit_text: str,
+    lang: str,
+) -> str:
+    if lang == "uz":
+        lang_instructions = "FAQAT O'zbek tilida yozing. Juda tushunarli va konkret bo'ling."
+    elif lang == "ru":
+        lang_instructions = "Пиши только по-русски. Очень конкретно и практично."
+    else:
+        lang_instructions = "Write only in English. Be very concrete and practical."
+
+    # Keep only a short context from previous audit to reduce tokens
+    audit_context = (audit_text or "")[:2000]
+    return f"""You previously generated a YouTube channel audit. Now expand ONE issue in depth.
+
+IMPORTANT RULES:
+{lang_instructions}
+
+CHANNEL DATA (summary):
+- Name: {channel_data.get('title', 'N/A')}
+- Subscribers: {channel_data.get('subscriber_count', 0):,}
+- Total Videos: {channel_data.get('video_count', 0):,}
+- Total Views: {channel_data.get('view_count', 0):,}
+
+PREVIOUS AUDIT CONTEXT (for reference):
+{audit_context}
+
+ISSUE TO EXPAND:
+{issue_title}
+
+Write a detailed explanation with:
+1) Why this is a problem
+2) How to detect/measure it (CTR, retention, watch time etc.)
+3) Exact step-by-step actions for 7 days
+4) Common mistakes (❌) and correct approach (✔️)
+5) Target metrics (numbers)
+"""
