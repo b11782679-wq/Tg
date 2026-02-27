@@ -96,7 +96,12 @@ async def generate_audit(
     
     # Use Ollama if configured
     if AI_PROVIDER == "ollama" and OLLAMA_AVAILABLE:
-        return await _generate_with_ollama(messages)
+        try:
+            return await _generate_with_ollama(messages)
+        except GeminiError:
+            # If Ollama fails, fall back to OpenRouter
+            logger.warning("Ollama failed, falling back to OpenRouter")
+            pass
     
     # Otherwise use OpenRouter
     return await _generate_with_openrouter(messages)
@@ -113,11 +118,11 @@ async def _generate_with_ollama(messages: list[dict[str, str]]) -> str:
             logger.info("Using Ollama cloud API with authentication")
             import httpx
             
-            # Use httpx for async HTTP requests with proper auth
-            url = f"{OLLAMA_HOST.rstrip('/')}/api/chat"
+            # Ollama cloud endpoint is https://ollama.com/api (not api.ollama.com)
+            url = "https://ollama.com/api/chat"
             headers = {
                 "Content-Type": "application/json",
-                "x-api-key": OLLAMA_API_KEY
+                "Authorization": f"Bearer {OLLAMA_API_KEY}"
             }
             data = {
                 "model": OLLAMA_MODEL,
