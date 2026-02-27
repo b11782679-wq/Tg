@@ -314,7 +314,7 @@ async def cancel_youtuber_flow(call: CallbackQuery, state: FSMContext):
     lang = await _repo.get_language(call.from_user.id)
     await state.clear()
     await call.message.edit_text(
-        t(lang, "menu.back"),
+        t(lang, "home", name=call.from_user.full_name or "Foydalanuvchi"),
         reply_markup=main_menu_kb(lang)
     )
     await call.answer()
