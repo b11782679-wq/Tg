@@ -346,55 +346,75 @@ def _is_valid_youtube_url(url: str) -> bool:
 async def _send_long_message(message: Message, text: str, lang: str):
     """Send long message split into chunks by sections."""
     MAX_LENGTH = 4000  # Leave room for formatting
-    
+
+    def _is_section_header(line: str) -> bool:
+        l = (line or "").strip()
+        if not l:
+            return False
+        if l.startswith("**") or l.startswith("##") or l.startswith("==="):
+            return True
+        if l.startswith("---"):
+            return True
+        if re.match(r"^[^\w\s]\s*\d+\.", l):
+            return True
+        return False
+
+    def _hard_split(chunk: str) -> list[str]:
+        s = (chunk or "").strip()
+        if not s:
+            return []
+        if len(s) <= MAX_LENGTH:
+            return [s]
+        out: list[str] = []
+        rest = s
+        while len(rest) > MAX_LENGTH:
+            cut = rest.rfind("\n", 0, MAX_LENGTH)
+            if cut < 100:
+                cut = rest.rfind(" ", 0, MAX_LENGTH)
+            if cut < 100:
+                cut = MAX_LENGTH
+            out.append(rest[:cut].strip())
+            rest = rest[cut:].strip()
+        if rest:
+            out.append(rest)
+        return out
+
     if len(text) <= MAX_LENGTH:
         await message.answer(text)
         return
-    
-    # Split by sections (markdown headers like ** or ##)
-    # Try to find section boundaries
-    sections = []
-    lines = text.split("\n")
+
+    sections: list[str] = []
     current_section = ""
-    
-    for line in lines:
-        # Check if this is a new section header
-        is_header = line.startswith("**") or line.startswith("##") or line.startswith("---") or line.startswith("===")
-        
-        if is_header and current_section and len(current_section) > 100:
-            # Save current section and start new one
+    for raw_line in (text or "").split("\n"):
+        line = raw_line.rstrip("\r")
+        if _is_section_header(line) and current_section.strip():
             sections.append(current_section.strip())
             current_section = line + "\n"
         else:
             current_section += line + "\n"
-    
-    if current_section:
+    if current_section.strip():
         sections.append(current_section.strip())
-    
-    # Now combine sections into chunks that fit within MAX_LENGTH
-    chunks = []
+
+    chunks: list[str] = []
     current_chunk = ""
-    
     for section in sections:
+        if not current_chunk:
+            current_chunk = section
+            continue
+
         if len(current_chunk) + len(section) + 2 > MAX_LENGTH:
-            if current_chunk:
-                chunks.append(current_chunk.strip())
+            chunks.extend(_hard_split(current_chunk))
             current_chunk = section
         else:
-            if current_chunk:
-                current_chunk += "\n\n" + section
-            else:
-                current_chunk = section
-    
+            current_chunk += "\n\n" + section
     if current_chunk:
-        chunks.append(current_chunk.strip())
-    
-    # Send each chunk
-    for i, chunk in enumerate(chunks):
-        if chunk:  # Only send non-empty chunks
-            await message.answer(chunk)
-            # Small delay to maintain order
-            await asyncio.sleep(0.1)
+        chunks.extend(_hard_split(current_chunk))
+
+    for chunk in chunks:
+        if not chunk:
+            continue
+        await message.answer(chunk)
+        await asyncio.sleep(0.1)
 
 
 async def _get_daily_usage(user_id: int) -> int:
