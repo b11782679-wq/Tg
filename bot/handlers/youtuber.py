@@ -24,6 +24,8 @@ _repo: Repo | None = None
 
 _LAST_AUDITS: dict[int, dict[str, Any]] = {}
 
+AUDIT_TOTAL_TIMEOUT_SECONDS = int(os.getenv("YOUTUBER_TOTAL_TIMEOUT", "180"))
+
 # Daily usage limit per user
 DAILY_AUDIT_LIMIT = int(os.getenv("YOUTUBER_DAILY_LIMIT", "3"))
 
@@ -151,26 +153,26 @@ async def _generate_and_send_audit(
     goal = data.get("goal", "")
     problem = data.get("problem", "")
     
-    # Show processing message
     processing_msg = await message.answer(t(lang, "youtuber.processing"))
-    
+
     try:
-        # Step 1: Fetch channel data from YouTube API
-        channel_data = await youtube.fetch_channel_data(channel_url)
-        
-        # Step 2: Generate audit with Gemini
-        audit_text = await gemini.generate_audit(
-            channel_data=channel_data,
-            user_goal=goal,
-            user_problem=problem,
-            lang=lang,
+        async def _do_work() -> tuple[dict[str, Any], str]:
+            channel_data = await youtube.fetch_channel_data(channel_url)
+            audit_text = await gemini.generate_audit(
+                channel_data=channel_data,
+                user_goal=goal,
+                user_problem=problem,
+                lang=lang,
+            )
+            return channel_data, audit_text
+
+        channel_data, audit_text = await asyncio.wait_for(
+            _do_work(),
+            timeout=float(AUDIT_TOTAL_TIMEOUT_SECONDS),
         )
-        
-        # Step 3: Record usage
+
         await _record_usage(message.from_user.id)
-        
-        # Step 4: Send audit (might be long, split if needed)
-        await processing_msg.delete()
+
         await _send_long_message(message, audit_text, lang)
 
         issues = _extract_audit_issues(audit_text)
@@ -185,53 +187,55 @@ async def _generate_and_send_audit(
                 "👇 Kamchilikni tanlang (batafsil tushuntirish uchun):",
                 reply_markup=audit_issues_kb(issues, lang),
             )
-        
-        # Show menu again
+
         await message.answer(
             t(lang, "youtuber.done"),
             reply_markup=main_menu_kb(lang)
         )
-        
+
+    except asyncio.TimeoutError:
+        await message.answer(
+            t(lang, "youtuber.timeout"),
+            reply_markup=back_only_kb(lang)
+        )
     except ChannelNotFoundError:
-        await processing_msg.delete()
         await message.answer(
             t(lang, "youtuber.channel_not_found"),
             reply_markup=back_only_kb(lang)
         )
     except QuotaExceededError:
-        await processing_msg.delete()
         await message.answer(
             t(lang, "youtuber.api_quota_exceeded"),
             reply_markup=back_only_kb(lang)
         )
     except GeminiTimeoutError:
-        await processing_msg.delete()
         await message.answer(
             t(lang, "youtuber.timeout"),
             reply_markup=back_only_kb(lang)
         )
     except GeminiError as e:
         logger.error(f"Gemini error for user {message.from_user.id}: {e}")
-        await processing_msg.delete()
         await message.answer(
             f"❌ {t(lang, 'youtuber.gemini_error')}\n\n<code>{str(e)[:200]}</code>",
             reply_markup=back_only_kb(lang)
         )
     except YouTubeError as e:
         logger.error(f"YouTube API error for user {message.from_user.id}: {e}")
-        await processing_msg.delete()
         await message.answer(
             t(lang, "youtuber.youtube_error"),
             reply_markup=back_only_kb(lang)
         )
     except Exception as e:
         logger.exception(f"Unexpected error in youtuber audit: {e}")
-        await processing_msg.delete()
         await message.answer(
             t(lang, "youtuber.generic_error"),
             reply_markup=back_only_kb(lang)
         )
     finally:
+        try:
+            await processing_msg.delete()
+        except Exception:
+            pass
         await state.clear()
 
 
