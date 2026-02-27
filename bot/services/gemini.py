@@ -96,12 +96,7 @@ async def generate_audit(
     
     # Use Ollama if configured
     if AI_PROVIDER == "ollama" and OLLAMA_AVAILABLE:
-        try:
-            return await _generate_with_ollama(messages)
-        except GeminiError:
-            # If Ollama fails, fall back to OpenRouter
-            logger.warning("Ollama failed, falling back to OpenRouter")
-            pass
+        return await _generate_with_ollama(messages)
     
     # Otherwise use OpenRouter
     return await _generate_with_openrouter(messages)
