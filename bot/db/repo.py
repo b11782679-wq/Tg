@@ -1,5 +1,6 @@
 import secrets
 import aiosqlite
+import json
 
 from bot.constants import REF_BONUS_POINTS, REF_MONEY_BONUS_UZS
 
@@ -192,6 +193,63 @@ class Repo:
             )
             await db.commit()
             return (cur.rowcount or 0) > 0
+
+    async def set_last_youtuber_audit(
+        self,
+        user_id: int,
+        channel_data: dict,
+        audit_text: str,
+        issues: list[str],
+    ) -> None:
+        async with await self._conn() as db:
+            await db.execute(
+                "INSERT INTO youtuber_audits(user_id, channel_data_json, audit_text, issues_json, updated_at) "
+                "VALUES(?,?,?,?, datetime('now')) "
+                "ON CONFLICT(user_id) DO UPDATE SET "
+                "channel_data_json=excluded.channel_data_json, "
+                "audit_text=excluded.audit_text, "
+                "issues_json=excluded.issues_json, "
+                "updated_at=datetime('now')",
+                (
+                    int(user_id),
+                    json.dumps(channel_data or {}, ensure_ascii=False),
+                    str(audit_text or ""),
+                    json.dumps(list(issues or []), ensure_ascii=False),
+                ),
+            )
+            await db.commit()
+
+    async def get_last_youtuber_audit(self, user_id: int) -> dict | None:
+        async with await self._conn() as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute(
+                "SELECT channel_data_json, audit_text, issues_json FROM youtuber_audits WHERE user_id=?",
+                (int(user_id),),
+            )
+            row = await cur.fetchone()
+            if not row:
+                return None
+
+            channel_data_json = str(row["channel_data_json"] or "")
+            audit_text = str(row["audit_text"] or "")
+            issues_json = str(row["issues_json"] or "[]")
+
+            try:
+                channel_data = json.loads(channel_data_json) if channel_data_json else {}
+            except Exception:
+                channel_data = {}
+            try:
+                issues = json.loads(issues_json) if issues_json else []
+                if not isinstance(issues, list):
+                    issues = []
+            except Exception:
+                issues = []
+
+            return {
+                "channel_data": channel_data,
+                "audit_text": audit_text,
+                "issues": [str(x) for x in issues if str(x).strip()],
+            }
 
     async def admin_update_product_account(self, product_key: str, account_id: int, login: str, password: str) -> bool:
         async with await self._conn() as db:

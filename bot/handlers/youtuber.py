@@ -183,6 +183,15 @@ async def _generate_and_send_audit(
                 "issues": issues,
                 "lang": lang,
             }
+            try:
+                await _repo.set_last_youtuber_audit(
+                    user_id=int(message.from_user.id),
+                    channel_data=channel_data,
+                    audit_text=audit_text,
+                    issues=issues,
+                )
+            except Exception:
+                pass
             await message.answer(
                 "👇 Kamchilikni tanlang (batafsil tushuntirish uchun):",
                 reply_markup=audit_issues_kb(issues, lang),
@@ -246,6 +255,19 @@ async def audit_issue_detail(call: CallbackQuery):
 
     lang = await _repo.get_language(call.from_user.id)
     payload = _LAST_AUDITS.get(int(call.from_user.id))
+    if not payload:
+        try:
+            db_payload = await _repo.get_last_youtuber_audit(int(call.from_user.id))
+        except Exception:
+            db_payload = None
+        if db_payload:
+            payload = {
+                "channel_data": db_payload.get("channel_data") or {},
+                "audit_text": db_payload.get("audit_text") or "",
+                "issues": db_payload.get("issues") or [],
+                "lang": lang,
+            }
+            _LAST_AUDITS[int(call.from_user.id)] = payload
     if not payload:
         await call.answer("Ma'lumot topilmadi. Qaytadan audit qiling.", show_alert=True)
         return

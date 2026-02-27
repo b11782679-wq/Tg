@@ -78,6 +78,14 @@ CREATE TABLE IF NOT EXISTS product_accounts (
   assigned_order_id INTEGER,
   assigned_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS youtuber_audits (
+  user_id INTEGER PRIMARY KEY,
+  channel_data_json TEXT NOT NULL DEFAULT '',
+  audit_text TEXT NOT NULL DEFAULT '',
+  issues_json TEXT NOT NULL DEFAULT '[]',
+  updated_at TEXT DEFAULT (datetime('now'))
+);
 """
 
 async def init_db(db_path: str):
