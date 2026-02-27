@@ -113,8 +113,15 @@ async def _generate_with_ollama(messages: list[dict[str, str]]) -> str:
             logger.info("Using Ollama cloud API with authentication")
             import httpx
             
-            # Ollama cloud endpoint is https://ollama.com/api (not api.ollama.com)
-            url = "https://ollama.com/api/chat"
+            # Ollama cloud base is https://ollama.com (API served under /api)
+            # Allow OLLAMA_HOST to be either:
+            # - https://ollama.com
+            # - https://ollama.com/api
+            base = (OLLAMA_HOST or "https://ollama.com").rstrip("/")
+            if base.endswith("/api"):
+                url = f"{base}/chat"
+            else:
+                url = f"{base}/api/chat"
             headers = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {OLLAMA_API_KEY}"
@@ -126,8 +133,19 @@ async def _generate_with_ollama(messages: list[dict[str, str]]) -> str:
             }
             
             async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(url, json=data, headers=headers)
-                response.raise_for_status()
+                try:
+                    response = await client.post(url, json=data, headers=headers)
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as e:
+                    # Include server response to make debugging (401/404) possible
+                    body = ""
+                    try:
+                        body = e.response.text
+                    except Exception:
+                        body = ""
+                    raise GeminiError(
+                        f"Ollama cloud HTTP {e.response.status_code} for url '{url}': {body}"
+                    ) from e
                 result = response.json()
                 
                 content = result.get('message', {}).get('content', '')
