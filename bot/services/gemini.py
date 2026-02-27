@@ -342,12 +342,15 @@ Qoidalari:
 
 📊 FORMATLASH QOIDALARI:
 - Sarlavhalar: 🔥, 🚀, 🎯, 📈, 💰, 🧠, ⚠️, ✅, ❌ emoji bilan boshlanadi
-- Muhim sonlar va faktlar: **Qalin** qiling
+- Muhim sonlar va faktlar: qalin (bold) qilmasdan, shunchaki katta harf yoki ( ) ichida ajratib yozing
 - ❌ va ✔️ belgilari xato/to'g'ri narsalarni ko'rsatadi
 - Ro'yxatlar: Raqamli (1, 2, 3) yoki bullet (-) bilan
 - Har bir bo'limda konkret raqamli maqsadlar ko'rsatiladi (CTR 8%+, 1000 subscriber, etc.)
 - Til: Professional, lekin tushunarli. "O'zingizga xos", "odamlar", "siz" kabi murojaatlar.
 - Eng oxirida: REALISTIK NATIJA bo'lishi shart (30 kun, 90 kun)
+
+TELEGRAM UCHUN MUHIM QOIDA:
+- Markdown belgilarini ishlatmang: **, __, ``` va --- (separator) bo'lmasin
 
 YouTube atamalarini o'zbek tilida:
 - Subscribers = Obunachilar
@@ -377,6 +380,7 @@ IMPORTANT RULES:
 - Write in ONE language only, do not mix languages
 - Use simple bullet points and clear sections
 - Avoid markdown tables - use plain lists instead
+- Do not use markdown formatting symbols like **, __, ``` or ---
 - Be specific with channel data provided
 - Give actionable recommendations, not generic advice
 
