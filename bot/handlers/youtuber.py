@@ -190,8 +190,8 @@ async def _generate_and_send_audit(
                     audit_text=audit_text,
                     issues=issues,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.exception(f"Failed to persist youtuber audit for user {message.from_user.id}: {e}")
             await message.answer(
                 "👇 Kamchilikni tanlang (batafsil tushuntirish uchun):",
                 reply_markup=audit_issues_kb(issues, lang),
@@ -258,8 +258,10 @@ async def audit_issue_detail(call: CallbackQuery):
     if not payload:
         try:
             db_payload = await _repo.get_last_youtuber_audit(int(call.from_user.id))
-        except Exception:
-            db_payload = None
+        except Exception as e:
+            logger.exception(f"Failed to load youtuber audit from DB for user {call.from_user.id}: {e}")
+            await call.answer(f"DB xatolik: {str(e)[:120]}", show_alert=True)
+            return
         if db_payload:
             payload = {
                 "channel_data": db_payload.get("channel_data") or {},
