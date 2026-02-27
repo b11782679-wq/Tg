@@ -190,7 +190,6 @@ async def _generate_and_send_audit(
 
         await message.answer(
             t(lang, "youtuber.done"),
-            reply_markup=main_menu_kb(lang)
         )
 
     except asyncio.TimeoutError:
