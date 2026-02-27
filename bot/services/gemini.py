@@ -26,6 +26,7 @@ OPENROUTER_SITE_NAME = os.getenv("OPENROUTER_SITE_NAME", "Telegram YouTube Bot")
 # Ollama API configuration
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:27b")
+OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "")
 
 # List of free models to try in order (fallback system) for OpenRouter
 FREE_MODELS = [
@@ -102,15 +103,32 @@ async def generate_audit(
 
 
 async def _generate_with_ollama(messages: list[dict[str, str]]) -> str:
-    """Generate audit using Ollama API."""
+    """Generate audit using Ollama API (local or cloud)."""
     try:
         # Set OLLAMA_HOST environment variable if provided
         os.environ["OLLAMA_HOST"] = OLLAMA_HOST
         
-        response = ollama.chat(
-            model=OLLAMA_MODEL,
-            messages=messages,
-        )
+        # Create client with API key if provided (for ollama.com cloud)
+        client_kwargs = {"host": OLLAMA_HOST}
+        if OLLAMA_API_KEY:
+            client_kwargs["api_key"] = OLLAMA_API_KEY
+            logger.info("Using Ollama cloud API with authentication")
+        else:
+            logger.info("Using local Ollama server")
+        
+        # Create custom client if API key provided
+        if OLLAMA_API_KEY:
+            client = ollama.Client(**client_kwargs)
+            response = client.chat(
+                model=OLLAMA_MODEL,
+                messages=messages,
+            )
+        else:
+            # Use default ollama.chat for local server
+            response = ollama.chat(
+                model=OLLAMA_MODEL,
+                messages=messages,
+            )
         
         if not response or not response.message:
             raise GeminiError("Ollama returned empty response")
