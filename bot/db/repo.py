@@ -814,10 +814,22 @@ class Repo:
             params.append(pay_type_for_query)
 
         query = f"""
-        SELECT id, user_id, product_key, plan_key, price_uzs, points_cost, pay_type, status, created_at
-        FROM product_orders
+        SELECT
+            o.id,
+            o.user_id,
+            COALESCE(u.full_name, '') AS full_name,
+            COALESCE(u.username, '') AS username,
+            o.product_key,
+            o.plan_key,
+            o.price_uzs,
+            o.points_cost,
+            o.pay_type,
+            o.status,
+            o.created_at
+        FROM product_orders o
+        LEFT JOIN users u ON u.id = o.user_id
         WHERE {where}
-        ORDER BY created_at DESC
+        ORDER BY o.created_at DESC
         LIMIT ?
         """
         params.append(limit)

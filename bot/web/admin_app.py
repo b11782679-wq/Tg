@@ -533,11 +533,22 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 if pay_type == "money"
                 else f"<td>{int(r['points_cost'] or 0)}</td>"
             )
+
+            username = str(r.get("username") or "")
+            full_name = str(r.get("full_name") or "")
+            user_cell = f"<code>{int(r['user_id'])}</code>"
+            if username:
+                u = username
+                if not u.startswith("@"):  # keep consistent display
+                    u = "@" + u
+                user_cell += f"<div class='meta'>{_escape_textarea(u)}</div>"
+            elif full_name:
+                user_cell += f"<div class='meta'>{_escape_textarea(full_name)}</div>"
             body += "".join(
                 [
                     "<tr>",
                     f"<td><code>{int(r['id'])}</code></td>",
-                    f"<td><code>{int(r['user_id'])}</code></td>",
+                    f"<td>{user_cell}</td>",
                     f"<td>{r['product_key']}</td>",
                     f"<td>{r['plan_key']}</td>",
                     price_cell,
