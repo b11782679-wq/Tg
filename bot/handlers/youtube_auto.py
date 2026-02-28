@@ -47,6 +47,7 @@ async def yt_noop(call: CallbackQuery):
 @router.callback_query(F.data == "yt:auto:menu")
 async def yt_auto_menu(call: CallbackQuery, state: FSMContext):
     await state.clear()
+    await _repo.yt_draft_clear(call.from_user.id)
     token = await _repo.yt_get_token(call.from_user.id)
     is_connected = bool(token)
     txt = "🤖 <b>Avtomatlashtirilgan YouTube</b>\n\nQuyidagilardan birini tanlang 👇"
@@ -104,6 +105,8 @@ async def yt_auto_upload_start(call: CallbackQuery, state: FSMContext):
         return
 
     await state.clear()
+    await _repo.yt_draft_clear(call.from_user.id)
+    await _repo.yt_draft_upsert(call.from_user.id, step="video")
     await state.set_state(YTAutoStates.waiting_video)
     await call.message.answer("📤 Videoni yuboring (Telegram video yoki document).")
 
@@ -135,6 +138,7 @@ async def yt_auto_got_video(message: Message, state: FSMContext):
         return
 
     await state.update_data(file_path=str(dest))
+    await _repo.yt_draft_upsert(message.from_user.id, step="title", file_path=str(dest))
     await state.set_state(YTAutoStates.waiting_title)
     await message.answer("✍️ Video sarlavhasini (Title) yozing:")
 
@@ -146,6 +150,7 @@ async def yt_auto_got_title(message: Message, state: FSMContext):
         await message.answer("❗️ Title bo‘sh bo‘lmasin.")
         return
     await state.update_data(title=title)
+    await _repo.yt_draft_upsert(message.from_user.id, step="description", title=title)
     await state.set_state(YTAutoStates.waiting_description)
     await message.answer("📝 Description (ixtiyoriy). Bo‘sh qoldirish uchun <code>-</code> yuboring:")
 
@@ -176,6 +181,7 @@ async def yt_auto_got_description(message: Message, state: FSMContext):
     if desc == "-":
         desc = ""
     await state.update_data(description=desc)
+    await _repo.yt_draft_upsert(message.from_user.id, step="visibility", description=desc)
     await message.answer("🔒 Visibility tanlang:", reply_markup=yt_visibility_kb())
 
 
@@ -186,6 +192,7 @@ async def yt_auto_set_visibility(call: CallbackQuery, state: FSMContext):
     if vis not in ("public", "unlisted", "private"):
         vis = "private"
     await state.update_data(visibility=vis)
+    await _repo.yt_draft_upsert(call.from_user.id, step="timezone", visibility=vis)
     await state.set_state(YTAutoStates.waiting_timezone)
     await call.message.answer(
         "🌍 Timezone yozing (masalan: <code>Asia/Tashkent</code>).\n"
@@ -201,6 +208,7 @@ async def yt_auto_got_timezone(message: Message, state: FSMContext):
         await message.answer("❗️ Timezone bo‘sh bo‘lmasin.")
         return
     await state.update_data(timezone=tz)
+    await _repo.yt_draft_upsert(message.from_user.id, step="schedule", timezone=tz)
     await message.answer("⏰ Qachon yuklaymiz?", reply_markup=yt_schedule_choice_kb())
 
 
@@ -213,6 +221,7 @@ async def yt_auto_schedule_now(call: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "yt:auto:sched:set")
 async def yt_auto_schedule_set(call: CallbackQuery, state: FSMContext):
     await call.answer()
+    await _repo.yt_draft_upsert(call.from_user.id, step="schedule_time")
     await state.set_state(YTAutoStates.waiting_schedule_time)
     await call.message.answer("📅 Vaqt kiriting: <code>YYYY-MM-DD HH:MM</code> (timezone bo‘yicha)")
 
@@ -233,12 +242,13 @@ async def yt_auto_got_schedule_time(message: Message, state: FSMContext):
 
 async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: str | None):
     data = await state.get_data()
+    draft = await _repo.yt_draft_get(message.from_user.id)
 
-    file_path = str(data.get("file_path") or "").strip()
-    title = str(data.get("title") or "").strip()
-    description = str(data.get("description") or "").strip()
-    visibility = str(data.get("visibility") or "private").strip()
-    timezone = str(data.get("timezone") or "").strip()
+    file_path = str((draft["file_path"] if draft else data.get("file_path")) or "").strip()
+    title = str((draft["title"] if draft else data.get("title")) or "").strip()
+    description = str((draft["description"] if draft else data.get("description")) or "").strip()
+    visibility = str((draft["visibility"] if draft else data.get("visibility")) or "private").strip()
+    timezone = str((draft["timezone"] if draft else data.get("timezone")) or "").strip()
 
     if not file_path or not os.path.exists(file_path):
         await message.answer("❌ Video topilmadi. Qaytadan yuboring.")
@@ -256,6 +266,7 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
     )
 
     await state.clear()
+    await _repo.yt_draft_clear(message.from_user.id)
 
     if scheduled_at:
         await message.answer(
@@ -288,3 +299,35 @@ async def yt_auto_pending(call: CallbackQuery):
             + "\n"
         )
     await call.message.answer(txt)
+
+
+@router.message(F.video | F.document)
+async def yt_auto_draft_video_router(message: Message, state: FSMContext):
+    draft = await _repo.yt_draft_get(message.from_user.id)
+    if not draft or str(draft["step"] or "") != "video":
+        return
+    await yt_auto_got_video(message, state)
+
+
+@router.message(F.text)
+async def yt_auto_draft_text_router(message: Message, state: FSMContext):
+    draft = await _repo.yt_draft_get(message.from_user.id)
+    if not draft:
+        return
+    step = str(draft["step"] or "")
+    if step == "title":
+        await yt_auto_got_title(message, state)
+        return
+    if step == "description":
+        await yt_auto_got_description(message, state)
+        return
+    if step == "timezone":
+        await yt_auto_got_timezone(message, state)
+        return
+    if step == "schedule_time":
+        # Ensure tz is available for legacy state.get_data() path
+        try:
+            await state.update_data(timezone=str(draft["timezone"] or ""))
+        except Exception:
+            pass
+        await yt_auto_got_schedule_time(message, state)

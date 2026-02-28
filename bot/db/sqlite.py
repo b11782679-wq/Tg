@@ -129,6 +129,19 @@ CREATE TABLE IF NOT EXISTS youtube_pending_uploads (
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS youtube_upload_drafts (
+  user_id INTEGER PRIMARY KEY,
+  step TEXT NOT NULL DEFAULT '',
+  file_path TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  visibility TEXT NOT NULL DEFAULT 'private',
+  timezone TEXT NOT NULL DEFAULT '',
+  scheduled_at TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
 """
 
 async def init_db(db_path: str):

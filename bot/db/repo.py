@@ -202,6 +202,81 @@ class Repo:
             await db.execute("DELETE FROM youtube_pending_uploads WHERE id=?", (int(upload_id),))
             await db.commit()
 
+    async def yt_draft_get(self, user_id: int):
+        async with await self._conn() as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute(
+                "SELECT user_id, step, file_path, title, description, visibility, timezone, scheduled_at, created_at, updated_at "
+                "FROM youtube_upload_drafts WHERE user_id=?",
+                (int(user_id),),
+            )
+            return await cur.fetchone()
+
+    async def yt_draft_upsert(
+        self,
+        user_id: int,
+        step: str,
+        file_path: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+        visibility: str | None = None,
+        timezone: str | None = None,
+        scheduled_at: str | None = None,
+    ) -> None:
+        async with await self._conn() as db:
+            cur = await db.execute(
+                "SELECT user_id FROM youtube_upload_drafts WHERE user_id=?",
+                (int(user_id),),
+            )
+            exists = await cur.fetchone()
+            if not exists:
+                await db.execute(
+                    "INSERT INTO youtube_upload_drafts(user_id, step, file_path, title, description, visibility, timezone, scheduled_at, created_at, updated_at) "
+                    "VALUES(?,?,?,?,?,?,?,?, datetime('now'), datetime('now'))",
+                    (
+                        int(user_id),
+                        str(step or ""),
+                        str(file_path or ""),
+                        str(title or ""),
+                        str(description or ""),
+                        str((visibility or "private") or "private"),
+                        str(timezone or ""),
+                        (str(scheduled_at) if scheduled_at else None),
+                    ),
+                )
+            else:
+                sets: list[str] = ["step=?", "updated_at=datetime('now')"]
+                vals: list = [str(step or "")]
+                if file_path is not None:
+                    sets.append("file_path=?")
+                    vals.append(str(file_path or ""))
+                if title is not None:
+                    sets.append("title=?")
+                    vals.append(str(title or ""))
+                if description is not None:
+                    sets.append("description=?")
+                    vals.append(str(description or ""))
+                if visibility is not None:
+                    sets.append("visibility=?")
+                    vals.append(str(visibility or "private"))
+                if timezone is not None:
+                    sets.append("timezone=?")
+                    vals.append(str(timezone or ""))
+                if scheduled_at is not None:
+                    sets.append("scheduled_at=?")
+                    vals.append(str(scheduled_at) if scheduled_at else None)
+                vals.append(int(user_id))
+                await db.execute(
+                    "UPDATE youtube_upload_drafts SET " + ", ".join(sets) + " WHERE user_id=?",
+                    tuple(vals),
+                )
+            await db.commit()
+
+    async def yt_draft_clear(self, user_id: int) -> None:
+        async with await self._conn() as db:
+            await db.execute("DELETE FROM youtube_upload_drafts WHERE user_id=?", (int(user_id),))
+            await db.commit()
+
     async def get_language(self, user_id: int) -> str:
         async with await self._conn() as db:
             db.row_factory = aiosqlite.Row
