@@ -738,38 +738,116 @@ async def yt_auto_got_tags(message: Message, state: FSMContext):
     tags = (message.text or "").strip()
     if tags == "-":
         tags = ""
-    # Get state data BEFORE clearing
-    data = await state.get_data()
-    last_msg_id = data.get("last_bot_message_id")
+    
+    # DEBUG: Log the message info
+    try:
+        if _cfg and (_cfg.log_channel or "").strip():
+            await message.bot.send_message(
+                _cfg.log_channel,
+                f"<b>YT DEBUG got_tags START</b>\n"
+                f"User: <code>{message.from_user.id}</code>\n"
+                f"Chat ID: <code>{message.chat.id}</code>\n"
+                f"Message ID: <code>{message.message_id}</code>\n"
+                f"Reply to: <code>{message.reply_to_message.message_id if message.reply_to_message else 'None'}</code>"
+            )
+    except Exception as e:
+        pass
+    
+    # Get state data BEFORE doing anything else
+    try:
+        data = await state.get_data()
+        last_msg_id = data.get("last_bot_message_id")
+        current_state = await state.get_state()
+        
+        # DEBUG: Log state info
+        if _cfg and (_cfg.log_channel or "").strip():
+            await message.bot.send_message(
+                _cfg.log_channel,
+                f"<b>YT DEBUG state</b>\n"
+                f"last_msg_id: <code>{last_msg_id}</code>\n"
+                f"current_state: <code>{current_state}</code>\n"
+                f"data keys: <code>{list(data.keys())}</code>"
+            )
+    except Exception as e:
+        try:
+            if _cfg and (_cfg.log_channel or "").strip():
+                await message.bot.send_message(
+                    _cfg.log_channel,
+                    f"<b>YT DEBUG state ERROR</b>\n<code>{str(e)[:200]}</code>"
+                )
+        except Exception:
+            pass
+        last_msg_id = None
+    
     # Delete user message
     try:
         await message.delete()
-    except Exception:
-        pass
+    except Exception as e:
+        try:
+            if _cfg and (_cfg.log_channel or "").strip():
+                await message.bot.send_message(
+                    _cfg.log_channel,
+                    f"<b>YT DEBUG delete failed</b>\n<code>{str(e)[:200]}</code>"
+                )
+        except Exception:
+            pass
+    
     # Save data and clear state
-    await state.update_data(tags=tags)
-    await _repo.yt_draft_upsert(message.from_user.id, step="metadata", tags=tags)
-    await state.set_state(None)
+    try:
+        await state.update_data(tags=tags)
+        await _repo.yt_draft_upsert(message.from_user.id, step="metadata", tags=tags)
+        await state.set_state(None)
+    except Exception as e:
+        try:
+            if _cfg and (_cfg.log_channel or "").strip():
+                await message.bot.send_message(
+                    _cfg.log_channel,
+                    f"<b>YT DEBUG save failed</b>\n<code>{str(e)[:200]}</code>"
+                )
+        except Exception:
+            pass
+        return
+    
     # Try to edit the previous bot message
     if last_msg_id:
         try:
-            await message.bot.edit_message_text(
+            result = await message.bot.edit_message_text(
                 chat_id=message.chat.id,
                 message_id=last_msg_id,
                 text="✅ Teglar saqlandi!\n\nBoshqa sozlamalar:",
                 reply_markup=yt_metadata_menu_kb()
             )
+            # DEBUG: Log success
+            if _cfg and (_cfg.log_channel or "").strip():
+                await message.bot.send_message(
+                    _cfg.log_channel,
+                    f"<b>YT DEBUG edit SUCCESS</b>\n"
+                    f"Message ID: <code>{last_msg_id}</code>"
+                )
             return
         except Exception as e:
-            # Log error for debugging
+            # DEBUG: Log edit error
             try:
                 if _cfg and (_cfg.log_channel or "").strip():
                     await message.bot.send_message(
                         _cfg.log_channel,
-                        f"<b>YT DEBUG edit failed</b>\nError: <code>{str(e)[:200]}</code>"
+                        f"<b>YT DEBUG edit FAILED</b>\n"
+                        f"Message ID: <code>{last_msg_id}</code>\n"
+                        f"Error: <code>{str(e)[:300]}</code>"
                     )
             except Exception:
                 pass
+    else:
+        # DEBUG: No message ID
+        try:
+            if _cfg and (_cfg.log_channel or "").strip():
+                await message.bot.send_message(
+                    _cfg.log_channel,
+                    f"<b>YT DEBUG no last_msg_id</b>"
+                )
+        except Exception:
+            pass
+    
     # Fallback: send new message
     await message.answer(
         "✅ Teglar saqlandi!\n\n"
