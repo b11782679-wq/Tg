@@ -723,6 +723,7 @@ class Repo:
         SELECT
             o.id as order_id,
             o.user_id,
+            COALESCE(u.username, '') AS username,
             o.product_key,
             o.plan_key,
             o.price_uzs,
@@ -732,6 +733,7 @@ class Repo:
             a.password as account_password,
             a.assigned_at
         FROM product_orders o
+        LEFT JOIN users u ON u.id = o.user_id
         LEFT JOIN product_accounts a ON a.assigned_order_id = o.id
         ORDER BY o.created_at DESC
         LIMIT ?

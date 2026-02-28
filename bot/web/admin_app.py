@@ -1025,10 +1025,13 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         )
 
         for r in rows:
+            uname = str(r.get("username") or "").strip()
+            if uname and not uname.startswith("@"): 
+                uname = "@" + uname
             body += (
                 "<tr>"
                 f"<td><code>{int(r['order_id'])}</code></td>"
-                f"<td><code>{int(r['user_id'])}</code></td>"
+                f"<td><code>{int(r['user_id'])}</code>" + (f"<div class='meta'>{_escape_textarea(uname)}</div>" if uname else "") + "</td>"
                 f"<td>{r['product_key']}</td>"
                 f"<td>{r['plan_key']}</td>"
                 f"<td>{_fmt_money(int(r['price_uzs']))}</td>"
