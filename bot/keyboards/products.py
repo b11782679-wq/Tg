@@ -25,7 +25,12 @@ def products_menu_kb(lang: str = "uz"):
     kb.adjust(2, 2, 2, 2, 1)
     return kb.as_markup()
 
-def product_plans_kb(product_key: str, lang: str = "uz", price_overrides: dict[str, int] | None = None):
+def product_plans_kb(
+    product_key: str,
+    lang: str = "uz",
+    price_overrides: dict[str, int] | None = None,
+    label_overrides: dict[str, str] | None = None,
+):
     kb = InlineKeyboardBuilder()
     product = PRICING[product_key]
     uzs_per_usd_env = (os.getenv("UZS_PER_USD") or "").strip()
@@ -36,6 +41,8 @@ def product_plans_kb(product_key: str, lang: str = "uz", price_overrides: dict[s
 
     for plan_key, p in product["plans"].items():
         label = str(p.get("label") or "")
+        if label_overrides and str(plan_key) in label_overrides:
+            label = str(label_overrides[str(plan_key)] or "")
         if str(plan_key) == "1m":
             label = t(lang, "plan.1m")
         if str(plan_key) == "1w":

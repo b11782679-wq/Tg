@@ -94,6 +94,14 @@ CREATE TABLE IF NOT EXISTS product_plan_prices (
   updated_at TEXT DEFAULT (datetime('now')),
   PRIMARY KEY(product_key, plan_key)
 );
+
+CREATE TABLE IF NOT EXISTS product_plan_labels (
+  product_key TEXT NOT NULL,
+  plan_key TEXT NOT NULL,
+  label TEXT NOT NULL,
+  updated_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY(product_key, plan_key)
+);
 """
 
 async def init_db(db_path: str):

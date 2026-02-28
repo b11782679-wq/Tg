@@ -73,14 +73,20 @@ def setup(repo: Repo):
         lang = await repo.get_language(call.from_user.id)
 
         price_overrides: dict[str, int] = {}
+        label_overrides: dict[str, str] = {}
         try:
             for plan_key, p in (product.get("plans") or {}).items():
                 default_price = int((p or {}).get("price_uzs") or 0)
                 val = await repo.get_plan_price_override(product_key=product_key, plan_key=str(plan_key))
                 if val is not None:
                     price_overrides[str(plan_key)] = int(val)
+
+                label_val = await repo.get_plan_label_override(product_key=product_key, plan_key=str(plan_key))
+                if label_val is not None:
+                    label_overrides[str(plan_key)] = str(label_val)
         except Exception:
             price_overrides = {}
+            label_overrides = {}
 
         if product_key == "gemine":
             text = t(lang, "products.gemine.open")
@@ -95,7 +101,15 @@ def setup(repo: Repo):
             text += f"\n{t(lang, 'products.choose_plan')}"
 
         await call.answer()
-        await call.message.edit_text(text, reply_markup=product_plans_kb(product_key, lang, price_overrides=price_overrides))
+        await call.message.edit_text(
+            text,
+            reply_markup=product_plans_kb(
+                product_key,
+                lang,
+                price_overrides=price_overrides,
+                label_overrides=label_overrides,
+            ),
+        )
 
     @router.callback_query(F.data.startswith("p:buy:"))
     async def buy_money(call: CallbackQuery):

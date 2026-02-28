@@ -299,6 +299,50 @@ class Repo:
                 )
             return out
 
+    async def admin_set_plan_label(self, product_key: str, plan_key: str, label: str) -> None:
+        async with await self._conn() as db:
+            await db.execute(
+                "INSERT INTO product_plan_labels(product_key, plan_key, label, updated_at) VALUES(?,?,?, datetime('now')) "
+                "ON CONFLICT(product_key, plan_key) DO UPDATE SET label=excluded.label, updated_at=datetime('now')",
+                (str(product_key), str(plan_key), str(label or "")),
+            )
+            await db.commit()
+
+    async def get_plan_label_override(self, product_key: str, plan_key: str) -> str | None:
+        async with await self._conn() as db:
+            cur = await db.execute(
+                "SELECT label FROM product_plan_labels WHERE product_key=? AND plan_key=?",
+                (str(product_key), str(plan_key)),
+            )
+            row = await cur.fetchone()
+            if not row:
+                return None
+            val = str(row[0] or "").strip()
+            return val or None
+
+    async def get_plan_label(self, product_key: str, plan_key: str, default_label: str) -> str:
+        val = await self.get_plan_label_override(product_key=product_key, plan_key=plan_key)
+        return val if val is not None else str(default_label or "")
+
+    async def admin_list_plan_labels(self) -> list[dict[str, object]]:
+        async with await self._conn() as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute(
+                "SELECT product_key, plan_key, label, updated_at FROM product_plan_labels ORDER BY updated_at DESC",
+            )
+            rows = await cur.fetchall()
+            out: list[dict[str, object]] = []
+            for r in rows:
+                out.append(
+                    {
+                        "product_key": str(r["product_key"] or ""),
+                        "plan_key": str(r["plan_key"] or ""),
+                        "label": str(r["label"] or ""),
+                        "updated_at": str(r["updated_at"] or ""),
+                    }
+                )
+            return out
+
     async def admin_update_product_account(self, product_key: str, account_id: int, login: str, password: str) -> bool:
         async with await self._conn() as db:
             cur = await db.execute(

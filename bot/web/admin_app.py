@@ -330,6 +330,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         from bot.services.pricing import PRICING
 
         rows = await repo.admin_list_plan_prices()
+        label_rows = await repo.admin_list_plan_labels()
         overrides: dict[str, dict[str, int]] = {}
         for r in rows:
             pk = str(r.get("product_key") or "")
@@ -337,6 +338,14 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             pv = int(r.get("price_uzs") or 0)
             if pk and pl:
                 overrides.setdefault(pk, {})[pl] = pv
+
+        label_overrides: dict[str, dict[str, str]] = {}
+        for r in label_rows:
+            pk = str(r.get("product_key") or "")
+            pl = str(r.get("plan_key") or "")
+            lv = str(r.get("label") or "")
+            if pk and pl and lv.strip():
+                label_overrides.setdefault(pk, {})[pl] = lv
 
         body = "<div class='stack'>"
         body += "<div class='meta'>Set plan prices. Leave empty to keep default price.</div>"
@@ -356,9 +365,13 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 default_price = int((p or {}).get("price_uzs") or 0)
                 cur_val = overrides.get(str(product_key), {}).get(str(plan_key))
                 show_val = "" if cur_val is None else str(int(cur_val))
+                default_label = str((p or {}).get("label") or "")
+                cur_label = label_overrides.get(str(product_key), {}).get(str(plan_key))
+                show_label = "" if cur_label is None else str(cur_label)
                 body += "<div class='field' style='min-width:220px'>"
                 body += f"<b>Plan <code>{_escape_attr(str(plan_key))}</code></b>"
                 body += f"<input class='input' name='price_{_escape_attr(str(plan_key))}' placeholder='default: {_fmt_money(default_price)}' value='{_escape_attr(show_val)}' style='width:180px'>"
+                body += f"<input class='input' name='label_{_escape_attr(str(plan_key))}' placeholder='label: {_escape_attr(default_label)}' value='{_escape_attr(show_label)}' style='width:180px;margin-top:6px'>"
                 body += "</div>"
 
             body += "<div style='align-self:flex-end'><button class='btn' type='submit'>Save</button></div>"
@@ -392,6 +405,13 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             if val <= 0:
                 continue
             await repo.admin_set_plan_price(product_key=str(product_key), plan_key=str(plan_key), price_uzs=int(val))
+
+        for plan_key in plans.keys():
+            field = f"label_{plan_key}"
+            raw = str(form.get(field) or "").strip()
+            if raw == "":
+                continue
+            await repo.admin_set_plan_label(product_key=str(product_key), plan_key=str(plan_key), label=str(raw))
 
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/prices"), status_code=303)
 
