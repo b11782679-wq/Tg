@@ -270,7 +270,7 @@ async def yt_auto_set_visibility(call: CallbackQuery, state: FSMContext):
     await state.update_data(visibility=vis)
     await _repo.yt_draft_upsert(call.from_user.id, step="timezone", visibility=vis)
     await state.set_state(YTAutoStates.waiting_timezone)
-    await call.message.answer("🌍 Timezone tanlang:", reply_markup=yt_timezone_kb())
+    await call.message.edit_text("🌍 Timezone tanlang:", reply_markup=yt_timezone_kb())
 
 
 @router.callback_query(F.data.startswith("yt:auto:tz:"))
@@ -297,7 +297,10 @@ async def yt_auto_set_timezone(call: CallbackQuery, state: FSMContext):
     try:
         z = ZoneInfo(tz)
     except Exception:
-        await call.message.answer("❌ Timezone noto‘g‘ri. Masalan: <code>Asia/Tashkent</code>")
+        await call.message.edit_text(
+            "❌ Timezone noto‘g‘ri. Masalan: <code>Asia/Tashkent</code>",
+            reply_markup=yt_timezone_kb(),
+        )
         return
 
     await state.update_data(timezone=tz)
@@ -389,7 +392,14 @@ async def yt_auto_schedule_set(call: CallbackQuery, state: FSMContext):
     await call.answer()
     await _repo.yt_draft_upsert(call.from_user.id, step="schedule_time")
     await state.set_state(YTAutoStates.waiting_schedule_time)
-    await call.message.answer("📅 Vaqt kiriting: <code>YYYY-MM-DD HH:MM</code> (timezone bo‘yicha)")
+    draft = await _repo.yt_draft_get(call.from_user.id)
+    tz = str((draft["timezone"] if draft else "") or "").strip()
+    await call.message.edit_text(
+        "📅 <b>Vaqt kiriting:</b> <code>YYYY-MM-DD HH:MM</code>\n\n"
+        + (f"🌍 Timezone: <code>{tz}</code>\n\n" if tz else "")
+        + "ℹ️ Hozir yuklash uchun: <code>-</code> yuboring",
+        reply_markup=yt_schedule_time_kb(),
+    )
 
 
 @router.callback_query(F.data.startswith("yt:auto:sched:preset:"))
@@ -405,13 +415,13 @@ async def yt_auto_schedule_preset(call: CallbackQuery, state: FSMContext):
         data = await state.get_data()
         tz = str(data.get("timezone") or "").strip()
     if not tz:
-        await call.message.answer("❗️ Avval timezone tanlang.")
+        await call.message.edit_text("❗️ Avval timezone tanlang.", reply_markup=yt_timezone_kb())
         return
 
     try:
         z = ZoneInfo(tz)
     except Exception:
-        await call.message.answer("❌ Timezone noto‘g‘ri. Qaytadan tanlang.")
+        await call.message.edit_text("❌ Timezone noto‘g‘ri. Qaytadan tanlang.", reply_markup=yt_timezone_kb())
         return
 
     now_local = datetime.datetime.now(tz=z)
@@ -430,14 +440,17 @@ async def yt_auto_schedule_preset(call: CallbackQuery, state: FSMContext):
             tzinfo=z,
         )
     else:
-        await call.message.answer("❌ Noma'lum preset.")
+        await call.message.edit_text("❌ Noma'lum preset.", reply_markup=yt_schedule_choice_kb())
         return
 
     local_str = target.strftime("%Y-%m-%d %H:%M")
     try:
         utc_dt = to_utc_sqlite_datetime(local_str, tz)
     except Exception as e:
-        await call.message.answer(f"❌ Vaqt xato: <code>{str(e)[:200]}</code>")
+        await call.message.edit_text(
+            f"❌ Vaqt xato: <code>{str(e)[:200]}</code>",
+            reply_markup=yt_schedule_choice_kb(),
+        )
         return
 
     await _finalize_upload(call.message, state, scheduled_at=utc_dt, user_id=call.from_user.id)
