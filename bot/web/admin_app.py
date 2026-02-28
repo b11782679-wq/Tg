@@ -103,6 +103,38 @@ def _layout(cfg: Config, title: str, body: str, active: str) -> str:
 def create_youtube_oauth_router(cfg: Config, repo: Repo) -> APIRouter:
     router = APIRouter()
 
+    def _parse_signed_state(st: str) -> tuple[int, str | None] | None:
+        # Supported formats:
+        # 1) user_id:ts:nonce:sig
+        # 2) user_id:ts:nonce:verifier:sig
+        try:
+            parts = (st or "").split(":")
+            if len(parts) not in (4, 5):
+                return None
+            uid = int(parts[0])
+            ts = int(parts[1])
+            nonce = parts[2]
+            if uid <= 0 or not nonce:
+                return None
+            verifier = None
+            if len(parts) == 4:
+                sig = parts[3]
+                payload = f"{uid}:{ts}:{nonce}"
+            else:
+                verifier = parts[3]
+                sig = parts[4]
+                payload = f"{uid}:{ts}:{nonce}:{verifier}"
+
+            key = (cfg.youtube_oauth_client_secret or cfg.bot_token or "").encode("utf-8")
+            exp_sig = hmac.new(key, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:20]
+            if not secrets.compare_digest(exp_sig, sig):
+                return None
+            if int(time.time()) - ts > 30 * 60:
+                return None
+            return uid, verifier
+        except Exception:
+            return None
+
     def _yt_oauth_enabled() -> bool:
         return bool(
             (cfg.youtube_oauth_client_id or "").strip()
@@ -137,6 +169,13 @@ def create_youtube_oauth_router(cfg: Config, repo: Repo) -> APIRouter:
             raise HTTPException(status_code=400, detail="Missing state")
 
         flow = _yt_flow(state=st)
+
+        parsed = _parse_signed_state(st)
+        if parsed and parsed[1]:
+            try:
+                flow.code_verifier = str(parsed[1])
+            except Exception:
+                pass
         auth_url, _ = flow.authorization_url(
             access_type="offline",
             include_granted_scopes="true",
@@ -162,24 +201,11 @@ def create_youtube_oauth_router(cfg: Config, repo: Repo) -> APIRouter:
             raise HTTPException(status_code=400, detail="Missing state/code")
 
         user_id = await repo.yt_oauth_consume_state(st)
-        if not user_id:
-            # Fallback: signed state format: user_id:ts:nonce:sig
-            try:
-                parts = st.split(":")
-                if len(parts) == 4:
-                    uid_s, ts_s, nonce, sig = parts
-                    uid = int(uid_s)
-                    ts = int(ts_s)
-                    if uid > 0 and nonce:
-                        payload = f"{uid}:{ts}:{nonce}"
-                        key = (cfg.youtube_oauth_client_secret or cfg.bot_token or "").encode("utf-8")
-                        exp_sig = hmac.new(key, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:20]
-                        if secrets.compare_digest(exp_sig, sig):
-                            # 30 minutes max
-                            if int(time.time()) - ts <= 30 * 60:
-                                user_id = uid
-            except Exception:
-                user_id = None
+
+        parsed = _parse_signed_state(st)
+        verifier = parsed[1] if parsed else None
+        if not user_id and parsed:
+            user_id = parsed[0]
 
         if not user_id:
             body = (
@@ -194,6 +220,11 @@ def create_youtube_oauth_router(cfg: Config, repo: Repo) -> APIRouter:
             raise HTTPException(status_code=500, detail="YouTube OAuth is not configured")
 
         flow = _yt_flow(state=st)
+        if verifier:
+            try:
+                flow.code_verifier = str(verifier)
+            except Exception:
+                pass
         try:
             await asyncio.to_thread(flow.fetch_token, code=code)
         except Exception as e:

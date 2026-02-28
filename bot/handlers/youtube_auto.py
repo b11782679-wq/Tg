@@ -17,6 +17,8 @@ from bot.db.repo import Repo
 from bot.keyboards.youtube_auto import yt_auto_menu_kb, yt_visibility_kb, yt_schedule_choice_kb
 from bot.services.youtube_uploader import to_utc_sqlite_datetime
 
+from google_auth_oauthlib.flow import Flow
+
 
 router = Router()
 _repo: Repo | None = None
@@ -60,13 +62,16 @@ async def yt_auto_connect(call: CallbackQuery):
         await call.message.answer("❌ YouTube OAuth sozlanmagan.")
         return
 
+    # PKCE: embed code_verifier into signed state so callback can redeem code.
     nonce = secrets.token_urlsafe(8).replace("-", "").replace("_", "")
     ts = int(time.time())
-    payload = f"{int(call.from_user.id)}:{ts}:{nonce}"
+    verifier = secrets.token_urlsafe(48).replace("-", "").replace("_", "")
+    payload = f"{int(call.from_user.id)}:{ts}:{nonce}:{verifier}"
     key = (_cfg.youtube_oauth_client_secret or _cfg.bot_token or "").encode("utf-8")
     sig = hmac.new(key, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:20]
     state = f"{payload}:{sig}"
 
+    # Keep DB state for backward compat/observability (but flow can work without it).
     await _repo.yt_oauth_create_state(call.from_user.id, state)
 
     base = (_cfg.admin_public_url or "").strip().rstrip("/")
