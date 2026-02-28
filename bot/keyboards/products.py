@@ -41,12 +41,12 @@ def product_plans_kb(
 
     for plan_key, p in product["plans"].items():
         label = str(p.get("label") or "")
-        if label_overrides and str(plan_key) in label_overrides:
-            label = str(label_overrides[str(plan_key)] or "")
         if str(plan_key) == "1m":
             label = t(lang, "plan.1m")
         if str(plan_key) == "1w":
             label = t(lang, "plan.1w")
+        if label_overrides and str(plan_key) in label_overrides:
+            label = str(label_overrides[str(plan_key)] or "")
         price_uzs = int(p["price_uzs"])
         if price_overrides and str(plan_key) in price_overrides:
             try:
