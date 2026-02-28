@@ -738,14 +738,21 @@ async def yt_auto_got_tags(message: Message, state: FSMContext):
     tags = (message.text or "").strip()
     if tags == "-":
         tags = ""
+    # Get state data BEFORE clearing
+    data = await state.get_data()
+    last_msg_id = data.get("last_bot_message_id")
+    # Delete user message
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    # Save data and clear state
     await state.update_data(tags=tags)
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", tags=tags)
     await state.set_state(None)
     # Try to edit the previous bot message
-    try:
-        data = await state.get_data()
-        last_msg_id = data.get("last_bot_message_id")
-        if last_msg_id:
+    if last_msg_id:
+        try:
             await message.bot.edit_message_text(
                 chat_id=message.chat.id,
                 message_id=last_msg_id,
@@ -753,8 +760,17 @@ async def yt_auto_got_tags(message: Message, state: FSMContext):
                 reply_markup=yt_metadata_menu_kb()
             )
             return
-    except Exception:
-        pass
+        except Exception as e:
+            # Log error for debugging
+            try:
+                if _cfg and (_cfg.log_channel or "").strip():
+                    await message.bot.send_message(
+                        _cfg.log_channel,
+                        f"<b>YT DEBUG edit failed</b>\nError: <code>{str(e)[:200]}</code>"
+                    )
+            except Exception:
+                pass
+    # Fallback: send new message
     await message.answer(
         "✅ Teglar saqlandi!\n\n"
         "Boshqa sozlamalar:",
@@ -808,14 +824,21 @@ async def yt_auto_got_language(message: Message, state: FSMContext):
     language = (message.text or "").strip()
     if language == "-":
         language = ""
+    # Get state data BEFORE clearing
+    data = await state.get_data()
+    last_msg_id = data.get("last_bot_message_id")
+    # Delete user message
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    # Save data and clear state
     await state.update_data(language=language)
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", language=language)
     await state.set_state(None)
     # Try to edit the previous bot message
-    try:
-        data = await state.get_data()
-        last_msg_id = data.get("last_bot_message_id")
-        if last_msg_id:
+    if last_msg_id:
+        try:
             await message.bot.edit_message_text(
                 chat_id=message.chat.id,
                 message_id=last_msg_id,
@@ -823,8 +846,8 @@ async def yt_auto_got_language(message: Message, state: FSMContext):
                 reply_markup=yt_metadata_menu_kb()
             )
             return
-    except Exception:
-        pass
+        except Exception:
+            pass
     await message.answer(
         "✅ Til saqlandi!\n\n"
         "Boshqa sozlamalar:",
@@ -853,14 +876,21 @@ async def yt_auto_got_recording_date(message: Message, state: FSMContext):
     recording_date = (message.text or "").strip()
     if recording_date == "-":
         recording_date = ""
+    # Get state data BEFORE clearing
+    data = await state.get_data()
+    last_msg_id = data.get("last_bot_message_id")
+    # Delete user message
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    # Save data and clear state
     await state.update_data(recording_date=recording_date)
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", recording_date=recording_date if recording_date else None)
     await state.set_state(None)
     # Try to edit the previous bot message
-    try:
-        data = await state.get_data()
-        last_msg_id = data.get("last_bot_message_id")
-        if last_msg_id:
+    if last_msg_id:
+        try:
             await message.bot.edit_message_text(
                 chat_id=message.chat.id,
                 message_id=last_msg_id,
@@ -868,8 +898,8 @@ async def yt_auto_got_recording_date(message: Message, state: FSMContext):
                 reply_markup=yt_metadata_menu_kb()
             )
             return
-    except Exception:
-        pass
+        except Exception:
+            pass
     await message.answer(
         "✅ Sana saqlandi!\n\n"
         "Boshqa sozlamalar:",
@@ -898,14 +928,21 @@ async def yt_auto_got_video_location(message: Message, state: FSMContext):
     video_location = (message.text or "").strip()
     if video_location == "-":
         video_location = ""
+    # Get state data BEFORE clearing
+    data = await state.get_data()
+    last_msg_id = data.get("last_bot_message_id")
+    # Delete user message
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    # Save data and clear state
     await state.update_data(video_location=video_location)
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", video_location=video_location)
     await state.set_state(None)
     # Try to edit the previous bot message
-    try:
-        data = await state.get_data()
-        last_msg_id = data.get("last_bot_message_id")
-        if last_msg_id:
+    if last_msg_id:
+        try:
             await message.bot.edit_message_text(
                 chat_id=message.chat.id,
                 message_id=last_msg_id,
@@ -913,8 +950,8 @@ async def yt_auto_got_video_location(message: Message, state: FSMContext):
                 reply_markup=yt_metadata_menu_kb()
             )
             return
-    except Exception:
-        pass
+        except Exception:
+            pass
     await message.answer(
         "✅ Joylashuv saqlandi!\n\n"
         "Boshqa sozlamalar:",
