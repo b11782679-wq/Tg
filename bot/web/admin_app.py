@@ -57,6 +57,10 @@ def _layout(cfg: Config, title: str, body: str, active: str) -> str:
         + _nav_item("Buyers", "/admin/buyers", "buyers")
         + _nav_item("Topups", "/admin/topups", "topups")
         + _nav_item("Purchases", "/admin/purchases", "purchases")
+        + _nav_item("Referrals", "/admin/referrals", "referrals")
+        + _nav_item("Broadcast", "/admin/broadcast", "broadcast")
+        + _nav_item("Canva Pro Link", "/admin/canva_pro_link", "canva_pro_link")
+        + _nav_item("Health", "/admin/health", "health")
         + "</nav>"
     )
 
