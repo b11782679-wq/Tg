@@ -166,10 +166,11 @@ class Repo:
             db.row_factory = aiosqlite.Row
             # scheduled_at NULL => upload now
             cur = await db.execute(
-                "SELECT id, user_id, file_path, title, description, visibility, timezone, scheduled_at "
-                "FROM youtube_pending_uploads "
-                "WHERE status='pending' AND (scheduled_at IS NULL OR scheduled_at <= datetime('now')) "
-                "ORDER BY id ASC LIMIT ?",
+                "SELECT p.id, p.user_id, p.file_path, p.title, p.description, p.visibility, p.timezone, p.scheduled_at "
+                "FROM youtube_pending_uploads p "
+                "JOIN youtube_oauth_tokens t ON t.user_id = p.user_id "
+                "WHERE p.status='pending' AND (p.scheduled_at IS NULL OR p.scheduled_at <= datetime('now')) "
+                "ORDER BY p.id ASC LIMIT ?",
                 (int(limit),),
             )
             rows = await cur.fetchall()
