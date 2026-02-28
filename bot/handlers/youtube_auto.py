@@ -381,6 +381,18 @@ async def yt_auto_got_schedule_time(message: Message, state: FSMContext):
 
 
 async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: str | None):
+    uid = int(message.from_user.id) if message.from_user else 0
+    
+    # Debug: log entry
+    try:
+        if _cfg and (_cfg.log_channel or "").strip():
+            await message.bot.send_message(
+                _cfg.log_channel,
+                f"<b>YT DEBUG _finalize_upload ENTRY</b>\nUser: <code>{uid}</code>",
+            )
+    except Exception:
+        pass
+    
     # Final safety check - prevent bot users from creating uploads
     user = getattr(message, "from_user", None)
     if user and getattr(user, "is_bot", False):
@@ -397,6 +409,18 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
     
     data = await state.get_data()
     draft = await _repo.yt_draft_get(message.from_user.id)
+    
+    # Debug: log state and draft
+    try:
+        if _cfg and (_cfg.log_channel or "").strip():
+            has_file = bool(data.get("file_path"))
+            has_draft = bool(draft)
+            await message.bot.send_message(
+                _cfg.log_channel,
+                f"<b>YT DEBUG state/draft</b>\nUser: <code>{uid}</code>\nState file_path: {has_file}\nDraft exists: {has_draft}",
+            )
+    except Exception:
+        pass
     
     # If draft missing but we have state data, try to recover
     if not draft and data.get("file_path"):
@@ -417,11 +441,32 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
     visibility = str((draft["visibility"] if draft else data.get("visibility")) or "private").strip()
     timezone = str((draft["timezone"] if draft else data.get("timezone")) or "").strip()
     
+    # Debug: log file check
+    fp_exists = os.path.exists(file_path) if file_path else False
+    try:
+        if _cfg and (_cfg.log_channel or "").strip():
+            await message.bot.send_message(
+                _cfg.log_channel,
+                f"<b>YT DEBUG file check</b>\nUser: <code>{uid}</code>\nPath: <code>{file_path[:50] if file_path else 'NONE'}...</code>\nExists: {fp_exists}",
+            )
+    except Exception:
+        pass
+    
     if not file_path or not os.path.exists(file_path):
         await message.answer("❌ Video topilmadi. Qaytadan yuboring.")
         await state.clear()
         await _repo.yt_draft_clear(message.from_user.id)
         return
+
+    # Debug: before creating upload
+    try:
+        if _cfg and (_cfg.log_channel or "").strip():
+            await message.bot.send_message(
+                _cfg.log_channel,
+                f"<b>YT DEBUG creating upload</b>\nUser: <code>{uid}</code>\nTitle: {title[:30] if title else 'NONE'}",
+            )
+    except Exception:
+        pass
 
     upload_id = await _repo.yt_create_pending_upload(
         user_id=message.from_user.id,
