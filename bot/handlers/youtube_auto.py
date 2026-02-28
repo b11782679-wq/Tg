@@ -371,29 +371,21 @@ async def yt_auto_got_schedule_time(message: Message, state: FSMContext):
 
 
 async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: str | None):
-    # Debug logging
-    try:
-        if _cfg and (_cfg.log_channel or "").strip():
-            await message.bot.send_message(
-                _cfg.log_channel,
-                f"<b>YT DEBUG _finalize_upload START</b>\nUser: <code>{int(message.from_user.id)}</code>",
-            )
-    except Exception:
-        pass
-    
-    if await _deny_bot_user(message):
-        try:
-            if _cfg and (_cfg.log_channel or "").strip():
-                await message.bot.send_message(
-                    _cfg.log_channel,
-                    f"<b>YT DEBUG BLOCKED by _deny_bot_user</b>\nUser: <code>{int(message.from_user.id)}</code>",
-                )
-        except Exception:
-            pass
-        return
-    
     data = await state.get_data()
     draft = await _repo.yt_draft_get(message.from_user.id)
+    
+    # If draft missing but we have state data, try to recover
+    if not draft and data.get("file_path"):
+        await _repo.yt_draft_upsert(
+            message.from_user.id,
+            step="schedule",
+            file_path=data.get("file_path"),
+            title=data.get("title"),
+            description=data.get("description"),
+            visibility=data.get("visibility"),
+            timezone=data.get("timezone"),
+        )
+        draft = await _repo.yt_draft_get(message.from_user.id)
     
     file_path = str((draft["file_path"] if draft else data.get("file_path")) or "").strip()
     title = str((draft["title"] if draft else data.get("title")) or "").strip()
@@ -401,24 +393,10 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
     visibility = str((draft["visibility"] if draft else data.get("visibility")) or "private").strip()
     timezone = str((draft["timezone"] if draft else data.get("timezone")) or "").strip()
     
-    # Debug file_path
-    try:
-        if _cfg and (_cfg.log_channel or "").strip():
-            fp_exists = os.path.exists(file_path) if file_path else False
-            await message.bot.send_message(
-                _cfg.log_channel,
-                f"<b>YT DEBUG file_path</b>\n"
-                f"User: <code>{int(message.from_user.id)}</code>\n"
-                f"Path: <code>{file_path}</code>\n"
-                f"Exists: <code>{fp_exists}</code>\n"
-                f"Draft step: <code>{str(draft['step'] if draft else 'NO DRAFT')}</code>",
-            )
-    except Exception:
-        pass
-    
     if not file_path or not os.path.exists(file_path):
         await message.answer("❌ Video topilmadi. Qaytadan yuboring.")
         await state.clear()
+        await _repo.yt_draft_clear(message.from_user.id)
         return
 
     upload_id = await _repo.yt_create_pending_upload(
