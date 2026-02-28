@@ -74,7 +74,7 @@ def yt_timezone_kb() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="✍️ Qo‘lda yozish", callback_data="yt:auto:tz:manual"),
             ],
             [
-                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:menu"),
+                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:vis:back"),
             ],
         ]
     )

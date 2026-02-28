@@ -249,6 +249,15 @@ async def yt_auto_got_description(message: Message, state: FSMContext):
     await message.answer("🔒 Visibility tanlang:", reply_markup=yt_visibility_kb())
 
 
+@router.callback_query(F.data == "yt:auto:vis:back")
+async def yt_auto_back_to_visibility(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await _repo.yt_draft_upsert(call.from_user.id, step="visibility")
+    await call.message.edit_text("🔒 Visibility tanlang:", reply_markup=yt_visibility_kb())
+
+
 @router.callback_query(F.data.startswith("yt:auto:vis:"))
 async def yt_auto_set_visibility(call: CallbackQuery, state: FSMContext):
     if await _deny_bot_user(call):
