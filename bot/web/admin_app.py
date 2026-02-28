@@ -534,8 +534,14 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 else f"<td>{int(r['points_cost'] or 0)}</td>"
             )
 
-            username = str(r.get("username") or "")
-            full_name = str(r.get("full_name") or "")
+            try:
+                username = str(r["username"] or "")
+            except Exception:
+                username = ""
+            try:
+                full_name = str(r["full_name"] or "")
+            except Exception:
+                full_name = ""
             user_cell = f"<code>{int(r['user_id'])}</code>"
             if username:
                 u = username
