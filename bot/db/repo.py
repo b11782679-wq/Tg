@@ -131,11 +131,26 @@ class Repo:
         visibility: str,
         timezone: str,
         scheduled_at: str | None,
+        made_for_kids: int = 0,
+        tags: str = "",
+        category: str = "",
+        language: str = "",
+        recording_date: str | None = None,
+        video_location: str = "",
+        licence: str = "Standard YouTube licence",
+        allow_embedding: int = 1,
+        shorts_remixing: str = "allow_video_audio",
+        comments: str = "on",
+        age_restricted: int = 0,
+        paid_promotion: int = 0,
+        altered_content: int = 0,
     ) -> int:
         async with await self._conn() as db:
             cur = await db.execute(
-                "INSERT INTO youtube_pending_uploads(user_id, file_path, title, description, visibility, timezone, scheduled_at, status, error, created_at, updated_at) "
-                "VALUES(?,?,?,?,?,?,?, 'pending', '', datetime('now'), datetime('now'))",
+                "INSERT INTO youtube_pending_uploads(user_id, file_path, title, description, visibility, timezone, scheduled_at, status, error, created_at, updated_at, "
+                "made_for_kids, tags, category, language, recording_date, video_location, licence, allow_embedding, shorts_remixing, comments, age_restricted, paid_promotion, altered_content) "
+                "VALUES(?,?,?,?,?,?,?, 'pending', '', datetime('now'), datetime('now'), "
+                "?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     int(user_id),
                     str(file_path),
@@ -144,6 +159,19 @@ class Repo:
                     str(visibility or "private"),
                     str(timezone or ""),
                     (str(scheduled_at) if scheduled_at else None),
+                    int(made_for_kids),
+                    str(tags or ""),
+                    str(category or ""),
+                    str(language or ""),
+                    (str(recording_date) if recording_date else None),
+                    str(video_location or ""),
+                    str(licence or "Standard YouTube licence"),
+                    int(allow_embedding),
+                    str(shorts_remixing or "allow_video_audio"),
+                    str(comments or "on"),
+                    int(age_restricted),
+                    int(paid_promotion),
+                    int(altered_content),
                 ),
             )
             await db.commit()
@@ -154,7 +182,8 @@ class Repo:
         async with await self._conn() as db:
             db.row_factory = aiosqlite.Row
             cur = await db.execute(
-                "SELECT id, user_id, file_path, title, description, visibility, timezone, scheduled_at, status, error, created_at, updated_at "
+                "SELECT id, user_id, file_path, title, description, visibility, timezone, scheduled_at, status, error, created_at, updated_at, "
+                "made_for_kids, tags, category, language, recording_date, video_location, licence, allow_embedding, shorts_remixing, comments, age_restricted, paid_promotion, altered_content "
                 "FROM youtube_pending_uploads WHERE user_id=? ORDER BY id DESC LIMIT ?",
                 (int(user_id), int(limit)),
             )
@@ -166,7 +195,9 @@ class Repo:
             db.row_factory = aiosqlite.Row
             # scheduled_at NULL => upload now
             cur = await db.execute(
-                "SELECT p.id, p.user_id, p.file_path, p.title, p.description, p.visibility, p.timezone, p.scheduled_at "
+                "SELECT p.id, p.user_id, p.file_path, p.title, p.description, p.visibility, p.timezone, p.scheduled_at, "
+                "p.made_for_kids, p.tags, p.category, p.language, p.recording_date, p.video_location, p.licence, "
+                "p.allow_embedding, p.shorts_remixing, p.comments, p.age_restricted, p.paid_promotion, p.altered_content "
                 "FROM youtube_pending_uploads p "
                 "JOIN youtube_oauth_tokens t ON t.user_id = p.user_id "
                 "WHERE p.status='pending' AND (p.scheduled_at IS NULL OR p.scheduled_at <= datetime('now')) "
@@ -249,7 +280,8 @@ class Repo:
         async with await self._conn() as db:
             db.row_factory = aiosqlite.Row
             cur = await db.execute(
-                "SELECT user_id, step, file_path, title, description, visibility, timezone, scheduled_at, created_at, updated_at "
+                "SELECT user_id, step, file_path, title, description, visibility, timezone, scheduled_at, created_at, updated_at, "
+                "made_for_kids, tags, category, language, recording_date, video_location, licence, allow_embedding, shorts_remixing, comments, age_restricted, paid_promotion, altered_content "
                 "FROM youtube_upload_drafts WHERE user_id=?",
                 (int(user_id),),
             )
@@ -265,6 +297,19 @@ class Repo:
         visibility: str | None = None,
         timezone: str | None = None,
         scheduled_at: str | None = None,
+        made_for_kids: int | None = None,
+        tags: str | None = None,
+        category: str | None = None,
+        language: str | None = None,
+        recording_date: str | None = None,
+        video_location: str | None = None,
+        licence: str | None = None,
+        allow_embedding: int | None = None,
+        shorts_remixing: str | None = None,
+        comments: str | None = None,
+        age_restricted: int | None = None,
+        paid_promotion: int | None = None,
+        altered_content: int | None = None,
     ) -> None:
         async with await self._conn() as db:
             cur = await db.execute(
@@ -274,8 +319,10 @@ class Repo:
             exists = await cur.fetchone()
             if not exists:
                 await db.execute(
-                    "INSERT INTO youtube_upload_drafts(user_id, step, file_path, title, description, visibility, timezone, scheduled_at, created_at, updated_at) "
-                    "VALUES(?,?,?,?,?,?,?,?, datetime('now'), datetime('now'))",
+                    "INSERT INTO youtube_upload_drafts(user_id, step, file_path, title, description, visibility, timezone, scheduled_at, created_at, updated_at, "
+                    "made_for_kids, tags, category, language, recording_date, video_location, licence, allow_embedding, shorts_remixing, comments, age_restricted, paid_promotion, altered_content) "
+                    "VALUES(?,?,?,?,?,?,?,?, datetime('now'), datetime('now'), "
+                    "?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         int(user_id),
                         str(step or ""),
@@ -285,6 +332,19 @@ class Repo:
                         str((visibility or "private") or "private"),
                         str(timezone or ""),
                         (str(scheduled_at) if scheduled_at else None),
+                        int(made_for_kids) if made_for_kids is not None else 0,
+                        str(tags or ""),
+                        str(category or ""),
+                        str(language or ""),
+                        (str(recording_date) if recording_date else None),
+                        str(video_location or ""),
+                        str(licence or "Standard YouTube licence"),
+                        int(allow_embedding) if allow_embedding is not None else 1,
+                        str(shorts_remixing or "allow_video_audio"),
+                        str(comments or "on"),
+                        int(age_restricted) if age_restricted is not None else 0,
+                        int(paid_promotion) if paid_promotion is not None else 0,
+                        int(altered_content) if altered_content is not None else 0,
                     ),
                 )
             else:
@@ -308,6 +368,45 @@ class Repo:
                 if scheduled_at is not None:
                     sets.append("scheduled_at=?")
                     vals.append(str(scheduled_at) if scheduled_at else None)
+                if made_for_kids is not None:
+                    sets.append("made_for_kids=?")
+                    vals.append(int(made_for_kids))
+                if tags is not None:
+                    sets.append("tags=?")
+                    vals.append(str(tags or ""))
+                if category is not None:
+                    sets.append("category=?")
+                    vals.append(str(category or ""))
+                if language is not None:
+                    sets.append("language=?")
+                    vals.append(str(language or ""))
+                if recording_date is not None:
+                    sets.append("recording_date=?")
+                    vals.append(str(recording_date) if recording_date else None)
+                if video_location is not None:
+                    sets.append("video_location=?")
+                    vals.append(str(video_location or ""))
+                if licence is not None:
+                    sets.append("licence=?")
+                    vals.append(str(licence or "Standard YouTube licence"))
+                if allow_embedding is not None:
+                    sets.append("allow_embedding=?")
+                    vals.append(int(allow_embedding))
+                if shorts_remixing is not None:
+                    sets.append("shorts_remixing=?")
+                    vals.append(str(shorts_remixing or "allow_video_audio"))
+                if comments is not None:
+                    sets.append("comments=?")
+                    vals.append(str(comments or "on"))
+                if age_restricted is not None:
+                    sets.append("age_restricted=?")
+                    vals.append(int(age_restricted))
+                if paid_promotion is not None:
+                    sets.append("paid_promotion=?")
+                    vals.append(int(paid_promotion))
+                if altered_content is not None:
+                    sets.append("altered_content=?")
+                    vals.append(int(altered_content))
                 vals.append(int(user_id))
                 await db.execute(
                     "UPDATE youtube_upload_drafts SET " + ", ".join(sets) + " WHERE user_id=?",

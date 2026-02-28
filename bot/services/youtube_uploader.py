@@ -79,6 +79,19 @@ def upload_video(
     description: str,
     visibility: str,
     scheduled_at_utc: str | None,
+    made_for_kids: int = 0,
+    tags: str = "",
+    category: str = "",
+    language: str = "",
+    recording_date: str | None = None,
+    video_location: str = "",
+    licence: str = "Standard YouTube licence",
+    allow_embedding: int = 1,
+    shorts_remixing: str = "allow_video_audio",
+    comments: str = "on",
+    age_restricted: int = 0,
+    paid_promotion: int = 0,
+    altered_content: int = 0,
 ) -> tuple[str, str]:
     """Upload video. Returns (video_id, new_token_json)."""
     creds = load_credentials(token_json)
@@ -93,12 +106,95 @@ def upload_video(
         status["privacyStatus"] = "private"
         status["publishAt"] = to_rfc3339_utc(scheduled_at_utc)
 
+    # Made for Kids
+    status["madeForKids"] = bool(made_for_kids)
+    
+    # Age restriction (advanced)
+    if age_restricted:
+        status["contentRating"] = {"ytRating": "ytAgeRestricted"}
+    
+    # Paid promotion
+    if paid_promotion:
+        status["paidProductPlacementDetails"] = {"hasPaidProductPlacement": True}
+    
+    # Comments settings
+    comments_lower = (comments or "on").lower()
+    if comments_lower == "off":
+        status["commentModerationStatus"] = "commentsDisabled"
+    elif comments_lower == "moderated":
+        status["commentModerationStatus"] = "heldForReview"
+    else:
+        status["commentModerationStatus"] = "allowAllComments"
+    
+    # Allow embedding
+    status["embeddable"] = bool(allow_embedding)
+    
+    # Shorts remixing
+    if shorts_remixing == "allow_video_audio":
+        status["shortsRemixStatus"] = "allowVideoAndAudioRemixing"
+    elif shorts_remixing == "allow_audio_only":
+        status["shortsRemixStatus"] = "allowAudioRemixing"
+    else:
+        status["shortsRemixStatus"] = "disallowed"
+
+    snippet: dict[str, object] = {
+        "title": str(title or "")[:95],
+        "description": str(description or "")[:5000],
+    }
+    
+    # Category mapping
+    category_map = {
+        "film_animation": "1",
+        "autos_vehicles": "2",
+        "music": "10",
+        "pets_animals": "15",
+        "sports": "17",
+        "short_movies": "18",
+        "travel_events": "19",
+        "gaming": "20",
+        "videoblogging": "21",
+        "people_blogs": "22",
+        "comedy": "23",
+        "entertainment": "24",
+        "news_politics": "25",
+        "howto_style": "26",
+        "education": "27",
+        "science_tech": "28",
+        "nonprofits_activism": "29",
+    }
+    cat_id = category_map.get((category or "").lower(), "22")
+    snippet["categoryId"] = cat_id
+    
+    # Tags (max 500 characters total, max 500 tags)
+    if tags:
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()][:500]
+        snippet["tags"] = tag_list
+    
+    # Language
+    if language:
+        snippet["defaultLanguage"] = language
+        snippet["defaultAudioLanguage"] = language
+    
+    # Recording date
+    if recording_date:
+        snippet["recordingDate"] = recording_date
+    
+    # Video location
+    if video_location:
+        snippet["locationDescription"] = video_location
+    
+    # Licence
+    if licence.lower() == "creative commons":
+        status["license"] = "creativeCommon"
+    else:
+        status["license"] = "youtube"
+    
+    # Altered content disclosure
+    if altered_content:
+        snippet["mediaRecordingDetails"] = {"isContentAltered": True}
+
     body = {
-        "snippet": {
-            "title": str(title or "")[:95],
-            "description": str(description or "")[:5000],
-            "categoryId": "22",
-        },
+        "snippet": snippet,
         "status": status,
     }
 

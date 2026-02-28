@@ -483,6 +483,21 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
     visibility = str((draft["visibility"] if draft else data.get("visibility")) or "private").strip()
     timezone = str((draft["timezone"] if draft else data.get("timezone")) or "").strip()
     
+    # Extract metadata fields from draft or state
+    made_for_kids = int((draft["made_for_kids"] if draft else data.get("made_for_kids")) or 0)
+    tags = str((draft["tags"] if draft else data.get("tags")) or "").strip()
+    category = str((draft["category"] if draft else data.get("category")) or "").strip()
+    language = str((draft["language"] if draft else data.get("language")) or "").strip()
+    recording_date = str((draft["recording_date"] if draft else data.get("recording_date")) or "").strip() or None
+    video_location = str((draft["video_location"] if draft else data.get("video_location")) or "").strip()
+    licence = str((draft["licence"] if draft else data.get("licence")) or "Standard YouTube licence").strip()
+    allow_embedding = int((draft["allow_embedding"] if draft else data.get("allow_embedding")) or 1)
+    shorts_remixing = str((draft["shorts_remixing"] if draft else data.get("shorts_remixing")) or "allow_video_audio").strip()
+    comments = str((draft["comments"] if draft else data.get("comments")) or "on").strip()
+    age_restricted = int((draft["age_restricted"] if draft else data.get("age_restricted")) or 0)
+    paid_promotion = int((draft["paid_promotion"] if draft else data.get("paid_promotion")) or 0)
+    altered_content = int((draft["altered_content"] if draft else data.get("altered_content")) or 0)
+    
     # Debug: log file check
     fp_exists = os.path.exists(file_path) if file_path else False
     try:
@@ -518,6 +533,19 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
         visibility=visibility,
         timezone=timezone,
         scheduled_at=scheduled_at,
+        made_for_kids=made_for_kids,
+        tags=tags,
+        category=category,
+        language=language,
+        recording_date=recording_date,
+        video_location=video_location,
+        licence=licence,
+        allow_embedding=allow_embedding,
+        shorts_remixing=shorts_remixing,
+        comments=comments,
+        age_restricted=age_restricted,
+        paid_promotion=paid_promotion,
+        altered_content=altered_content,
     )
 
     try:

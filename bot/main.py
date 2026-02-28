@@ -203,6 +203,20 @@ async def start():
                     description = str(r["description"] or "")
                     visibility = str(r["visibility"] or "private")
                     scheduled_at = str(r["scheduled_at"] or "").strip() or None
+                    # Extract metadata fields
+                    made_for_kids = int(r["made_for_kids"] or 0)
+                    tags = str(r["tags"] or "")
+                    category = str(r["category"] or "")
+                    language = str(r["language"] or "")
+                    recording_date = str(r["recording_date"] or "").strip() or None
+                    video_location = str(r["video_location"] or "")
+                    licence = str(r["licence"] or "Standard YouTube licence")
+                    allow_embedding = int(r["allow_embedding"] or 1)
+                    shorts_remixing = str(r["shorts_remixing"] or "allow_video_audio")
+                    comments = str(r["comments"] or "on")
+                    age_restricted = int(r["age_restricted"] or 0)
+                    paid_promotion = int(r["paid_promotion"] or 0)
+                    altered_content = int(r["altered_content"] or 0)
 
                     try:
                         try:
@@ -246,6 +260,19 @@ async def start():
                                     description,
                                     visibility,
                                     scheduled_at,
+                                    made_for_kids,
+                                    tags,
+                                    category,
+                                    language,
+                                    recording_date,
+                                    video_location,
+                                    licence,
+                                    allow_embedding,
+                                    shorts_remixing,
+                                    comments,
+                                    age_restricted,
+                                    paid_promotion,
+                                    altered_content,
                                 ),
                                 timeout=float(timeout_sec),
                             )

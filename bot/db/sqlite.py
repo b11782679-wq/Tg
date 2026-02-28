@@ -127,7 +127,21 @@ CREATE TABLE IF NOT EXISTS youtube_pending_uploads (
   status TEXT NOT NULL DEFAULT 'pending',
   error TEXT NOT NULL DEFAULT '',
   created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  updated_at TEXT DEFAULT (datetime('now')),
+  -- Extended metadata fields
+  made_for_kids INTEGER DEFAULT 0,
+  tags TEXT DEFAULT '',
+  category TEXT DEFAULT '',
+  language TEXT DEFAULT '',
+  recording_date TEXT,
+  video_location TEXT DEFAULT '',
+  licence TEXT DEFAULT 'Standard YouTube licence',
+  allow_embedding INTEGER DEFAULT 1,
+  shorts_remixing TEXT DEFAULT 'allow_video_audio',
+  comments TEXT DEFAULT 'on',
+  age_restricted INTEGER DEFAULT 0,
+  paid_promotion INTEGER DEFAULT 0,
+  altered_content INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS youtube_upload_drafts (
@@ -140,7 +154,21 @@ CREATE TABLE IF NOT EXISTS youtube_upload_drafts (
   timezone TEXT NOT NULL DEFAULT '',
   scheduled_at TEXT,
   created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  updated_at TEXT DEFAULT (datetime('now')),
+  -- Extended metadata fields
+  made_for_kids INTEGER DEFAULT 0,
+  tags TEXT DEFAULT '',
+  category TEXT DEFAULT '',
+  language TEXT DEFAULT '',
+  recording_date TEXT,
+  video_location TEXT DEFAULT '',
+  licence TEXT DEFAULT 'Standard YouTube licence',
+  allow_embedding INTEGER DEFAULT 1,
+  shorts_remixing TEXT DEFAULT 'allow_video_audio',
+  comments TEXT DEFAULT 'on',
+  age_restricted INTEGER DEFAULT 0,
+  paid_promotion INTEGER DEFAULT 0,
+  altered_content INTEGER DEFAULT 0
 );
 """
 
@@ -177,5 +205,34 @@ async def init_db(db_path: str):
             await db.execute("ALTER TABLE product_orders ADD COLUMN pay_type TEXT NOT NULL DEFAULT 'money'")
         if "points_cost" not in order_cols:
             await db.execute("ALTER TABLE product_orders ADD COLUMN points_cost INTEGER NOT NULL DEFAULT 0")
+
+        # Add extended metadata columns to youtube_pending_uploads
+        cur = await db.execute("PRAGMA table_info(youtube_pending_uploads)")
+        pending_cols = {str(r[1]).lower() for r in await cur.fetchall()}
+        metadata_cols = [
+            ("made_for_kids", "INTEGER DEFAULT 0"),
+            ("tags", "TEXT DEFAULT ''"),
+            ("category", "TEXT DEFAULT ''"),
+            ("language", "TEXT DEFAULT ''"),
+            ("recording_date", "TEXT"),
+            ("video_location", "TEXT DEFAULT ''"),
+            ("licence", "TEXT DEFAULT 'Standard YouTube licence'"),
+            ("allow_embedding", "INTEGER DEFAULT 1"),
+            ("shorts_remixing", "TEXT DEFAULT 'allow_video_audio'"),
+            ("comments", "TEXT DEFAULT 'on'"),
+            ("age_restricted", "INTEGER DEFAULT 0"),
+            ("paid_promotion", "INTEGER DEFAULT 0"),
+            ("altered_content", "INTEGER DEFAULT 0"),
+        ]
+        for col_name, col_type in metadata_cols:
+            if col_name not in pending_cols:
+                await db.execute(f"ALTER TABLE youtube_pending_uploads ADD COLUMN {col_name} {col_type}")
+
+        # Add extended metadata columns to youtube_upload_drafts
+        cur = await db.execute("PRAGMA table_info(youtube_upload_drafts)")
+        draft_cols = {str(r[1]).lower() for r in await cur.fetchall()}
+        for col_name, col_type in metadata_cols:
+            if col_name not in draft_cols:
+                await db.execute(f"ALTER TABLE youtube_upload_drafts ADD COLUMN {col_name} {col_type}")
 
         await db.commit()
