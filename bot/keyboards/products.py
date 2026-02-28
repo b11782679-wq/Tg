@@ -25,7 +25,7 @@ def products_menu_kb(lang: str = "uz"):
     kb.adjust(2, 2, 2, 2, 1)
     return kb.as_markup()
 
-def product_plans_kb(product_key: str, lang: str = "uz"):
+def product_plans_kb(product_key: str, lang: str = "uz", price_overrides: dict[str, int] | None = None):
     kb = InlineKeyboardBuilder()
     product = PRICING[product_key]
     uzs_per_usd_env = (os.getenv("UZS_PER_USD") or "").strip()
@@ -41,6 +41,11 @@ def product_plans_kb(product_key: str, lang: str = "uz"):
         if str(plan_key) == "1w":
             label = t(lang, "plan.1w")
         price_uzs = int(p["price_uzs"])
+        if price_overrides and str(plan_key) in price_overrides:
+            try:
+                price_uzs = int(price_overrides[str(plan_key)])
+            except Exception:
+                price_uzs = int(p["price_uzs"])
         if str(lang) in ("en", "ru"):
             usd = float(price_uzs) / max(uzs_per_usd, 1.0)
             price_label = f"${usd:,.2f}".replace(",", " ")

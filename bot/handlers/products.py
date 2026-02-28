@@ -72,6 +72,16 @@ def setup(repo: Repo):
         product = PRICING[product_key]
         lang = await repo.get_language(call.from_user.id)
 
+        price_overrides: dict[str, int] = {}
+        try:
+            for plan_key, p in (product.get("plans") or {}).items():
+                default_price = int((p or {}).get("price_uzs") or 0)
+                val = await repo.get_plan_price_override(product_key=product_key, plan_key=str(plan_key))
+                if val is not None:
+                    price_overrides[str(plan_key)] = int(val)
+        except Exception:
+            price_overrides = {}
+
         if product_key == "gemine":
             text = t(lang, "products.gemine.open")
         else:
@@ -85,14 +95,14 @@ def setup(repo: Repo):
             text += f"\n{t(lang, 'products.choose_plan')}"
 
         await call.answer()
-        await call.message.edit_text(text, reply_markup=product_plans_kb(product_key, lang))
+        await call.message.edit_text(text, reply_markup=product_plans_kb(product_key, lang, price_overrides=price_overrides))
 
     @router.callback_query(F.data.startswith("p:buy:"))
     async def buy_money(call: CallbackQuery):
         await call.answer()
         _, _, product_key, plan_key = call.data.split(":")
         plan = PRICING[product_key]["plans"][plan_key]
-        need_uzs = int(plan["price_uzs"])
+        need_uzs = await repo.get_plan_price(product_key=product_key, plan_key=plan_key, default_price_uzs=int(plan["price_uzs"]))
 
         def _fmt_money(n: int) -> str:
             return f"{int(n):,}".replace(",", " ")

@@ -88,6 +88,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<nav class='nav'>"
             + _nav_item("Dashboard", "/admin", "dashboard")
             + _nav_item("Users", "/admin/users", "users")
+            + _nav_item("Prices", "/admin/prices", "prices")
             + _nav_item("Referrals", "/admin/referrals", "referrals")
             + _nav_item("Orders", "/admin/orders", "orders")
             + _nav_item("Sotib olganlar", "/admin/buyers", "buyers")
@@ -323,6 +324,76 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
 
         body += "</tbody></table></div>"
         return _layout("Users & Balances", body, active="users")
+
+    @router.get("/prices", response_class=HTMLResponse)
+    async def admin_prices(credentials: HTTPBasicCredentials = Depends(_auth)):
+        from bot.services.pricing import PRICING
+
+        rows = await repo.admin_list_plan_prices()
+        overrides: dict[str, dict[str, int]] = {}
+        for r in rows:
+            pk = str(r.get("product_key") or "")
+            pl = str(r.get("plan_key") or "")
+            pv = int(r.get("price_uzs") or 0)
+            if pk and pl:
+                overrides.setdefault(pk, {})[pl] = pv
+
+        body = "<div class='stack'>"
+        body += "<div class='meta'>Set plan prices. Leave empty to keep default price.</div>"
+
+        for product_key, product in PRICING.items():
+            title = str((product or {}).get("title") or product_key)
+            plans = (product or {}).get("plans") or {}
+            if not plans:
+                continue
+
+            body += "<div class='card'>"
+            body += f"<div style='font-weight:700;margin-bottom:8px'>{title} <span class='meta'>(key: <code>{product_key}</code>)</span></div>"
+            body += "<form method='post' action='/admin/prices/set' class='rowform'>"
+            body += f"<input type='hidden' name='product_key' value='{_escape_attr(str(product_key))}'>"
+
+            for plan_key, p in plans.items():
+                default_price = int((p or {}).get("price_uzs") or 0)
+                cur_val = overrides.get(str(product_key), {}).get(str(plan_key))
+                show_val = "" if cur_val is None else str(int(cur_val))
+                body += "<div class='field' style='min-width:220px'>"
+                body += f"<b>Plan <code>{_escape_attr(str(plan_key))}</code></b>"
+                body += f"<input class='input' name='price_{_escape_attr(str(plan_key))}' placeholder='default: {_fmt_money(default_price)}' value='{_escape_attr(show_val)}' style='width:180px'>"
+                body += "</div>"
+
+            body += "<div style='align-self:flex-end'><button class='btn' type='submit'>Save</button></div>"
+            body += "</form>"
+            body += "</div>"
+
+        body += "</div>"
+        return _layout("Prices", body, active="prices")
+
+    @router.post("/prices/set")
+    async def admin_prices_set(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        product_key: str = Form(...),
+    ):
+        from bot.services.pricing import PRICING
+
+        form = await request.form()
+        product = PRICING.get(str(product_key)) or {}
+        plans = (product or {}).get("plans") or {}
+
+        for plan_key in plans.keys():
+            field = f"price_{plan_key}"
+            raw = str(form.get(field) or "").strip()
+            if raw == "":
+                continue
+            try:
+                val = int(raw)
+            except Exception:
+                continue
+            if val <= 0:
+                continue
+            await repo.admin_set_plan_price(product_key=str(product_key), plan_key=str(plan_key), price_uzs=int(val))
+
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/prices"), status_code=303)
 
     @router.post("/users/update")
     async def admin_users_update(

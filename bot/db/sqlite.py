@@ -86,6 +86,14 @@ CREATE TABLE IF NOT EXISTS youtuber_audits (
   issues_json TEXT NOT NULL DEFAULT '[]',
   updated_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS product_plan_prices (
+  product_key TEXT NOT NULL,
+  plan_key TEXT NOT NULL,
+  price_uzs INTEGER NOT NULL,
+  updated_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY(product_key, plan_key)
+);
 """
 
 async def init_db(db_path: str):
