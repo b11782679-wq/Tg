@@ -276,7 +276,6 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<table>"
             "<thead><tr>"
             "<th>ID</th>"
-            "<th>Name</th>"
             "<th>Username</th>"
             "<th>Status</th>"
             "<th>Money (so'm)</th>"
@@ -300,7 +299,6 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             body += (
                 "<tr>"
                 f"<td><code>{int(r['id'])}</code></td>"
-                f"<td>{(r['full_name'] or '')}</td>"
                 f"<td>{(r['username'] or '')}</td>"
                 f"<td><code>{status_label}</code></td>"
                 f"<td>{_fmt_money(int(r['money_uzs'] or 0))}</td>"
