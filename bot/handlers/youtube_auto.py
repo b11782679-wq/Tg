@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import os
 import secrets
+import time
+import hmac
+import hashlib
 from pathlib import Path
 
 from aiogram import Router, F
@@ -57,7 +60,13 @@ async def yt_auto_connect(call: CallbackQuery):
         await call.message.answer("❌ YouTube OAuth sozlanmagan.")
         return
 
-    state = secrets.token_urlsafe(24).replace("-", "").replace("_", "")
+    nonce = secrets.token_urlsafe(8).replace("-", "").replace("_", "")
+    ts = int(time.time())
+    payload = f"{int(call.from_user.id)}:{ts}:{nonce}"
+    key = (_cfg.youtube_oauth_client_secret or _cfg.bot_token or "").encode("utf-8")
+    sig = hmac.new(key, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:20]
+    state = f"{payload}:{sig}"
+
     await _repo.yt_oauth_create_state(call.from_user.id, state)
 
     base = (_cfg.admin_public_url or "").strip().rstrip("/")

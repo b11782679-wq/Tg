@@ -4,6 +4,9 @@ import secrets
 import asyncio
 import json
 import urllib.request
+import time
+import hmac
+import hashlib
 from pathlib import Path
 from typing import Annotated
 import mimetypes
@@ -151,6 +154,25 @@ def create_youtube_oauth_router(cfg: Config, repo: Repo) -> APIRouter:
             raise HTTPException(status_code=400, detail="Missing state/code")
 
         user_id = await repo.yt_oauth_consume_state(st)
+        if not user_id:
+            # Fallback: signed state format: user_id:ts:nonce:sig
+            try:
+                parts = st.split(":")
+                if len(parts) == 4:
+                    uid_s, ts_s, nonce, sig = parts
+                    uid = int(uid_s)
+                    ts = int(ts_s)
+                    if uid > 0 and nonce:
+                        payload = f"{uid}:{ts}:{nonce}"
+                        key = (cfg.youtube_oauth_client_secret or cfg.bot_token or "").encode("utf-8")
+                        exp_sig = hmac.new(key, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:20]
+                        if secrets.compare_digest(exp_sig, sig):
+                            # 30 minutes max
+                            if int(time.time()) - ts <= 30 * 60:
+                                user_id = uid
+            except Exception:
+                user_id = None
+
         if not user_id:
             body = (
                 "<div style='font-family:system-ui;padding:22px'>"
