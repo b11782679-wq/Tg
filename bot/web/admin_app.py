@@ -91,7 +91,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             + _nav_item("Prices", "/admin/prices", "prices")
             + _nav_item("Referrals", "/admin/referrals", "referrals")
             + _nav_item("Orders", "/admin/orders", "orders")
-            + _nav_item("Sotib olganlar", "/admin/buyers", "buyers")
+            + _nav_item("Hisob To`ldirganlar", "/admin/buyers", "buyers")
             + _nav_item("Purchases", "/admin/purchases", "purchases")
             + _nav_item("Topups", "/admin/topups", "topups")
             + _nav_item("Broadcast", "/admin/broadcast", "broadcast")
@@ -763,7 +763,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             )
 
         body += "</tbody></table></div>"
-        return _layout("Sotib olganlar", body, active="buyers")
+        return _layout("Hisob To`ldirganlar", body, active="buyers")
 
     @router.get("/topups/proof/{topup_id}")
     async def admin_topup_proof_download(
