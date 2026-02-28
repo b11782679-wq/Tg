@@ -153,6 +153,24 @@ async def start():
                 except Exception as e:
                     await _send_admin_error("YT WORKER RECOVERY ERROR", e)
 
+                try:
+                    bad = await repo.yt_fail_unconnected_due_uploads(limit=10)
+                    for r in bad:
+                        uid = int(r["user_id"])
+                        up_id = int(r["id"])
+                        try:
+                            await bot.send_message(
+                                uid,
+                                "❌ YouTube upload bekor qilindi.\n\n"
+                                f"ID: <code>{up_id}</code>\n"
+                                "Sabab: kanal ulanmagan.\n\n"
+                                "Iltimos: <b>🤖 Avtomatlashtirilgan YouTube</b> → <b>🔗 Kanalni ulash</b> ni bosing.",
+                            )
+                        except Exception:
+                            pass
+                except Exception as e:
+                    await _send_admin_error("YT FAIL UNCONNECTED ERROR", e)
+
                 due = await repo.yt_claim_due_uploads(limit=3)
                 for r in due:
                     upload_id = int(r["id"])

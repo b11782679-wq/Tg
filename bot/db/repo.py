@@ -182,6 +182,33 @@ class Repo:
             await db.commit()
             return rows
 
+    async def yt_fail_unconnected_due_uploads(self, limit: int = 20):
+        limit = min(max(int(limit), 1), 200)
+        async with await self._conn() as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute(
+                "SELECT p.id, p.user_id, p.title, p.scheduled_at "
+                "FROM youtube_pending_uploads p "
+                "LEFT JOIN youtube_oauth_tokens t ON t.user_id = p.user_id "
+                "WHERE p.status='pending' "
+                "AND t.user_id IS NULL "
+                "AND (p.scheduled_at IS NULL OR p.scheduled_at <= datetime('now')) "
+                "ORDER BY p.id ASC LIMIT ?",
+                (int(limit),),
+            )
+            rows = await cur.fetchall()
+            ids = [int(r["id"]) for r in rows]
+            if not ids:
+                return []
+            q = (
+                "UPDATE youtube_pending_uploads "
+                "SET status='failed', error='Not connected', updated_at=datetime('now') "
+                "WHERE id IN (" + ",".join(["?"] * len(ids)) + ")"
+            )
+            await db.execute(q, tuple(ids))
+            await db.commit()
+            return rows
+
     async def yt_mark_upload_done(self, upload_id: int) -> None:
         async with await self._conn() as db:
             await db.execute(
