@@ -49,7 +49,7 @@ async def open_youtuber_menu(call: CallbackQuery, state: FSMContext):
 
     await state.clear()
     await call.message.edit_text(
-        t(lang, "youtuber.welcome", used=await _get_daily_usage(call.from_user.id), limit=DAILY_AUDIT_LIMIT),
+        t(lang, "products.choose_plan"),
         reply_markup=youtuber_entry_kb(lang),
     )
     await call.answer()
