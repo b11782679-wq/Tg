@@ -46,6 +46,16 @@ async def start():
 
     dp = Dispatcher()
 
+    async def _send_admin_error(title: str, exc: BaseException):
+        if not cfg.admin_chat_id:
+            return
+        try:
+            tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+            tb = (tb or "")[-3500:]
+            await bot.send_message(cfg.admin_chat_id, f"<b>{title}</b>\n\n<code>{tb}</code>")
+        except Exception:
+            pass
+
     @dp.error()
     async def _global_error_handler(event: ErrorEvent):
         try:
@@ -133,6 +143,16 @@ async def start():
     async def _yt_worker():
         while True:
             try:
+                try:
+                    reset_n = await repo.yt_reset_stuck_uploads(max_age_minutes=25)
+                    if reset_n and cfg.admin_chat_id:
+                        try:
+                            await bot.send_message(cfg.admin_chat_id, f"<b>YT RECOVERY</b>\n\nReset stuck uploads: <code>{int(reset_n)}</code>")
+                        except Exception:
+                            pass
+                except Exception as e:
+                    await _send_admin_error("YT WORKER RECOVERY ERROR", e)
+
                 due = await repo.yt_claim_due_uploads(limit=3)
                 for r in due:
                     upload_id = int(r["id"])
@@ -211,8 +231,9 @@ async def start():
                             )
                         except Exception:
                             pass
+                        await _send_admin_error(f"YT UPLOAD FAILED (id={int(upload_id)})", e)
             except Exception:
-                pass
+                await _send_admin_error("YT WORKER LOOP ERROR", Exception("Worker loop crashed"))
             await asyncio.sleep(15)
 
     web_task = asyncio.create_task(server.serve())

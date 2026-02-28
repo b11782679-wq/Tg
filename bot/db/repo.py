@@ -197,6 +197,21 @@ class Repo:
             )
             await db.commit()
 
+    async def yt_reset_stuck_uploads(self, max_age_minutes: int = 20) -> int:
+        max_age_minutes = min(max(int(max_age_minutes), 1), 24 * 60)
+        async with await self._conn() as db:
+            cur = await db.execute(
+                "UPDATE youtube_pending_uploads "
+                "SET status='pending', updated_at=datetime('now') "
+                "WHERE status='uploading' AND updated_at <= datetime('now', ?)" ,
+                (f'-{max_age_minutes} minutes',),
+            )
+            await db.commit()
+            try:
+                return int(cur.rowcount or 0)
+            except Exception:
+                return 0
+
     async def yt_delete_pending_upload(self, upload_id: int) -> None:
         async with await self._conn() as db:
             await db.execute("DELETE FROM youtube_pending_uploads WHERE id=?", (int(upload_id),))
