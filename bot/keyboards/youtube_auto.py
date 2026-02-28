@@ -80,17 +80,7 @@ def yt_timezone_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="🇺🇿 Asia/Tashkent", callback_data="yt:auto:tz:Asia/Tashkent"),
-                InlineKeyboardButton(text="🌍 UTC", callback_data="yt:auto:tz:UTC"),
-            ],
-            [
-                InlineKeyboardButton(text="🇷🇺 Europe/Moscow", callback_data="yt:auto:tz:Europe/Moscow"),
-            ],
-            [
-                InlineKeyboardButton(text="✍️ Qo‘lda yozish", callback_data="yt:auto:tz:manual"),
-            ],
-            [
-                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:vis:back"),
+                InlineKeyboardButton(text="⏰ Vaqtni sozlash", callback_data="yt:auto:tz:setup"),
             ],
         ]
     )

@@ -285,6 +285,8 @@ async def yt_auto_set_timezone(call: CallbackQuery, state: FSMContext):
         await _repo.yt_draft_upsert(call.from_user.id, step="timezone")
         await call.message.edit_text("🌍 Timezone tanlang:", reply_markup=yt_timezone_kb())
         return
+    if tz == "setup":
+        tz = "Asia/Tashkent"
     if tz == "manual":
         await state.set_state(YTAutoStates.waiting_timezone)
         await call.message.edit_text(
