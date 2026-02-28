@@ -8,6 +8,7 @@ load_dotenv()
 class Config:
     bot_token: str
     admin_id: int
+    admin_chat_id: int
     db_path: str
     admin_panel_host: str
     admin_panel_port: int
@@ -26,6 +27,9 @@ def load_config() -> Config:
     admin_id = int(os.getenv("ADMIN_ID", "0"))
     if admin_id == 0:
         raise RuntimeError("ADMIN_ID topilmadi. .env ga ADMIN_ID=... qo‘ying.")
+    admin_chat_id = int(os.getenv("ADMIN_CHAT_ID", "0"))
+    if admin_chat_id == 0:
+        admin_chat_id = admin_id
     db_path = os.getenv("DB_PATH", "bot_data.sqlite3")
 
     admin_panel_host = os.getenv("ADMIN_PANEL_HOST", "0.0.0.0")
@@ -46,6 +50,7 @@ def load_config() -> Config:
     return Config(
         bot_token=token,
         admin_id=admin_id,
+        admin_chat_id=admin_chat_id,
         db_path=db_path,
         admin_panel_host=admin_panel_host,
         admin_panel_port=admin_panel_port,

@@ -1,9 +1,11 @@
 import asyncio
 import os
+import traceback
 
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
+from aiogram.types import ErrorEvent
 
 import uvicorn
 from fastapi import FastAPI
@@ -43,6 +45,39 @@ async def start():
     )
 
     dp = Dispatcher()
+
+    @dp.error()
+    async def _global_error_handler(event: ErrorEvent):
+        try:
+            update = getattr(event, "update", None)
+            message = None
+            if update:
+                message = getattr(update, "message", None)
+                if not message:
+                    cq = getattr(update, "callback_query", None)
+                    message = getattr(cq, "message", None) if cq else None
+                if not message:
+                    iq = getattr(update, "inline_query", None)
+                    message = getattr(iq, "message", None) if iq else None
+
+            if message:
+                try:
+                    await message.answer("❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko‘ring.")
+                except Exception:
+                    pass
+
+            tb = "".join(traceback.format_exception(type(event.exception), event.exception, event.exception.__traceback__))
+            tb = (tb or "")[-3500:]
+            if cfg.admin_chat_id:
+                try:
+                    await bot.send_message(
+                        cfg.admin_chat_id,
+                        "<b>BOT ERROR</b>\n\n" + f"<code>{tb}</code>",
+                    )
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     # Kanalga a’zolikni hamma joyda tekshiradi
     dp.message.middleware(SubscribeMiddleware(repo))
