@@ -757,6 +757,21 @@ async def yt_auto_metadata_menu(call: CallbackQuery, state: FSMContext):
     )
 
 
+@router.callback_query(F.data == "yt:auto:metadata:back")
+async def yt_auto_metadata_back(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    draft = await _repo.yt_draft_get(call.from_user.id)
+    step = str((draft["step"] if draft else "") or "").strip()
+    if step in ("schedule_time", "timezone"):
+        await _repo.yt_draft_upsert(call.from_user.id, step="timezone")
+        await state.set_state(YTAutoStates.waiting_timezone)
+        await call.message.edit_text("🌍 Timezone tanlang:", reply_markup=yt_timezone_kb())
+        return
+    await call.message.edit_text("⏰ Qachon yuklaymiz?", reply_markup=yt_schedule_choice_kb())
+
+
 @router.callback_query(F.data == "yt:auto:sched:choice")
 async def yt_auto_sched_choice(call: CallbackQuery, state: FSMContext):
     if await _deny_bot_user(call):

@@ -167,7 +167,7 @@ def yt_metadata_menu_kb(draft: dict | None = None, state_data: dict | None = Non
                 InlineKeyboardButton(text="✅ Tayyor", callback_data="yt:auto:sched:choice"),
             ],
             [
-                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:upload"),
+                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:metadata:back"),
             ],
         ]
     )
