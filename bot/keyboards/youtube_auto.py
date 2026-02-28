@@ -82,6 +82,9 @@ def yt_timezone_kb() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="⏰ Vaqtni sozlash", callback_data="yt:auto:tz:setup"),
             ],
+            [
+                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:vis:back"),
+            ],
         ]
     )
 
