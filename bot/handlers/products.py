@@ -75,9 +75,14 @@ def setup(repo: Repo):
         if product_key == "gemine":
             text = t(lang, "products.gemine.open")
         else:
-            text = (
-                f"{product['title']}\n\n" + t(lang, "products.choose_plan")
-            )
+            desc_key = f"products.desc.{product_key}"
+            desc = t(lang, desc_key)
+            if desc == desc_key:
+                desc = ""
+            text = f"{product['title']}\n"
+            if desc:
+                text += f"{desc}\n"
+            text += f"\n{t(lang, 'products.choose_plan')}"
 
         await call.answer()
         await call.message.edit_text(text, reply_markup=product_plans_kb(product_key, lang))

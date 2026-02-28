@@ -131,6 +131,9 @@ _TEXTS: dict[str, dict[str, str]] = {
         "products.choose_plan": "📌 Quyidagilardan birini tanlang 👇",
         "products.no_stock": "❌ Hozircha akkaunt qolmagan.\n\nKeyinroq qayta urinib ko‘ring.",
         "products.race": "❌ Xatolik yuz berdi.\n\nKeyinroq qayta urinib ko‘ring.",
+        "products.desc.chatgpt_plus": "🔥 GPT-4 / ChatGPT Plus • Tezroq javob • Prioritet",
+        "products.desc.spotify_premium": "🎧 Reklamasiz musiqa • Offline yuklash • Unlimited skip",
+        "products.desc.youtube_premium": "▶️ Reklamasiz video • Background • Offline yuklash",
         "products.gemine.open": (
             "💎 <b>Gemini Pro akkaunt</b>\n"
             "Ushbu akkauntni xarid qilsangiz, Gemini’ning barcha Pro funksiyalaridan to‘liq foydalanish imkoniyatiga ega bo‘lasiz.\n\n"
