@@ -243,6 +243,8 @@ async def yt_auto_got_description(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith("yt:auto:vis:"))
 async def yt_auto_set_visibility(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
     await call.answer()
     vis = (call.data or "").split(":")[-1]
     if vis not in ("public", "unlisted", "private"):
@@ -255,6 +257,8 @@ async def yt_auto_set_visibility(call: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("yt:auto:tz:"))
 async def yt_auto_set_timezone(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
     await call.answer()
     raw = (call.data or "").split(":", maxsplit=3)[-1]
     tz = str(raw or "").strip()
@@ -293,12 +297,16 @@ async def yt_auto_got_timezone(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "yt:auto:sched:now")
 async def yt_auto_schedule_now(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
     await call.answer()
     await _finalize_upload(call.message, state, scheduled_at=None)
 
 
 @router.callback_query(F.data == "yt:auto:sched:set")
 async def yt_auto_schedule_set(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
     await call.answer()
     await _repo.yt_draft_upsert(call.from_user.id, step="schedule_time")
     await state.set_state(YTAutoStates.waiting_schedule_time)
@@ -307,6 +315,8 @@ async def yt_auto_schedule_set(call: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("yt:auto:sched:preset:"))
 async def yt_auto_schedule_preset(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
     await call.answer()
     preset = (call.data or "").split(":")[-1]
 
@@ -371,6 +381,20 @@ async def yt_auto_got_schedule_time(message: Message, state: FSMContext):
 
 
 async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: str | None):
+    # Final safety check - prevent bot users from creating uploads
+    user = getattr(message, "from_user", None)
+    if user and getattr(user, "is_bot", False):
+        try:
+            if _cfg and (_cfg.log_channel or "").strip():
+                await message.bot.send_message(
+                    _cfg.log_channel,
+                    f"<b>YT BLOCKED BOT in _finalize_upload</b>\nUser: <code>{int(user.id)}</code>",
+                )
+        except Exception:
+            pass
+        await state.clear()
+        return
+    
     data = await state.get_data()
     draft = await _repo.yt_draft_get(message.from_user.id)
     
