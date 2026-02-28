@@ -740,6 +740,17 @@ async def yt_auto_got_tags(message: Message, state: FSMContext):
     await state.update_data(tags=tags)
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", tags=tags)
     await state.set_state(None)
+    # Try to edit the previous bot message if user is replying to it
+    try:
+        if message.reply_to_message and message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
+            await message.reply_to_message.edit_text(
+                "✅ Teglar saqlandi!\n\n"
+                "Boshqa sozlamalar:",
+                reply_markup=yt_metadata_menu_kb()
+            )
+            return
+    except Exception:
+        pass
     await message.answer(
         "✅ Teglar saqlandi!\n\n"
         "Boshqa sozlamalar:",
@@ -795,6 +806,17 @@ async def yt_auto_got_language(message: Message, state: FSMContext):
     await state.update_data(language=language)
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", language=language)
     await state.set_state(None)
+    # Try to edit the previous bot message if user is replying to it
+    try:
+        if message.reply_to_message and message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
+            await message.reply_to_message.edit_text(
+                "✅ Til saqlandi!\n\n"
+                "Boshqa sozlamalar:",
+                reply_markup=yt_metadata_menu_kb()
+            )
+            return
+    except Exception:
+        pass
     await message.answer(
         "✅ Til saqlandi!\n\n"
         "Boshqa sozlamalar:",
@@ -825,6 +847,17 @@ async def yt_auto_got_recording_date(message: Message, state: FSMContext):
     await state.update_data(recording_date=recording_date)
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", recording_date=recording_date if recording_date else None)
     await state.set_state(None)
+    # Try to edit the previous bot message if user is replying to it
+    try:
+        if message.reply_to_message and message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
+            await message.reply_to_message.edit_text(
+                "✅ Sana saqlandi!\n\n"
+                "Boshqa sozlamalar:",
+                reply_markup=yt_metadata_menu_kb()
+            )
+            return
+    except Exception:
+        pass
     await message.answer(
         "✅ Sana saqlandi!\n\n"
         "Boshqa sozlamalar:",
@@ -855,6 +888,17 @@ async def yt_auto_got_video_location(message: Message, state: FSMContext):
     await state.update_data(video_location=video_location)
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", video_location=video_location)
     await state.set_state(None)
+    # Try to edit the previous bot message if user is replying to it
+    try:
+        if message.reply_to_message and message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
+            await message.reply_to_message.edit_text(
+                "✅ Joylashuv saqlandi!\n\n"
+                "Boshqa sozlamalar:",
+                reply_markup=yt_metadata_menu_kb()
+            )
+            return
+    except Exception:
+        pass
     await message.answer(
         "✅ Joylashuv saqlandi!\n\n"
         "Boshqa sozlamalar:",
