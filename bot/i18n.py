@@ -131,7 +131,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "products.choose_plan": "📌 Quyidagilardan birini tanlang 👇",
         "products.no_stock": "❌ Hozircha akkaunt qolmagan.\n\nKeyinroq qayta urinib ko‘ring.",
         "products.race": "❌ Xatolik yuz berdi.\n\nKeyinroq qayta urinib ko‘ring.",
-        "products.desc.chatgpt_plus": "🔥 GPT-4 / ChatGPT Plus • Tezroq javob • Prioritet",
+        "products.desc.chatgpt_plus": "🔥 GPT 5.2 / ChatGPT Plus • Tezroq javob • Prioritet",
         "products.desc.spotify_premium": "🎧 Reklamasiz musiqa • Offline yuklash • Unlimited skip",
         "products.desc.youtube_premium": "▶️ Reklamasiz video • Background • Offline yuklash",
         "products.gemine.open": (
