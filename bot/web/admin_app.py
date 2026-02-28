@@ -96,6 +96,8 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             + _nav_item("Broadcast", "/admin/broadcast", "broadcast")
             + _nav_item("ChatGPT", "/admin/accounts/chatgpt", "chatgpt")
             + _nav_item("ChatGPT Plus", "/admin/accounts/chatgpt_plus", "chatgpt_plus")
+            + _nav_item("Spotify Premium", "/admin/accounts/spotify_premium", "spotify_premium")
+            + _nav_item("YouTube Premium", "/admin/accounts/youtube_premium", "youtube_premium")
             + _nav_item("Super Grok", "/admin/accounts/super_grok", "super_grok")
             + _nav_item("Canva Pro", "/admin/accounts/canva_pro", "canva_pro")
             + _nav_item("Canva Pro Link", "/admin/canva_pro_link", "canva_pro_link")
@@ -1565,6 +1567,136 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
     ):
         await repo.admin_delete_product_account("chatgpt_plus", account_id=account_id)
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/chatgpt_plus"), status_code=303)
+
+    @router.get("/accounts/spotify_premium", response_class=HTMLResponse)
+    async def admin_spotify_premium(credentials: HTTPBasicCredentials = Depends(_auth)):
+        return await _account_page(
+            "Spotify Premium",
+            product_key="spotify_premium",
+            active="spotify_premium",
+            post_url="/admin/accounts/spotify_premium",
+            delete_post_url="/admin/accounts/spotify_premium/delete",
+            edit_post_url="/admin/accounts/spotify_premium/edit",
+        )
+
+    @router.post("/accounts/spotify_premium")
+    async def admin_spotify_premium_save(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        login: str = Form(""),
+        password: str = Form(""),
+        accounts_file: UploadFile | None = File(None),
+    ):
+        if accounts_file and (accounts_file.filename or ""):
+            res = await _bulk_add_from_txt("spotify_premium", accounts_file)
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": True, "bulk": True, **res})
+            return RedirectResponse(url="/admin/accounts/spotify_premium", status_code=303)
+
+        if await repo.admin_exists_available_product_account("spotify_premium", login=login, password=password):
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": False, "error": "Dublikat login/parol (bazada bor)"})
+            return RedirectResponse(url="/admin/accounts/spotify_premium", status_code=303)
+
+        acc_id = await repo.admin_add_product_account("spotify_premium", login=login, password=password)
+        if request.headers.get("X-Requested-With") == "fetch":
+            return JSONResponse(
+                {
+                    "ok": True,
+                    "id": acc_id,
+                    "login": login,
+                    "password": password,
+                    "created_at": "",
+                    "delete_url": "/admin/accounts/spotify_premium/delete",
+                    "edit_url": "/admin/accounts/spotify_premium/edit",
+                }
+            )
+        return RedirectResponse(url="/admin/accounts/spotify_premium", status_code=303)
+
+    @router.post("/accounts/spotify_premium/edit")
+    async def admin_spotify_premium_edit(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+        login: str = Form(""),
+        password: str = Form(""),
+    ):
+        await repo.admin_update_product_account("spotify_premium", account_id=account_id, login=login, password=password)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/spotify_premium"), status_code=303)
+
+    @router.post("/accounts/spotify_premium/delete")
+    async def admin_spotify_premium_delete(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+    ):
+        await repo.admin_delete_product_account("spotify_premium", account_id=account_id)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/spotify_premium"), status_code=303)
+
+    @router.get("/accounts/youtube_premium", response_class=HTMLResponse)
+    async def admin_youtube_premium(credentials: HTTPBasicCredentials = Depends(_auth)):
+        return await _account_page(
+            "YouTube Premium",
+            product_key="youtube_premium",
+            active="youtube_premium",
+            post_url="/admin/accounts/youtube_premium",
+            delete_post_url="/admin/accounts/youtube_premium/delete",
+            edit_post_url="/admin/accounts/youtube_premium/edit",
+        )
+
+    @router.post("/accounts/youtube_premium")
+    async def admin_youtube_premium_save(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        login: str = Form(""),
+        password: str = Form(""),
+        accounts_file: UploadFile | None = File(None),
+    ):
+        if accounts_file and (accounts_file.filename or ""):
+            res = await _bulk_add_from_txt("youtube_premium", accounts_file)
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": True, "bulk": True, **res})
+            return RedirectResponse(url="/admin/accounts/youtube_premium", status_code=303)
+
+        if await repo.admin_exists_available_product_account("youtube_premium", login=login, password=password):
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": False, "error": "Dublikat login/parol (bazada bor)"})
+            return RedirectResponse(url="/admin/accounts/youtube_premium", status_code=303)
+
+        acc_id = await repo.admin_add_product_account("youtube_premium", login=login, password=password)
+        if request.headers.get("X-Requested-With") == "fetch":
+            return JSONResponse(
+                {
+                    "ok": True,
+                    "id": acc_id,
+                    "login": login,
+                    "password": password,
+                    "created_at": "",
+                    "delete_url": "/admin/accounts/youtube_premium/delete",
+                    "edit_url": "/admin/accounts/youtube_premium/edit",
+                }
+            )
+        return RedirectResponse(url="/admin/accounts/youtube_premium", status_code=303)
+
+    @router.post("/accounts/youtube_premium/edit")
+    async def admin_youtube_premium_edit(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+        login: str = Form(""),
+        password: str = Form(""),
+    ):
+        await repo.admin_update_product_account("youtube_premium", account_id=account_id, login=login, password=password)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/youtube_premium"), status_code=303)
+
+    @router.post("/accounts/youtube_premium/delete")
+    async def admin_youtube_premium_delete(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+    ):
+        await repo.admin_delete_product_account("youtube_premium", account_id=account_id)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/youtube_premium"), status_code=303)
 
     @router.get("/accounts/super_grok", response_class=HTMLResponse)
     async def admin_super_grok(credentials: HTTPBasicCredentials = Depends(_auth)):
