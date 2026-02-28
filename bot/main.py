@@ -177,8 +177,14 @@ async def start():
                                 "Sabab: kanal ulanmagan.\n\n"
                                 "Iltimos: <b>🤖 Avtomatlashtirilgan YouTube</b> → <b>🔗 Kanalni ulash</b> ni bosing.",
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            await _send_log(
+                                "<b>YT UNCONNECTED NOTIFY FAILED</b>\n"
+                                f"User: <code>{uid}</code>\n"
+                                f"Upload ID: <code>{up_id}</code>\n"
+                                f"Error: <code>{str(e)[:350]}</code>"
+                            )
+                            await _send_admin_error(f"YT UNCONNECTED NOTIFY FAILED (id={int(up_id)})", e)
                         await _send_log(
                             "<b>YT UNCONNECTED</b>\n"
                             f"User: <code>{uid}</code>\n"
