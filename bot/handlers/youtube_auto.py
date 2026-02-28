@@ -477,6 +477,17 @@ async def yt_auto_got_schedule_time(message: Message, state: FSMContext):
         return
     data = await state.get_data()
     tz = str(data.get("timezone") or "").strip()
+    if not tz:
+        draft = await _repo.yt_draft_get(message.from_user.id)
+        tz = str((draft["timezone"] if draft else "") or "").strip()
+    if not tz:
+        tz = "Asia/Tashkent"
+    if tz:
+        await state.update_data(timezone=tz)
+        try:
+            await _repo.yt_draft_upsert(message.from_user.id, timezone=tz)
+        except Exception:
+            pass
     try:
         utc_dt = to_utc_sqlite_datetime(raw, tz)
     except Exception as e:
