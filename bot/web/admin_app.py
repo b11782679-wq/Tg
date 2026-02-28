@@ -1741,7 +1741,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             )
 
         body += "</tbody></table></div></div>"
-        return _layout(title, body, active=active)
+        return _layout(cfg, title, body, active=active)
 
     @router.get("/accounts/chatgpt", response_class=HTMLResponse)
     async def admin_chatgpt(credentials: HTTPBasicCredentials = Depends(_auth)):
