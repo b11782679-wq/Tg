@@ -13,7 +13,7 @@ from aiogram.types import CallbackQuery, Message
 from bot.db.repo import Repo
 from bot.i18n import t
 from bot.keyboards.menu import main_menu_kb, back_only_kb
-from bot.keyboards.youtuber import goal_selection_kb, problem_selection_kb, confirm_audit_kb, audit_issues_kb
+from bot.keyboards.youtuber import goal_selection_kb, problem_selection_kb, confirm_audit_kb, audit_issues_kb, youtuber_entry_kb
 from bot.services import youtube, gemini
 from bot.services.youtube import YouTubeError, ChannelNotFoundError, QuotaExceededError
 from bot.services.gemini import GeminiError, GeminiTimeoutError
@@ -45,6 +45,18 @@ class YouTuberAuditStates(StatesGroup):
 @router.callback_query(F.data == "youtuber:open")
 async def open_youtuber_menu(call: CallbackQuery, state: FSMContext):
     """Open the YouTuber audit menu."""
+    lang = await _repo.get_language(call.from_user.id)
+
+    await state.clear()
+    await call.message.edit_text(
+        t(lang, "youtuber.welcome", used=await _get_daily_usage(call.from_user.id), limit=DAILY_AUDIT_LIMIT),
+        reply_markup=youtuber_entry_kb(lang),
+    )
+    await call.answer()
+
+
+@router.callback_query(F.data == "youtuber:audit")
+async def start_youtuber_audit(call: CallbackQuery, state: FSMContext):
     lang = await _repo.get_language(call.from_user.id)
     
     # Check daily limit

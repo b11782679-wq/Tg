@@ -61,6 +61,18 @@ def confirm_audit_kb(lang: str = "uz") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
+def youtuber_entry_kb(lang: str = "uz") -> InlineKeyboardMarkup:
+    buttons = [
+        [
+            InlineKeyboardButton(text="🧠 AI Tahlil", callback_data="youtuber:audit"),
+        ],
+        [
+            InlineKeyboardButton(text="🔙 Ortga", callback_data="m:home"),
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
 def audit_issues_kb(issues: list[str], lang: str = "uz") -> InlineKeyboardMarkup:
     buttons: list[list[InlineKeyboardButton]] = []
 
