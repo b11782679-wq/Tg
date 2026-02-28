@@ -12,7 +12,7 @@ from bot.config import load_config
 from bot.db.sqlite import init_db
 from bot.db.repo import Repo
 
-from bot.web.admin_app import create_admin_app
+from bot.web.admin_app import create_admin_app, create_youtube_oauth_router
 
 from bot.middlewares.subscribe import SubscribeMiddleware
 from bot.middlewares.activity_log import ActivityLogMiddleware
@@ -82,6 +82,9 @@ async def start():
     app = FastAPI()
     admin_router = create_admin_app(cfg, repo)
     app.include_router(admin_router, prefix="/admin")
+
+    yt_oauth_router = create_youtube_oauth_router(cfg, repo)
+    app.include_router(yt_oauth_router)
 
     server = uvicorn.Server(
         uvicorn.Config(

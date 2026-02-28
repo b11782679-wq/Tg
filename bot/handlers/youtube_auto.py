@@ -60,10 +60,10 @@ async def yt_auto_connect(call: CallbackQuery):
     state = secrets.token_urlsafe(24).replace("-", "").replace("_", "")
     await _repo.yt_oauth_create_state(call.from_user.id, state)
 
-    base = str(_cfg.youtube_oauth_redirect_url)
-    # start endpoint is under /admin/oauth/youtube/start
-    start_url = base.replace("/oauth/youtube/callback", "/oauth/youtube/start")
-    url = f"{start_url}?state={state}"
+    base = (_cfg.admin_public_url or "").strip().rstrip("/")
+    if not base:
+        base = str(_cfg.youtube_oauth_redirect_url).split("/oauth/youtube/")[0].rstrip("/")
+    url = f"{base}/oauth/youtube/start?state={state}"
 
     await call.message.answer(
         "🔗 Kanalni ulash uchun quyidagi linkni bosing:\n"

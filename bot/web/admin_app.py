@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Annotated
 import mimetypes
 import re
-import urllib.parse
 
 import aiosqlite
 from fastapi import Depends, File, Form, HTTPException, Request, UploadFile
@@ -31,6 +30,210 @@ def _check_auth(cfg: Config, creds: HTTPBasicCredentials):
     p_ok = secrets.compare_digest(creds.password or "", cfg.admin_panel_pass)
     if not (u_ok and p_ok):
         raise HTTPException(status_code=401, detail="Unauthorized", headers={"WWW-Authenticate": "Basic"})
+
+
+def _layout(cfg: Config, title: str, body: str, active: str) -> str:
+    def _nav_item(label: str, href: str, key: str) -> str:
+        cls = "nav-item nav-item--active" if key == active else "nav-item"
+        return f"<a class='{cls}' href='{href}'>{label}</a>"
+
+    nav = (
+        "<nav class='nav'>"
+        + _nav_item("Dashboard", "/admin", "dashboard")
+        + _nav_item("Users", "/admin/users", "users")
+        + _nav_item("Prices", "/admin/prices", "prices")
+        + _nav_item("Orders", "/admin/orders", "orders")
+        + _nav_item("Buyers", "/admin/buyers", "buyers")
+        + _nav_item("Topups", "/admin/topups", "topups")
+        + _nav_item("Purchases", "/admin/purchases", "purchases")
+        + "</nav>"
+    )
+
+    return (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+        "<title>Admin</title>"
+        "<style>"
+        "body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:0;background:#0b0c10;color:#e8e8e8}"
+        ".wrap{max-width:1100px;margin:0 auto;padding:22px}"
+        ".top{display:flex;justify-content:space-between;align-items:baseline;gap:16px}"
+        ".title{margin:0;font-size:22px}"
+        ".meta{opacity:.8;font-size:13px}"
+        ".nav{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 18px 0}"
+        ".nav-item{padding:8px 10px;border:1px solid #222;border-radius:10px;color:#e8e8e8;text-decoration:none}"
+        ".nav-item--active{background:#151821;border-color:#2a2f40}"
+        ".panel{background:#0f1117;border:1px solid #1d2130;border-radius:14px;padding:16px}"
+        ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}"
+        ".card{background:#0b0c10;border:1px solid #202437;border-radius:14px;padding:14px}"
+        ".num{font-size:26px;margin-top:6px}"
+        ".table-wrap{overflow:auto}"
+        "table{width:100%;border-collapse:collapse;font-size:13px}"
+        "th,td{padding:10px 8px;border-bottom:1px solid #1d2130;text-align:left;vertical-align:top}"
+        "th{font-size:12px;opacity:.85}"
+        ".toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 12px 0}"
+        ".input{background:#0b0c10;border:1px solid #202437;border-radius:10px;padding:8px 10px;color:#e8e8e8}"
+        ".textarea{min-height:110px;width:100%}"
+        ".btn{background:#1f6feb;border:0;border-radius:10px;color:white;padding:8px 12px;cursor:pointer}"
+        ".btn--ghost{background:transparent;border:1px solid #202437;color:#e8e8e8}"
+        ".stack{display:flex;flex-direction:column;gap:12px}"
+        "code{background:#0b0c10;border:1px solid #202437;border-radius:8px;padding:2px 6px}"
+        "</style>"
+        "</head><body><div class='wrap'>"
+        "<div class='top'>"
+        f"<h1 class='title'>{title}</h1>"
+        f"<div class='meta'>{cfg.admin_panel_host}:{cfg.admin_panel_port}</div>"
+        "</div>"
+        f"{nav}"
+        f"<section class='panel'>{body}</section>"
+        "</div></body></html>"
+    )
+
+
+def create_youtube_oauth_router(cfg: Config, repo: Repo) -> APIRouter:
+    router = APIRouter()
+
+    def _yt_oauth_enabled() -> bool:
+        return bool(
+            (cfg.youtube_oauth_client_id or "").strip()
+            and (cfg.youtube_oauth_client_secret or "").strip()
+            and (cfg.youtube_oauth_redirect_url or "").strip()
+        )
+
+    def _yt_flow(state: str | None = None) -> Flow:
+        client_config = {
+            "web": {
+                "client_id": (cfg.youtube_oauth_client_id or "").strip(),
+                "client_secret": (cfg.youtube_oauth_client_secret or "").strip(),
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }
+        }
+        flow = Flow.from_client_config(
+            client_config,
+            scopes=["https://www.googleapis.com/auth/youtube.upload"],
+            redirect_uri=(cfg.youtube_oauth_redirect_url or "").strip(),
+        )
+        if state:
+            flow.state = str(state)
+        return flow
+
+    @router.get("/oauth/youtube/start")
+    async def yt_oauth_start(state: str):
+        if not _yt_oauth_enabled():
+            raise HTTPException(status_code=500, detail="YouTube OAuth is not configured")
+        st = (state or "").strip()
+        if not st:
+            raise HTTPException(status_code=400, detail="Missing state")
+
+        flow = _yt_flow(state=st)
+        auth_url, _ = flow.authorization_url(
+            access_type="offline",
+            include_granted_scopes="true",
+            prompt="consent",
+            state=st,
+        )
+        return RedirectResponse(url=str(auth_url), status_code=302)
+
+    @router.get("/oauth/youtube/callback", response_class=HTMLResponse)
+    async def yt_oauth_callback(state: str | None = None, code: str | None = None, error: str | None = None):
+        if error:
+            body = (
+                "<div style='font-family:system-ui;padding:22px'>"
+                "<h2>Failed</h2>"
+                + f"<div>Error: <code>{_escape_textarea(str(error))}</code></div>"
+                + "<div style='margin-top:10px'>Botga qayting.</div>"
+                + "</div>"
+            )
+            return body
+
+        st = (state or "").strip()
+        if not st or not code:
+            raise HTTPException(status_code=400, detail="Missing state/code")
+
+        user_id = await repo.yt_oauth_consume_state(st)
+        if not user_id:
+            body = (
+                "<div style='font-family:system-ui;padding:22px'>"
+                "<h2>Expired</h2>"
+                "<div>State eskirgan yoki noto'g'ri. Botdan qaytadan ulab ko'ring.</div>"
+                "</div>"
+            )
+            return body
+
+        if not _yt_oauth_enabled():
+            raise HTTPException(status_code=500, detail="YouTube OAuth is not configured")
+
+        flow = _yt_flow(state=st)
+        try:
+            await asyncio.to_thread(flow.fetch_token, code=code)
+        except Exception as e:
+            body = (
+                "<div style='font-family:system-ui;padding:22px'>"
+                "<h2>Failed</h2>"
+                + f"<div>Token error: <code>{_escape_textarea(str(e))}</code></div>"
+                + "</div>"
+            )
+            return body
+
+        creds = flow.credentials
+        await repo.yt_set_token(int(user_id), creds.to_json())
+        body = (
+            "<div style='font-family:system-ui;padding:22px'>"
+            "<h2>Connected</h2>"
+            "<div>Endi botga qaytib video yuklashingiz mumkin.</div>"
+            "</div>"
+        )
+        return body
+
+    return router
+
+
+def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
+    router = APIRouter()
+
+    async def _notify_user_balance_changed(user_id: int, money_delta: int, points_delta: int):
+        token = (cfg.bot_token or "").strip()
+        if not token:
+            return
+        if int(money_delta) == 0 and int(points_delta) == 0:
+            return
+
+        def _fmt(n: int) -> str:
+            sign = "+" if int(n) > 0 else ""
+            return f"{sign}{int(n):,}".replace(",", " ")
+
+        parts: list[str] = []
+        if int(money_delta) != 0:
+            parts.append(f"💳 Balans: <b>{_fmt(int(money_delta))}</b> so'm")
+        if int(points_delta) != 0:
+            parts.append(f"🎁 Ball: <b>{_fmt(int(points_delta))}</b>")
+        text = "✅ Admin hisobingizni yangiladi.\n\n" + "\n".join(parts)
+
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = {
+            "chat_id": int(user_id),
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+
+        def _send():
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                url,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=15) as _:
+                return
+
+        try:
+            await asyncio.to_thread(_send)
+        except Exception:
+            return
+
+    return router
 
 
 def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
@@ -82,181 +285,6 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         _check_auth(cfg, creds)
         return creds
 
-    def _yt_oauth_enabled() -> bool:
-        return bool(
-            (cfg.youtube_oauth_client_id or "").strip()
-            and (cfg.youtube_oauth_client_secret or "").strip()
-            and (cfg.youtube_oauth_redirect_url or "").strip()
-        )
-
-    def _yt_flow(state: str | None = None) -> Flow:
-        client_config = {
-            "web": {
-                "client_id": (cfg.youtube_oauth_client_id or "").strip(),
-                "client_secret": (cfg.youtube_oauth_client_secret or "").strip(),
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }
-        }
-        flow = Flow.from_client_config(
-            client_config,
-            scopes=["https://www.googleapis.com/auth/youtube.upload"],
-            redirect_uri=(cfg.youtube_oauth_redirect_url or "").strip(),
-        )
-        if state:
-            flow.state = str(state)
-        return flow
-
-    @router.get("/oauth/youtube/start")
-    async def yt_oauth_start(state: str):
-        if not _yt_oauth_enabled():
-            raise HTTPException(status_code=500, detail="YouTube OAuth is not configured")
-        state = (state or "").strip()
-        if not state:
-            raise HTTPException(status_code=400, detail="Missing state")
-
-        flow = _yt_flow(state=state)
-        auth_url, _ = flow.authorization_url(
-            access_type="offline",
-            include_granted_scopes="true",
-            prompt="consent",
-            state=state,
-        )
-        return RedirectResponse(url=str(auth_url), status_code=302)
-
-    @router.get("/oauth/youtube/callback", response_class=HTMLResponse)
-    async def yt_oauth_callback(state: str | None = None, code: str | None = None, error: str | None = None):
-        if error:
-            body = (
-                "<div class='stack'>"
-                "<div class='card'><b>Status</b><div class='num'>Failed</div></div>"
-                + f"<div class='meta'>Error: <code>{_escape_textarea(str(error))}</code></div>"
-                + "<div class='meta'>Siz botga qayting.</div>"
-                + "</div>"
-            )
-            return _layout("YouTube Connect", body, active="dashboard")
-
-        st = (state or "").strip()
-        if not st or not code:
-            raise HTTPException(status_code=400, detail="Missing state/code")
-
-        user_id = await repo.yt_oauth_consume_state(st)
-        if not user_id:
-            body = (
-                "<div class='stack'>"
-                "<div class='card'><b>Status</b><div class='num'>Expired</div></div>"
-                "<div class='meta'>State eskirgan yoki noto'g'ri. Botdan qaytadan ulab ko'ring.</div>"
-                "</div>"
-            )
-            return _layout("YouTube Connect", body, active="dashboard")
-
-        if not _yt_oauth_enabled():
-            raise HTTPException(status_code=500, detail="YouTube OAuth is not configured")
-
-        flow = _yt_flow(state=st)
-        try:
-            await asyncio.to_thread(flow.fetch_token, code=code)
-        except Exception as e:
-            body = (
-                "<div class='stack'>"
-                "<div class='card'><b>Status</b><div class='num'>Failed</div></div>"
-                + f"<div class='meta'>Token error: <code>{_escape_textarea(str(e))}</code></div>"
-                + "</div>"
-            )
-            return _layout("YouTube Connect", body, active="dashboard")
-
-        creds = flow.credentials
-        await repo.yt_set_token(int(user_id), creds.to_json())
-
-        body = (
-            "<div class='stack'>"
-            "<div class='card'><b>Status</b><div class='num'>Connected</div></div>"
-            + f"<div class='meta'>User ID: <code>{int(user_id)}</code></div>"
-            + "<div class='meta'>Endi botga qaytib video yuklashingiz mumkin.</div>"
-            + "</div>"
-        )
-        return _layout("YouTube Connect", body, active="dashboard")
-
-    def _layout(title: str, body: str, active: str) -> str:
-        def _nav_item(label: str, href: str, key: str) -> str:
-            cls = "nav-item nav-item--active" if key == active else "nav-item"
-            return f"<a class='{cls}' href='{href}'>{label}</a>"
-
-        nav = (
-            "<nav class='nav'>"
-            + _nav_item("Dashboard", "/admin", "dashboard")
-            + _nav_item("Users", "/admin/users", "users")
-            + _nav_item("Prices", "/admin/prices", "prices")
-            + _nav_item("Referrals", "/admin/referrals", "referrals")
-            + _nav_item("Orders", "/admin/orders", "orders")
-            + _nav_item("Hisob To`ldirganlar", "/admin/buyers", "buyers")
-            + _nav_item("Purchases", "/admin/purchases", "purchases")
-            + _nav_item("Topups", "/admin/topups", "topups")
-            + _nav_item("Broadcast", "/admin/broadcast", "broadcast")
-            + _nav_item("ChatGPT", "/admin/accounts/chatgpt", "chatgpt")
-            + _nav_item("ChatGPT Plus", "/admin/accounts/chatgpt_plus", "chatgpt_plus")
-            + _nav_item("Spotify Premium", "/admin/accounts/spotify_premium", "spotify_premium")
-            + _nav_item("YouTube Premium", "/admin/accounts/youtube_premium", "youtube_premium")
-            + _nav_item("Super Grok", "/admin/accounts/super_grok", "super_grok")
-            + _nav_item("Canva Pro", "/admin/accounts/canva_pro", "canva_pro")
-            + _nav_item("Canva Pro Link", "/admin/canva_pro_link", "canva_pro_link")
-            + _nav_item("CapCut Pro", "/admin/accounts/capcut_pro", "capcut_pro")
-            + _nav_item("Gemini", "/admin/accounts/gemini", "gemini")
-            + "</nav>"
-        )
-        return (
-            "<!doctype html>"
-            "<html><head><meta charset='utf-8'>"
-            f"<title>{title}</title>"
-            "<meta name='viewport' content='width=device-width, initial-scale=1'>"
-            "<style>"
-            ":root{--bg:#0b0f19;--panel:#0f172a;--panel2:#111c33;--text:#e5e7eb;--muted:#94a3b8;--border:rgba(148,163,184,.18);--accent:#60a5fa;--accent2:#a78bfa;}"
-            "*{box-sizing:border-box}"
-            "html,body{height:100%}"
-            "body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Arial;background:radial-gradient(1200px 800px at 20% -10%, rgba(96,165,250,.25), transparent 60%),radial-gradient(900px 700px at 90% 0%, rgba(167,139,250,.18), transparent 55%),var(--bg);color:var(--text)}"
-            ".wrap{max-width:1100px;margin:28px auto;padding:0 14px}"
-            ".top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}"
-            ".title{margin:0;font-size:20px;font-weight:650;letter-spacing:.2px}"
-            ".meta{color:var(--muted);font-size:12px}"
-            ".nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px 0}"
-            ".nav-item{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:rgba(15,23,42,.65);color:var(--text);text-decoration:none;font-size:13px}"
-            ".nav-item:hover{border-color:rgba(96,165,250,.55)}"
-            ".nav-item--active{border-color:rgba(96,165,250,.75);background:rgba(96,165,250,.10)}"
-            ".panel{border:1px solid var(--border);background:linear-gradient(180deg, rgba(15,23,42,.82), rgba(15,23,42,.55));border-radius:16px;padding:14px}"
-            ".grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}"
-            "@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}"
-            "@media(max-width:520px){.grid{grid-template-columns:1fr}}"
-            ".card{border:1px solid var(--border);background:rgba(17,28,51,.55);border-radius:14px;padding:12px}"
-            ".card b{display:block;color:var(--muted);font-weight:600;font-size:12px;margin-bottom:8px}"
-            ".card .num{font-size:22px;font-weight:700}"
-            ".toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}"
-            ".input,.select{appearance:none;border:1px solid var(--border);background:rgba(15,23,42,.65);color:var(--text);padding:9px 10px;border-radius:12px;font-size:13px;outline:none}"
-            ".input:focus,.select:focus{border-color:rgba(96,165,250,.75);box-shadow:0 0 0 3px rgba(96,165,250,.12)}"
-            ".textarea{width:100%;min-height:160px;resize:vertical;line-height:1.35}"
-            ".btn{border:1px solid rgba(96,165,250,.55);background:rgba(96,165,250,.12);color:var(--text);padding:9px 12px;border-radius:12px;font-size:13px;cursor:pointer}"
-            ".btn:hover{background:rgba(96,165,250,.18)}"
-            ".table-wrap{overflow:auto;border:1px solid var(--border);border-radius:16px}"
-            "table{border-collapse:separate;border-spacing:0;width:100%}"
-            "thead th{position:sticky;top:0;background:rgba(15,23,42,.92);backdrop-filter: blur(10px);text-align:left;color:var(--muted);font-size:12px;font-weight:650;border-bottom:1px solid var(--border);padding:10px}"
-            "tbody td{border-bottom:1px solid rgba(148,163,184,.12);padding:10px;font-size:13px;vertical-align:middle}"
-            "tbody tr:hover td{background:rgba(96,165,250,.05)}"
-            "code{color:#c7d2fe}"
-            ".rowform{display:flex;gap:8px;align-items:center;flex-wrap:wrap}"
-            ".rowform .input{padding:7px 9px;border-radius:10px}"
-            ".rowform .btn{padding:7px 10px;border-radius:10px}"
-            ".stack{display:grid;grid-template-columns:1fr;gap:12px}"
-            ".field b{display:block;color:var(--muted);font-weight:650;font-size:12px;margin-bottom:8px}"
-            "</style>"
-            "</head><body><div class='wrap'>"
-            "<div class='top'>"
-            f"<h1 class='title'>{title}</h1>"
-            f"<div class='meta'>{cfg.admin_panel_host}:{cfg.admin_panel_port}</div>"
-            "</div>"
-            f"{nav}"
-            f"<section class='panel'>{body}</section>"
-            "</div></body></html>"
-        )
-
     def _fmt_money(n: int) -> str:
         return f"{int(n):,}".replace(",", " ")
 
@@ -276,7 +304,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "</form>"
             "</div>"
         )
-        return _layout("Canva Pro Link", body, active="canva_pro_link")
+        return _layout(cfg, "Canva Pro Link", body, active="canva_pro_link")
 
     @router.post("/canva_pro_link")
     async def admin_canva_pro_link_save(
@@ -355,7 +383,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             f"<div class='card'><b>Paid topups</b><div class='num'>{stats['paid_topups']}</div></div>"
             "</div>"
         )
-        return _layout("Admin Dashboard", body, active="dashboard")
+        return _layout(cfg, "Admin Dashboard", body, active="dashboard")
 
     @router.get("/users", response_class=HTMLResponse)
     async def admin_users(
@@ -419,7 +447,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             )
 
         body += "</tbody></table></div>"
-        return _layout("Users & Balances", body, active="users")
+        return _layout(cfg, "Users & Balances", body, active="users")
 
     @router.get("/prices", response_class=HTMLResponse)
     async def admin_prices(credentials: HTTPBasicCredentials = Depends(_auth)):
@@ -475,7 +503,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             body += "</div>"
 
         body += "</div>"
-        return _layout("Prices", body, active="prices")
+        return _layout(cfg, "Prices", body, active="prices")
 
     @router.post("/prices/set")
     async def admin_prices_set(
@@ -672,7 +700,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             )
 
         body += "</tbody></table></div>"
-        return _layout("Orders", body, active="orders")
+        return _layout(cfg, "Orders", body, active="orders")
 
     @router.get("/referrals", response_class=HTMLResponse)
     async def admin_referrals(
@@ -712,7 +740,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             )
 
         body += "</tbody></table></div>"
-        return _layout("Referrals", body, active="referrals")
+        return _layout(cfg, "Referrals", body, active="referrals")
 
     @router.post("/orders/update")
     async def admin_orders_update(
@@ -818,7 +846,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             )
 
         body += "</tbody></table></div>"
-        return _layout("Topups", body, active="topups")
+        return _layout(cfg, "Topups", body, active="topups")
 
     @router.get("/buyers", response_class=HTMLResponse)
     async def admin_buyers(
@@ -859,7 +887,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             )
 
         body += "</tbody></table></div>"
-        return _layout("Hisob To`ldirganlar", body, active="buyers")
+        return _layout(cfg, "Hisob To`ldirganlar", body, active="buyers")
 
     @router.get("/topups/proof/{topup_id}")
     async def admin_topup_proof_download(
@@ -939,7 +967,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             )
 
         body += "</tbody></table></div>"
-        return _layout("Purchases", body, active="purchases")
+        return _layout(cfg, "Purchases", body, active="purchases")
 
     @router.post("/topups/update")
     async def admin_topups_update(
@@ -1004,7 +1032,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
     async def admin_health(credentials: HTTPBasicCredentials = Depends(_auth)):
         async with aiosqlite.connect(cfg.db_path) as db:
             await db.execute("SELECT 1")
-        return _layout("Health", "<div>OK</div>", active="dashboard")
+        return _layout(cfg, "Health", "<div>OK</div>", active="dashboard")
 
     @router.get("/broadcast", response_class=HTMLResponse)
     async def admin_broadcast(credentials: HTTPBasicCredentials = Depends(_auth)):
@@ -1100,7 +1128,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<div class='meta'>Eslatma: matn HTML parse_mode bilan yuboriladi.</div>"
             "</div>"
         )
-        return _layout("Broadcast", body, active="broadcast")
+        return _layout(cfg, "Broadcast", body, active="broadcast")
 
     @router.post("/broadcast/send_user", response_class=HTMLResponse)
     async def admin_broadcast_send_user(
@@ -1125,7 +1153,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
                 "</div>"
             )
-            return _layout("Send to user", body, active="broadcast")
+            return _layout(cfg, "Send to user", body, active="broadcast")
 
         ok = True
         error = ""
@@ -1152,7 +1180,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             + "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
             + "</div>"
         )
-        return _layout("Send to user", body, active="broadcast")
+        return _layout(cfg, "Send to user", body, active="broadcast")
 
     @router.post("/broadcast/send_userid", response_class=HTMLResponse)
     async def admin_broadcast_send_userid(
@@ -1189,7 +1217,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             + "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
             + "</div>"
         )
-        return _layout("Send to user (ID)", body, active="broadcast")
+        return _layout(cfg, "Send to user (ID)", body, active="broadcast")
 
     @router.post("/broadcast/send", response_class=HTMLResponse)
     async def admin_broadcast_send(
@@ -1274,7 +1302,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
             "</div>"
         )
-        return _layout("Broadcast result", body, active="broadcast")
+        return _layout(cfg, "Broadcast result", body, active="broadcast")
 
     @router.post("/broadcast/send_photo", response_class=HTMLResponse)
     async def admin_broadcast_send_photo(
@@ -1362,7 +1390,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
             "</div>"
         )
-        return _layout("Broadcast photo result", body, active="broadcast")
+        return _layout(cfg, "Broadcast photo result", body, active="broadcast")
 
     @router.post("/broadcast/send_user_photo", response_class=HTMLResponse)
     async def admin_broadcast_send_user_photo(
@@ -1389,7 +1417,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
                 "</div>"
             )
-            return _layout("Send photo to user", body, active="broadcast")
+            return _layout(cfg, "Send photo to user", body, active="broadcast")
 
     @router.post("/broadcast/send_userid_photo", response_class=HTMLResponse)
     async def admin_broadcast_send_userid_photo(
@@ -1430,7 +1458,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             + "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
             + "</div>"
         )
-        return _layout("Send photo to user (ID)", body, active="broadcast")
+        return _layout(cfg, "Send photo to user (ID)", body, active="broadcast")
 
         filename = str(photo.filename or "photo.jpg")
 
@@ -1451,7 +1479,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             + "<div style='margin-top:10px'><a class='btn' href='/admin/broadcast'>Back</a></div>"
             + "</div>"
         )
-        return _layout("Send photo to user", body, active="broadcast")
+        return _layout(cfg, "Send photo to user", body, active="broadcast")
 
     def _escape_textarea(s: str) -> str:
         return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
