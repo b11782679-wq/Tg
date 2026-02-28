@@ -1025,7 +1025,11 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         )
 
         for r in rows:
-            uname = str(r.get("username") or "").strip()
+            uname = ""
+            try:
+                uname = str(r["username"] or "").strip()
+            except Exception:
+                uname = ""
             if uname and not uname.startswith("@"): 
                 uname = "@" + uname
             body += (
