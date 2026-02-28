@@ -32,6 +32,7 @@ from google_auth_oauthlib.flow import Flow
 router = Router()
 _repo: Repo | None = None
 _cfg: Config | None = None
+_deny_bot_notice_ts: dict[int, float] = {}
 
 
 class YTAutoStates(StatesGroup):
@@ -52,21 +53,23 @@ async def _deny_bot_user(obj: Message | CallbackQuery) -> bool:
     u = getattr(obj, "from_user", None)
     if not u or not getattr(u, "is_bot", False):
         return False
+    uid = int(getattr(u, "id", 0) or 0)
     try:
         if isinstance(obj, CallbackQuery):
-            await obj.answer()
-            msg = obj.message
+            await obj.answer("❌ Bot akkauntlar uchun bu funksiya ishlamaydi.", show_alert=True)
         else:
-            msg = obj
-        if msg:
-            await msg.answer("❌ Bot akkauntlar uchun bu funksiya ishlamaydi.")
+            now = float(time.time())
+            last = float(_deny_bot_notice_ts.get(uid, 0.0))
+            if now - last >= 15.0:
+                _deny_bot_notice_ts[uid] = now
+                await obj.answer("❌ Bot akkauntlar uchun bu funksiya ishlamaydi.")
     except Exception:
         pass
     try:
         if _cfg and (_cfg.log_channel or "").strip():
             await (obj.bot.send_message(
                 _cfg.log_channel,
-                "<b>YT BLOCKED BOT USER</b>\n" + f"User: <code>{int(u.id)}</code>",
+                "<b>YT BLOCKED BOT USER</b>\n" + f"User: <code>{uid}</code>",
             ))
     except Exception:
         pass
