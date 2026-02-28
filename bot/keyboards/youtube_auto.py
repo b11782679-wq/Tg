@@ -51,6 +51,9 @@ def yt_schedule_choice_kb() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="✍️ Qo‘lda", callback_data="yt:auto:sched:set"),
             ],
             [
+                InlineKeyboardButton(text="⚙️ Qo‘shimcha sozlamalar", callback_data="yt:auto:metadata:menu"),
+            ],
+            [
                 InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:menu"),
             ],
         ]
@@ -72,6 +75,122 @@ def yt_timezone_kb() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:menu"),
+            ],
+        ]
+    )
+
+
+def yt_metadata_menu_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="👶 Made for Kids", callback_data="yt:auto:meta:made_for_kids"),
+                InlineKeyboardButton(text="🏷️ Teglar", callback_data="yt:auto:meta:tags"),
+            ],
+            [
+                InlineKeyboardButton(text="📁 Kategoriya", callback_data="yt:auto:meta:category"),
+                InlineKeyboardButton(text="🌐 Til", callback_data="yt:auto:meta:language"),
+            ],
+            [
+                InlineKeyboardButton(text="📅 Sana", callback_data="yt:auto:meta:recording_date"),
+                InlineKeyboardButton(text="📍 Joy", callback_data="yt:auto:meta:video_location"),
+            ],
+            [
+                InlineKeyboardButton(text="📄 Litsenziya", callback_data="yt:auto:meta:licence"),
+                InlineKeyboardButton(text="💬 Kommentlar", callback_data="yt:auto:meta:comments"),
+            ],
+            [
+                InlineKeyboardButton(text="🔞 Yosh cheklamasi", callback_data="yt:auto:meta:age_restricted"),
+                InlineKeyboardButton(text="💰 Reklama", callback_data="yt:auto:meta:paid_promotion"),
+            ],
+            [
+                InlineKeyboardButton(text="✅ Tayyor", callback_data="yt:auto:sched:choice"),
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:upload"),
+            ],
+        ]
+    )
+
+
+def yt_yes_no_kb(callback_prefix: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Ha", callback_data=f"{callback_prefix}:yes"),
+                InlineKeyboardButton(text="❌ Yo'q", callback_data=f"{callback_prefix}:no"),
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:metadata:menu"),
+            ],
+        ]
+    )
+
+
+def yt_category_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🎬 Film & Animatsiya", callback_data="yt:auto:meta:cat:film_animation"),
+                InlineKeyboardButton(text="🚗 Avto & Transport", callback_data="yt:auto:meta:cat:autos_vehicles"),
+            ],
+            [
+                InlineKeyboardButton(text="🎵 Musiqa", callback_data="yt:auto:meta:cat:music"),
+                InlineKeyboardButton(text="🐾 Hayvonlar", callback_data="yt:auto:meta:cat:pets_animals"),
+            ],
+            [
+                InlineKeyboardButton(text="⚽ Sport", callback_data="yt:auto:meta:cat:sports"),
+                InlineKeyboardButton(text="🎮 Gaming", callback_data="yt:auto:meta:cat:gaming"),
+            ],
+            [
+                InlineKeyboardButton(text="👥 Odamlar & Bloglar", callback_data="yt:auto:meta:cat:people_blogs"),
+                InlineKeyboardButton(text="😂 Komediya", callback_data="yt:auto:meta:cat:comedy"),
+            ],
+            [
+                InlineKeyboardButton(text="📰 Yangiliklar", callback_data="yt:auto:meta:cat:news_politics"),
+                InlineKeyboardButton(text="📚 Ta'lim", callback_data="yt:auto:meta:cat:education"),
+            ],
+            [
+                InlineKeyboardButton(text="🔬 Fan & Texnika", callback_data="yt:auto:meta:cat:science_tech"),
+                InlineKeyboardButton(text="🔧 Qo'llanma", callback_data="yt:auto:meta:cat:howto_style"),
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:metadata:menu"),
+            ],
+        ]
+    )
+
+
+def yt_licence_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="📄 Standard YouTube", callback_data="yt:auto:meta:lic:standard"),
+            ],
+            [
+                InlineKeyboardButton(text="🔄 Creative Commons", callback_data="yt:auto:meta:lic:creative"),
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:metadata:menu"),
+            ],
+        ]
+    )
+
+
+def yt_comments_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="💬 Yoqilgan", callback_data="yt:auto:meta:comments:on"),
+            ],
+            [
+                InlineKeyboardButton(text="🚫 O'chirilgan", callback_data="yt:auto:meta:comments:off"),
+            ],
+            [
+                InlineKeyboardButton(text="✅ Tekshiruvdan keyin", callback_data="yt:auto:meta:comments:moderated"),
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:metadata:menu"),
             ],
         ]
     )

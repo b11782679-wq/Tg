@@ -23,7 +23,10 @@ from aiogram.types import CallbackQuery, Message
 
 from bot.config import Config
 from bot.db.repo import Repo
-from bot.keyboards.youtube_auto import yt_auto_menu_kb, yt_visibility_kb, yt_schedule_choice_kb, yt_timezone_kb
+from bot.keyboards.youtube_auto import (
+    yt_auto_menu_kb, yt_visibility_kb, yt_schedule_choice_kb, yt_timezone_kb,
+    yt_metadata_menu_kb, yt_yes_no_kb, yt_category_kb, yt_licence_kb, yt_comments_kb
+)
 from bot.services.youtube_uploader import to_utc_sqlite_datetime
 
 from google_auth_oauthlib.flow import Flow
@@ -41,6 +44,11 @@ class YTAutoStates(StatesGroup):
     waiting_description = State()
     waiting_timezone = State()
     waiting_schedule_time = State()
+    # Metadata states
+    waiting_tags = State()
+    waiting_language = State()
+    waiting_recording_date = State()
+    waiting_video_location = State()
 
 
 def setup(repo: Repo, cfg: Config):
@@ -635,9 +643,327 @@ async def yt_auto_draft_text_router(message: Message, state: FSMContext):
             pass
         await yt_auto_got_schedule_time(message, state)
         return
+    # Metadata collection steps
+    current_state = await state.get_state()
+    if current_state == YTAutoStates.waiting_tags.state:
+        await yt_auto_got_tags(message, state)
+        return
+    if current_state == YTAutoStates.waiting_language.state:
+        await yt_auto_got_language(message, state)
+        return
+    if current_state == YTAutoStates.waiting_recording_date.state:
+        await yt_auto_got_recording_date(message, state)
+        return
+    if current_state == YTAutoStates.waiting_video_location.state:
+        await yt_auto_got_video_location(message, state)
+        return
 
     await _repo.yt_draft_clear(message.from_user.id)
     await message.answer(
         "❗️ Jarayon holati noaniq bo‘lib qoldi. Qaytadan boshlaymiz.\n\n"
         "<b>🤖 Avtomatlashtirilgan YouTube</b> → <b>📤 Video yuklash</b>",
+    )
+
+
+# Metadata collection handlers
+@router.callback_query(F.data == "yt:auto:metadata:menu")
+async def yt_auto_metadata_menu(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await call.message.edit_text(
+        "⚙️ <b>Qo‘shimcha sozlamalar</b>\n\n"
+        "Kerakli maydonlarni tanlang:",
+        reply_markup=yt_metadata_menu_kb()
+    )
+
+
+@router.callback_query(F.data == "yt:auto:sched:choice")
+async def yt_auto_sched_choice(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await call.message.edit_text(
+        "⏰ Qachon yuklaymiz?",
+        reply_markup=yt_schedule_choice_kb()
+    )
+
+
+@router.callback_query(F.data == "yt:auto:meta:made_for_kids")
+async def yt_auto_meta_made_for_kids(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await call.message.edit_text(
+        "👶 <b>Made for Kids</b>\n\n"
+        "Bu video bolalar uchun mo‘ljallanganmi?\n"
+        "(COPPA talablariga ko'ra)",
+        reply_markup=yt_yes_no_kb("yt:auto:meta:mfk")
+    )
+
+
+@router.callback_query(F.data.startswith("yt:auto:meta:mfk:"))
+async def yt_auto_meta_made_for_kids_set(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    value = (call.data or "").split(":")[-1] == "yes"
+    await state.update_data(made_for_kids=1 if value else 0)
+    await _repo.yt_draft_upsert(call.from_user.id, step="metadata", made_for_kids=1 if value else 0)
+    await call.message.edit_text(
+        "✅ Saqlandi!\n\n"
+        "Boshqa sozlamalar:",
+        reply_markup=yt_metadata_menu_kb()
+    )
+
+
+@router.callback_query(F.data == "yt:auto:meta:tags")
+async def yt_auto_meta_tags(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await state.set_state(YTAutoStates.waiting_tags)
+    await call.message.edit_text(
+        "🏷️ <b>Teglar (Tags)</b>\n\n"
+        "Teglarni vergul bilan ajratib yozing (masalan: o'zbek, musiqa, 2024)\n"
+        "Maksimal 500 ta, har biri 500 belgidan oshmasligi kerak.\n\n"
+        "Yo‘q bo‘lsa <code>-</code> yuboring."
+    )
+
+
+async def yt_auto_got_tags(message: Message, state: FSMContext):
+    if await _deny_bot_user(message):
+        return
+    tags = (message.text or "").strip()
+    if tags == "-":
+        tags = ""
+    await state.update_data(tags=tags)
+    await _repo.yt_draft_upsert(message.from_user.id, step="metadata", tags=tags)
+    await state.set_state(None)
+    await message.answer(
+        "✅ Teglar saqlandi!\n\n"
+        "Boshqa sozlamalar:",
+        reply_markup=yt_metadata_menu_kb()
+    )
+
+
+@router.callback_query(F.data == "yt:auto:meta:category")
+async def yt_auto_meta_category(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await call.message.edit_text(
+        "📁 <b>Kategoriya tanlang</b>",
+        reply_markup=yt_category_kb()
+    )
+
+
+@router.callback_query(F.data.startswith("yt:auto:meta:cat:"))
+async def yt_auto_meta_category_set(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    category = (call.data or "").split(":")[-1]
+    await state.update_data(category=category)
+    await _repo.yt_draft_upsert(call.from_user.id, step="metadata", category=category)
+    await call.message.edit_text(
+        "✅ Kategoriya saqlandi!\n\n"
+        "Boshqa sozlamalar:",
+        reply_markup=yt_metadata_menu_kb()
+    )
+
+
+@router.callback_query(F.data == "yt:auto:meta:language")
+async def yt_auto_meta_language(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await state.set_state(YTAutoStates.waiting_language)
+    await call.message.edit_text(
+        "🌐 <b>Video tili</b>\n\n"
+        "Til kodini yozing (masalan: uz, en, ru)\n"
+        "Yo‘q bo‘lsa <code>-</code> yuboring."
+    )
+
+
+async def yt_auto_got_language(message: Message, state: FSMContext):
+    if await _deny_bot_user(message):
+        return
+    language = (message.text or "").strip()
+    if language == "-":
+        language = ""
+    await state.update_data(language=language)
+    await _repo.yt_draft_upsert(message.from_user.id, step="metadata", language=language)
+    await state.set_state(None)
+    await message.answer(
+        "✅ Til saqlandi!\n\n"
+        "Boshqa sozlamalar:",
+        reply_markup=yt_metadata_menu_kb()
+    )
+
+
+@router.callback_query(F.data == "yt:auto:meta:recording_date")
+async def yt_auto_meta_recording_date(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await state.set_state(YTAutoStates.waiting_recording_date)
+    await call.message.edit_text(
+        "📅 <b>Suratga olingan sana</b>\n\n"
+        "Sanani yozing: <code>YYYY-MM-DD</code>\n"
+        "(masalan: 2024-01-15)\n\n"
+        "Yo‘q bo‘lsa <code>-</code> yuboring."
+    )
+
+
+async def yt_auto_got_recording_date(message: Message, state: FSMContext):
+    if await _deny_bot_user(message):
+        return
+    recording_date = (message.text or "").strip()
+    if recording_date == "-":
+        recording_date = ""
+    await state.update_data(recording_date=recording_date)
+    await _repo.yt_draft_upsert(message.from_user.id, step="metadata", recording_date=recording_date if recording_date else None)
+    await state.set_state(None)
+    await message.answer(
+        "✅ Sana saqlandi!\n\n"
+        "Boshqa sozlamalar:",
+        reply_markup=yt_metadata_menu_kb()
+    )
+
+
+@router.callback_query(F.data == "yt:auto:meta:video_location")
+async def yt_auto_meta_video_location(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await state.set_state(YTAutoStates.waiting_video_location)
+    await call.message.edit_text(
+        "📍 <b>Video joylashuvi</b>\n\n"
+        "Videoning suratga olingan joyini yozing:\n"
+        "(masalan: Toshkent, O'zbekiston)\n\n"
+        "Yo‘q bo‘lsa <code>-</code> yuboring."
+    )
+
+
+async def yt_auto_got_video_location(message: Message, state: FSMContext):
+    if await _deny_bot_user(message):
+        return
+    video_location = (message.text or "").strip()
+    if video_location == "-":
+        video_location = ""
+    await state.update_data(video_location=video_location)
+    await _repo.yt_draft_upsert(message.from_user.id, step="metadata", video_location=video_location)
+    await state.set_state(None)
+    await message.answer(
+        "✅ Joylashuv saqlandi!\n\n"
+        "Boshqa sozlamalar:",
+        reply_markup=yt_metadata_menu_kb()
+    )
+
+
+@router.callback_query(F.data == "yt:auto:meta:licence")
+async def yt_auto_meta_licence(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await call.message.edit_text(
+        "📄 <b>Litsenziya tanlang</b>",
+        reply_markup=yt_licence_kb()
+    )
+
+
+@router.callback_query(F.data.startswith("yt:auto:meta:lic:"))
+async def yt_auto_meta_licence_set(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    lic_type = (call.data or "").split(":")[-1]
+    licence = "Creative Commons" if lic_type == "creative" else "Standard YouTube licence"
+    await state.update_data(licence=licence)
+    await _repo.yt_draft_upsert(call.from_user.id, step="metadata", licence=licence)
+    await call.message.edit_text(
+        "✅ Litsenziya saqlandi!\n\n"
+        "Boshqa sozlamalar:",
+        reply_markup=yt_metadata_menu_kb()
+    )
+
+
+@router.callback_query(F.data == "yt:auto:meta:comments")
+async def yt_auto_meta_comments(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await call.message.edit_text(
+        "💬 <b>Kommentlar sozlamalari</b>",
+        reply_markup=yt_comments_kb()
+    )
+
+
+@router.callback_query(F.data.startswith("yt:auto:meta:comments:"))
+async def yt_auto_meta_comments_set(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    comments = (call.data or "").split(":")[-1]
+    await state.update_data(comments=comments)
+    await _repo.yt_draft_upsert(call.from_user.id, step="metadata", comments=comments)
+    await call.message.edit_text(
+        "✅ Kommentlar sozlamasi saqlandi!\n\n"
+        "Boshqa sozlamalar:",
+        reply_markup=yt_metadata_menu_kb()
+    )
+
+
+@router.callback_query(F.data == "yt:auto:meta:age_restricted")
+async def yt_auto_meta_age_restricted(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await call.message.edit_text(
+        "🔞 <b>Yosh cheklamasi</b>\n\n"
+        "Bu video 18+ yosh cheklamasiga ega mi?",
+        reply_markup=yt_yes_no_kb("yt:auto:meta:age")
+    )
+
+
+@router.callback_query(F.data.startswith("yt:auto:meta:age:"))
+async def yt_auto_meta_age_restricted_set(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    value = (call.data or "").split(":")[-1] == "yes"
+    await state.update_data(age_restricted=1 if value else 0)
+    await _repo.yt_draft_upsert(call.from_user.id, step="metadata", age_restricted=1 if value else 0)
+    await call.message.edit_text(
+        "✅ Yosh cheklamasi saqlandi!\n\n"
+        "Boshqa sozlamalar:",
+        reply_markup=yt_metadata_menu_kb()
+    )
+
+
+@router.callback_query(F.data == "yt:auto:meta:paid_promotion")
+async def yt_auto_meta_paid_promotion(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await call.message.edit_text(
+        "💰 <b>To'langan reklama</b>\n\n"
+        "Videoda to'langan reklama, mahsulot joylashish yoki homiylik bormi?",
+        reply_markup=yt_yes_no_kb("yt:auto:meta:pp")
+    )
+
+
+@router.callback_query(F.data.startswith("yt:auto:meta:pp:"))
+async def yt_auto_meta_paid_promotion_set(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    value = (call.data or "").split(":")[-1] == "yes"
+    await state.update_data(paid_promotion=1 if value else 0)
+    await _repo.yt_draft_upsert(call.from_user.id, step="metadata", paid_promotion=1 if value else 0)
+    await call.message.edit_text(
+        "✅ Reklama sozlamasi saqlandi!\n\n"
+        "Boshqa sozlamalar:",
+        reply_markup=yt_metadata_menu_kb()
     )
