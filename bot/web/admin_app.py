@@ -33,6 +33,48 @@ def _check_auth(cfg: Config, creds: HTTPBasicCredentials):
 def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
     router = APIRouter()
 
+    async def _notify_user_balance_changed(user_id: int, money_delta: int, points_delta: int):
+        token = (cfg.bot_token or "").strip()
+        if not token:
+            return
+        if int(money_delta) == 0 and int(points_delta) == 0:
+            return
+
+        def _fmt(n: int) -> str:
+            sign = "+" if int(n) > 0 else ""
+            return f"{sign}{int(n):,}".replace(",", " ")
+
+        parts: list[str] = []
+        if int(money_delta) != 0:
+            parts.append(f"💳 Balans: <b>{_fmt(int(money_delta))}</b> so'm")
+        if int(points_delta) != 0:
+            parts.append(f"🎁 Ball: <b>{_fmt(int(points_delta))}</b>")
+        text = "✅ Admin hisobingizni yangiladi.\n\n" + "\n".join(parts)
+
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = {
+            "chat_id": int(user_id),
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+
+        def _send():
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                url,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=15) as _:
+                return
+
+        try:
+            await asyncio.to_thread(_send)
+        except Exception:
+            return
+
     async def _auth(creds: Annotated[HTTPBasicCredentials, Depends(_security)]):
         _check_auth(cfg, creds)
         return creds
@@ -294,11 +336,15 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 return 0
             return int(s)
 
+        m_delta = _parse_int(money_delta)
+        p_delta = _parse_int(points_delta)
+
         await repo.admin_apply_balance_delta(
             user_id=user_id,
-            money_delta=_parse_int(money_delta),
-            points_delta=_parse_int(points_delta),
+            money_delta=m_delta,
+            points_delta=p_delta,
         )
+        await _notify_user_balance_changed(user_id=user_id, money_delta=m_delta, points_delta=p_delta)
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/users"), status_code=303)
 
     @router.post("/users/delete")
