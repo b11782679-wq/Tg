@@ -12,6 +12,8 @@ _TEXTS: dict[str, dict[str, str]] = {
         "menu.gemine": "💎 Gemine akkaunt",
         "menu.chatgpt": "🚀 ChatGPT Business",
         "menu.chatgpt_plus": "✨ ChatGPT Plus",
+        "menu.spotify_premium": "🎧 Spotify Premium",
+        "menu.youtube_premium": "▶️ YouTube Premium",
         "menu.super_grok": "⚡ Super Grok",
         "menu.canva_pro": "🎨 Canva Pro",
         "menu.capcut_pro": "🎬 CapCut Pro",

@@ -17,6 +17,18 @@ PRICING = {
             "1m": {"label": "1 oy", "price_uzs": 30000},
         },
     },
+    "spotify_premium": {
+        "title": "🎧 Spotify Premium",
+        "plans": {
+            "1m": {"label": "1 oy", "price_uzs": 30000},
+        },
+    },
+    "youtube_premium": {
+        "title": "▶️ YouTube Premium",
+        "plans": {
+            "1m": {"label": "1 oy", "price_uzs": 30000},
+        },
+    },
     "canva_pro": {
         "title": "🎨 Canva Pro",
         "plans": {

@@ -8,6 +8,8 @@ def products_menu_kb(lang: str = "uz"):
     kb.button(text=t(lang, "menu.gemine"), callback_data="p:open:gemine")
     kb.button(text=t(lang, "menu.chatgpt"), callback_data="p:open:chatgpt_business")
     kb.button(text=t(lang, "menu.chatgpt_plus"), callback_data="p:open:chatgpt_plus")
+    kb.button(text=t(lang, "menu.spotify_premium"), callback_data="p:open:spotify_premium")
+    kb.button(text=t(lang, "menu.youtube_premium"), callback_data="p:open:youtube_premium")
     kb.button(text=t(lang, "menu.super_grok"), callback_data="p:open:super_grok")
     kb.button(text=t(lang, "menu.canva_pro"), callback_data="p:open:canva_pro")
     kb.button(text=t(lang, "menu.canva_pro_link"), callback_data="p:open:canva_pro_link")
@@ -44,6 +46,8 @@ def product_plans_kb(product_key: str, lang: str = "uz"):
     if product_key not in (
         "chatgpt_business",
         "chatgpt_plus",
+        "spotify_premium",
+        "youtube_premium",
         "super_grok",
         "canva_pro",
         "canva_pro_link",
@@ -52,9 +56,12 @@ def product_plans_kb(product_key: str, lang: str = "uz"):
     ):
         kb.button(text=t(lang, "products.buy_points"), callback_data=f"p:buy_points:{product_key}")
     kb.button(text=t(lang, "back"), callback_data="m:home")
+
     if product_key not in (
         "chatgpt_business",
         "chatgpt_plus",
+        "spotify_premium",
+        "youtube_premium",
         "super_grok",
         "canva_pro",
         "canva_pro_link",
