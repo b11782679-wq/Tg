@@ -56,6 +56,14 @@ async def start():
         except Exception:
             pass
 
+    async def _send_log(text: str):
+        if not cfg.log_channel:
+            return
+        try:
+            await bot.send_message(cfg.log_channel, text, disable_web_page_preview=True)
+        except Exception:
+            pass
+
     @dp.error()
     async def _global_error_handler(event: ErrorEvent):
         try:
@@ -150,6 +158,8 @@ async def start():
                             await bot.send_message(cfg.admin_chat_id, f"<b>YT RECOVERY</b>\n\nReset stuck uploads: <code>{int(reset_n)}</code>")
                         except Exception:
                             pass
+                    if reset_n:
+                        await _send_log(f"<b>YT RECOVERY</b>\nReset stuck uploads: <code>{int(reset_n)}</code>")
                 except Exception as e:
                     await _send_admin_error("YT WORKER RECOVERY ERROR", e)
 
@@ -158,6 +168,7 @@ async def start():
                     for r in bad:
                         uid = int(r["user_id"])
                         up_id = int(r["id"])
+                        title = str(r["title"] or "")
                         try:
                             await bot.send_message(
                                 uid,
@@ -168,6 +179,12 @@ async def start():
                             )
                         except Exception:
                             pass
+                        await _send_log(
+                            "<b>YT UNCONNECTED</b>\n"
+                            f"User: <code>{uid}</code>\n"
+                            f"Upload ID: <code>{up_id}</code>\n"
+                            + (f"Title: <b>{title}</b>" if title else "")
+                        )
                 except Exception as e:
                     await _send_admin_error("YT FAIL UNCONNECTED ERROR", e)
 
@@ -192,6 +209,14 @@ async def start():
                             )
                         except Exception:
                             pass
+
+                        await _send_log(
+                            "<b>YT UPLOAD START</b>\n"
+                            f"User: <code>{user_id}</code>\n"
+                            f"ID: <code>{upload_id}</code>\n"
+                            + (f"Title: <b>{title}</b>\n" if title else "")
+                            + (f"Visibility: <code>{visibility}</code>" if visibility else "")
+                        )
 
                         token_json = await repo.yt_get_token(user_id)
                         if not token_json:
@@ -238,6 +263,13 @@ async def start():
                             f"Link: https://youtu.be/{video_id}",
                             disable_web_page_preview=True,
                         )
+                        await _send_log(
+                            "<b>YT UPLOAD DONE</b>\n"
+                            f"User: <code>{user_id}</code>\n"
+                            f"ID: <code>{upload_id}</code>\n"
+                            f"Video ID: <code>{video_id}</code>\n"
+                            f"Link: https://youtu.be/{video_id}"
+                        )
                     except Exception as e:
                         await repo.yt_mark_upload_failed(upload_id, str(e))
                         try:
@@ -250,6 +282,12 @@ async def start():
                         except Exception:
                             pass
                         await _send_admin_error(f"YT UPLOAD FAILED (id={int(upload_id)})", e)
+                        await _send_log(
+                            "<b>YT UPLOAD FAILED</b>\n"
+                            f"User: <code>{user_id}</code>\n"
+                            f"ID: <code>{upload_id}</code>\n"
+                            f"Error: <code>{str(e)[:350]}</code>"
+                        )
             except Exception:
                 await _send_admin_error("YT WORKER LOOP ERROR", Exception("Worker loop crashed"))
             await asyncio.sleep(15)

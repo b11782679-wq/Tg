@@ -277,6 +277,21 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
         scheduled_at=scheduled_at,
     )
 
+    try:
+        if _cfg and (_cfg.log_channel or "").strip():
+            await message.bot.send_message(
+                _cfg.log_channel,
+                "<b>YT QUEUED</b>\n"
+                f"User: <code>{int(message.from_user.id)}</code>\n"
+                f"ID: <code>{int(upload_id)}</code>\n"
+                + (f"Title: <b>{title}</b>\n" if title else "")
+                + (f"Visibility: <code>{visibility}</code>\n" if visibility else "")
+                + (f"Scheduled (UTC): <code>{scheduled_at}</code>" if scheduled_at else "Now"),
+                disable_web_page_preview=True,
+            )
+    except Exception:
+        pass
+
     await state.clear()
     await _repo.yt_draft_clear(message.from_user.id)
 
