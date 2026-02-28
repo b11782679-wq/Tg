@@ -272,7 +272,7 @@ async def yt_auto_set_timezone(call: CallbackQuery, state: FSMContext):
     tz = str(raw or "").strip()
     if tz == "manual":
         await state.set_state(YTAutoStates.waiting_timezone)
-        await call.message.answer(
+        await call.message.edit_text(
             "🌍 Timezone yozing (masalan: <code>Asia/Tashkent</code>).\n"
             "Ro‘yxat: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
             disable_web_page_preview=True,
@@ -280,14 +280,27 @@ async def yt_auto_set_timezone(call: CallbackQuery, state: FSMContext):
         return
 
     try:
-        ZoneInfo(tz)
+        z = ZoneInfo(tz)
     except Exception:
         await call.message.answer("❌ Timezone noto‘g‘ri. Masalan: <code>Asia/Tashkent</code>")
         return
 
     await state.update_data(timezone=tz)
-    await _repo.yt_draft_upsert(call.from_user.id, step="schedule", timezone=tz)
-    await call.message.answer("⏰ Qachon yuklaymiz?", reply_markup=yt_schedule_choice_kb())
+    await _repo.yt_draft_upsert(call.from_user.id, step="schedule_time", timezone=tz)
+    await state.set_state(YTAutoStates.waiting_schedule_time)
+    
+    # Get current time in selected timezone
+    now_local = datetime.datetime.now(tz=z)
+    current_time_str = now_local.strftime("%Y-%m-%d %H:%M")
+    
+    await call.message.edit_text(
+        f"📅 <b>Vaqt kiriting:</b> <code>YYYY-MM-DD HH:MM</code>\n\n"
+        f"🌍 Sizning vaqtingiz ({tz}):\n"
+        f"<code>{current_time_str}</code>\n\n"
+        f"✍️ Yuqoridagi formatda yozing:\n"
+        f"Masalan: <code>{current_time_str}</code>\n\n"
+        f"ℹ️ Hozir yuklash uchun: <code>-</code> yuboring",
+    )
 
 
 @router.message(YTAutoStates.waiting_timezone)
