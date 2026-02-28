@@ -748,10 +748,12 @@ async def yt_auto_metadata_menu(call: CallbackQuery, state: FSMContext):
     if await _deny_bot_user(call):
         return
     await call.answer()
+    draft = await _repo.yt_draft_get(call.from_user.id)
+    state_data = await state.get_data()
     await call.message.edit_text(
         "⚙️ <b>Qo‘shimcha sozlamalar</b>\n\n"
         "Kerakli maydonlarni tanlang:",
-        reply_markup=yt_metadata_menu_kb()
+        reply_markup=yt_metadata_menu_kb(draft=draft, state_data=state_data)
     )
 
 
@@ -787,10 +789,12 @@ async def yt_auto_meta_made_for_kids_set(call: CallbackQuery, state: FSMContext)
     value = (call.data or "").split(":")[-1] == "yes"
     await state.update_data(made_for_kids=1 if value else 0)
     await _repo.yt_draft_upsert(call.from_user.id, step="metadata", made_for_kids=1 if value else 0)
+    draft = await _repo.yt_draft_get(call.from_user.id)
+    state_data = await state.get_data()
     await call.message.edit_text(
         "✅ Saqlandi!\n\n"
         "Boshqa sozlamalar:",
-        reply_markup=yt_metadata_menu_kb()
+        reply_markup=yt_metadata_menu_kb(draft=draft, state_data=state_data)
     )
 
 
@@ -888,11 +892,13 @@ async def yt_auto_got_tags(message: Message, state: FSMContext):
     # Try to edit the previous bot message
     if last_msg_id:
         try:
+            draft = await _repo.yt_draft_get(message.from_user.id)
+            state_data = await state.get_data()
             result = await message.bot.edit_message_text(
                 chat_id=message.chat.id,
                 message_id=last_msg_id,
                 text="✅ Teglar saqlandi!\n\nBoshqa sozlamalar:",
-                reply_markup=yt_metadata_menu_kb()
+                reply_markup=yt_metadata_menu_kb(draft=draft, state_data=state_data)
             )
             # DEBUG: Log success
             if _cfg and (_cfg.log_channel or "").strip():
@@ -929,7 +935,7 @@ async def yt_auto_got_tags(message: Message, state: FSMContext):
     await message.answer(
         "✅ Teglar saqlandi!\n\n"
         "Boshqa sozlamalar:",
-        reply_markup=yt_metadata_menu_kb()
+        reply_markup=yt_metadata_menu_kb(draft=await _repo.yt_draft_get(message.from_user.id), state_data=await state.get_data())
     )
 
 
@@ -952,10 +958,12 @@ async def yt_auto_meta_category_set(call: CallbackQuery, state: FSMContext):
     category = (call.data or "").split(":")[-1]
     await state.update_data(category=category)
     await _repo.yt_draft_upsert(call.from_user.id, step="metadata", category=category)
+    draft = await _repo.yt_draft_get(call.from_user.id)
+    state_data = await state.get_data()
     await call.message.edit_text(
         "✅ Kategoriya saqlandi!\n\n"
         "Boshqa sozlamalar:",
-        reply_markup=yt_metadata_menu_kb()
+        reply_markup=yt_metadata_menu_kb(draft=draft, state_data=state_data)
     )
 
 
@@ -994,11 +1002,13 @@ async def yt_auto_got_language(message: Message, state: FSMContext):
     # Try to edit the previous bot message
     if last_msg_id:
         try:
+            draft = await _repo.yt_draft_get(message.from_user.id)
+            state_data = await state.get_data()
             await message.bot.edit_message_text(
                 chat_id=message.chat.id,
                 message_id=last_msg_id,
                 text="✅ Til saqlandi!\n\nBoshqa sozlamalar:",
-                reply_markup=yt_metadata_menu_kb()
+                reply_markup=yt_metadata_menu_kb(draft=draft, state_data=state_data)
             )
             return
         except Exception:
@@ -1006,7 +1016,7 @@ async def yt_auto_got_language(message: Message, state: FSMContext):
     await message.answer(
         "✅ Til saqlandi!\n\n"
         "Boshqa sozlamalar:",
-        reply_markup=yt_metadata_menu_kb()
+        reply_markup=yt_metadata_menu_kb(draft=await _repo.yt_draft_get(message.from_user.id), state_data=await state.get_data())
     )
 
 
@@ -1046,11 +1056,13 @@ async def yt_auto_got_recording_date(message: Message, state: FSMContext):
     # Try to edit the previous bot message
     if last_msg_id:
         try:
+            draft = await _repo.yt_draft_get(message.from_user.id)
+            state_data = await state.get_data()
             await message.bot.edit_message_text(
                 chat_id=message.chat.id,
                 message_id=last_msg_id,
                 text="✅ Sana saqlandi!\n\nBoshqa sozlamalar:",
-                reply_markup=yt_metadata_menu_kb()
+                reply_markup=yt_metadata_menu_kb(draft=draft, state_data=state_data)
             )
             return
         except Exception:
@@ -1058,7 +1070,7 @@ async def yt_auto_got_recording_date(message: Message, state: FSMContext):
     await message.answer(
         "✅ Sana saqlandi!\n\n"
         "Boshqa sozlamalar:",
-        reply_markup=yt_metadata_menu_kb()
+        reply_markup=yt_metadata_menu_kb(draft=await _repo.yt_draft_get(message.from_user.id), state_data=await state.get_data())
     )
 
 
@@ -1098,11 +1110,13 @@ async def yt_auto_got_video_location(message: Message, state: FSMContext):
     # Try to edit the previous bot message
     if last_msg_id:
         try:
+            draft = await _repo.yt_draft_get(message.from_user.id)
+            state_data = await state.get_data()
             await message.bot.edit_message_text(
                 chat_id=message.chat.id,
                 message_id=last_msg_id,
                 text="✅ Joylashuv saqlandi!\n\nBoshqa sozlamalar:",
-                reply_markup=yt_metadata_menu_kb()
+                reply_markup=yt_metadata_menu_kb(draft=draft, state_data=state_data)
             )
             return
         except Exception:
@@ -1110,7 +1124,7 @@ async def yt_auto_got_video_location(message: Message, state: FSMContext):
     await message.answer(
         "✅ Joylashuv saqlandi!\n\n"
         "Boshqa sozlamalar:",
-        reply_markup=yt_metadata_menu_kb()
+        reply_markup=yt_metadata_menu_kb(draft=await _repo.yt_draft_get(message.from_user.id), state_data=await state.get_data())
     )
 
 
@@ -1134,10 +1148,12 @@ async def yt_auto_meta_licence_set(call: CallbackQuery, state: FSMContext):
     licence = "Creative Commons" if lic_type == "creative" else "Standard YouTube licence"
     await state.update_data(licence=licence)
     await _repo.yt_draft_upsert(call.from_user.id, step="metadata", licence=licence)
+    draft = await _repo.yt_draft_get(call.from_user.id)
+    state_data = await state.get_data()
     await call.message.edit_text(
         "✅ Litsenziya saqlandi!\n\n"
         "Boshqa sozlamalar:",
-        reply_markup=yt_metadata_menu_kb()
+        reply_markup=yt_metadata_menu_kb(draft=draft, state_data=state_data)
     )
 
 
@@ -1157,13 +1173,15 @@ async def yt_auto_meta_comments_set(call: CallbackQuery, state: FSMContext):
     if await _deny_bot_user(call):
         return
     await call.answer()
-    comments = (call.data or "").split(":")[-1]
-    await state.update_data(comments=comments)
-    await _repo.yt_draft_upsert(call.from_user.id, step="metadata", comments=comments)
+    value = (call.data or "").split(":")[-1]
+    await state.update_data(comments=value)
+    await _repo.yt_draft_upsert(call.from_user.id, step="metadata", comments=value)
+    draft = await _repo.yt_draft_get(call.from_user.id)
+    state_data = await state.get_data()
     await call.message.edit_text(
         "✅ Kommentlar sozlamasi saqlandi!\n\n"
         "Boshqa sozlamalar:",
-        reply_markup=yt_metadata_menu_kb()
+        reply_markup=yt_metadata_menu_kb(draft=draft, state_data=state_data)
     )
 
 
@@ -1187,10 +1205,12 @@ async def yt_auto_meta_age_restricted_set(call: CallbackQuery, state: FSMContext
     value = (call.data or "").split(":")[-1] == "yes"
     await state.update_data(age_restricted=1 if value else 0)
     await _repo.yt_draft_upsert(call.from_user.id, step="metadata", age_restricted=1 if value else 0)
+    draft = await _repo.yt_draft_get(call.from_user.id)
+    state_data = await state.get_data()
     await call.message.edit_text(
         "✅ Yosh cheklamasi saqlandi!\n\n"
         "Boshqa sozlamalar:",
-        reply_markup=yt_metadata_menu_kb()
+        reply_markup=yt_metadata_menu_kb(draft=draft, state_data=state_data)
     )
 
 
@@ -1214,8 +1234,10 @@ async def yt_auto_meta_paid_promotion_set(call: CallbackQuery, state: FSMContext
     value = (call.data or "").split(":")[-1] == "yes"
     await state.update_data(paid_promotion=1 if value else 0)
     await _repo.yt_draft_upsert(call.from_user.id, step="metadata", paid_promotion=1 if value else 0)
+    draft = await _repo.yt_draft_get(call.from_user.id)
+    state_data = await state.get_data()
     await call.message.edit_text(
         "✅ Reklama sozlamasi saqlandi!\n\n"
         "Boshqa sozlamalar:",
-        reply_markup=yt_metadata_menu_kb()
+        reply_markup=yt_metadata_menu_kb(draft=draft, state_data=state_data)
     )

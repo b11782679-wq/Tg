@@ -89,28 +89,79 @@ def yt_timezone_kb() -> InlineKeyboardMarkup:
     )
 
 
-def yt_metadata_menu_kb() -> InlineKeyboardMarkup:
+def yt_metadata_menu_kb(draft: dict | None = None, state_data: dict | None = None) -> InlineKeyboardMarkup:
+    def _get(key: str):
+        if state_data and key in state_data and state_data.get(key) is not None:
+            return state_data.get(key)
+        if draft and key in draft and draft.get(key) is not None:
+            return draft.get(key)
+        return None
+
+    def _chk(label: str, is_done: bool) -> str:
+        return f"✅ {label}" if is_done else label
+
+    made_for_kids = _get("made_for_kids")
+    tags = _get("tags")
+    category = _get("category")
+    language = _get("language")
+    recording_date = _get("recording_date")
+    video_location = _get("video_location")
+    licence = _get("licence")
+    comments = _get("comments")
+    age_restricted = _get("age_restricted")
+    paid_promotion = _get("paid_promotion")
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="👶 Made for Kids", callback_data="yt:auto:meta:made_for_kids"),
-                InlineKeyboardButton(text="🏷️ Teglar", callback_data="yt:auto:meta:tags"),
+                InlineKeyboardButton(
+                    text=_chk("👶 Made for Kids", made_for_kids is not None),
+                    callback_data="yt:auto:meta:made_for_kids",
+                ),
+                InlineKeyboardButton(
+                    text=_chk("🏷️ Teglar", bool(str(tags or "").strip())),
+                    callback_data="yt:auto:meta:tags",
+                ),
             ],
             [
-                InlineKeyboardButton(text="📁 Kategoriya", callback_data="yt:auto:meta:category"),
-                InlineKeyboardButton(text="🌐 Til", callback_data="yt:auto:meta:language"),
+                InlineKeyboardButton(
+                    text=_chk("📁 Kategoriya", bool(str(category or "").strip())),
+                    callback_data="yt:auto:meta:category",
+                ),
+                InlineKeyboardButton(
+                    text=_chk("🌐 Til", bool(str(language or "").strip())),
+                    callback_data="yt:auto:meta:language",
+                ),
             ],
             [
-                InlineKeyboardButton(text="📅 Sana", callback_data="yt:auto:meta:recording_date"),
-                InlineKeyboardButton(text="📍 Joy", callback_data="yt:auto:meta:video_location"),
+                InlineKeyboardButton(
+                    text=_chk("📅 Sana", bool(str(recording_date or "").strip())),
+                    callback_data="yt:auto:meta:recording_date",
+                ),
+                InlineKeyboardButton(
+                    text=_chk("📍 Joy", bool(str(video_location or "").strip())),
+                    callback_data="yt:auto:meta:video_location",
+                ),
             ],
             [
-                InlineKeyboardButton(text="📄 Litsenziya", callback_data="yt:auto:meta:licence"),
-                InlineKeyboardButton(text="💬 Kommentlar", callback_data="yt:auto:meta:comments"),
+                InlineKeyboardButton(
+                    text=_chk("📄 Litsenziya", licence is not None),
+                    callback_data="yt:auto:meta:licence",
+                ),
+                InlineKeyboardButton(
+                    text=_chk("💬 Kommentlar", comments is not None),
+                    callback_data="yt:auto:meta:comments",
+                ),
             ],
             [
-                InlineKeyboardButton(text="🔞 Yosh cheklamasi", callback_data="yt:auto:meta:age_restricted"),
-                InlineKeyboardButton(text="💰 Reklama", callback_data="yt:auto:meta:paid_promotion"),
+                InlineKeyboardButton(
+                    text=_chk("🔞 Yosh cheklamasi", bool(int(age_restricted or 0))),
+                    callback_data="yt:auto:meta:age_restricted",
+                ),
+                InlineKeyboardButton(
+                    text=_chk("💰 Reklama", bool(int(paid_promotion or 0))),
+                    callback_data="yt:auto:meta:paid_promotion",
+                ),
             ],
             [
                 InlineKeyboardButton(text="✅ Tayyor", callback_data="yt:auto:sched:choice"),
