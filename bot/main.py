@@ -144,6 +144,17 @@ async def start():
                     scheduled_at = str(r["scheduled_at"] or "").strip() or None
 
                     try:
+                        try:
+                            await bot.send_message(
+                                user_id,
+                                "⏳ YouTube upload boshlandi...\n\n"
+                                f"ID: <code>{upload_id}</code>\n"
+                                + (f"Title: <b>{title}</b>\n" if title else "")
+                                + (f"Visibility: <code>{visibility}</code>" if visibility else ""),
+                            )
+                        except Exception:
+                            pass
+
                         token_json = await repo.yt_get_token(user_id)
                         if not token_json:
                             raise RuntimeError("Not connected")
