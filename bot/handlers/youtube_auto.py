@@ -5,6 +5,8 @@ import secrets
 import time
 import hmac
 import hashlib
+import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from aiogram import Router, F
@@ -21,7 +23,7 @@ from aiogram.types import CallbackQuery, Message
 
 from bot.config import Config
 from bot.db.repo import Repo
-from bot.keyboards.youtube_auto import yt_auto_menu_kb, yt_visibility_kb, yt_schedule_choice_kb
+from bot.keyboards.youtube_auto import yt_auto_menu_kb, yt_visibility_kb, yt_schedule_choice_kb, yt_timezone_kb
 from bot.services.youtube_uploader import to_utc_sqlite_datetime
 
 from google_auth_oauthlib.flow import Flow
@@ -206,11 +208,32 @@ async def yt_auto_set_visibility(call: CallbackQuery, state: FSMContext):
     await state.update_data(visibility=vis)
     await _repo.yt_draft_upsert(call.from_user.id, step="timezone", visibility=vis)
     await state.set_state(YTAutoStates.waiting_timezone)
-    await call.message.answer(
-        "🌍 Timezone yozing (masalan: <code>Asia/Tashkent</code>).\n"
-        "Ro‘yxat: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
-        disable_web_page_preview=True,
-    )
+    await call.message.answer("🌍 Timezone tanlang:", reply_markup=yt_timezone_kb())
+
+
+@router.callback_query(F.data.startswith("yt:auto:tz:"))
+async def yt_auto_set_timezone(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    raw = (call.data or "").split(":", maxsplit=3)[-1]
+    tz = str(raw or "").strip()
+    if tz == "manual":
+        await state.set_state(YTAutoStates.waiting_timezone)
+        await call.message.answer(
+            "🌍 Timezone yozing (masalan: <code>Asia/Tashkent</code>).\n"
+            "Ro‘yxat: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
+            disable_web_page_preview=True,
+        )
+        return
+
+    try:
+        ZoneInfo(tz)
+    except Exception:
+        await call.message.answer("❌ Timezone noto‘g‘ri. Masalan: <code>Asia/Tashkent</code>")
+        return
+
+    await state.update_data(timezone=tz)
+    await _repo.yt_draft_upsert(call.from_user.id, step="schedule", timezone=tz)
+    await call.message.answer("⏰ Qachon yuklaymiz?", reply_markup=yt_schedule_choice_kb())
 
 
 @router.message(YTAutoStates.waiting_timezone)
@@ -236,6 +259,55 @@ async def yt_auto_schedule_set(call: CallbackQuery, state: FSMContext):
     await _repo.yt_draft_upsert(call.from_user.id, step="schedule_time")
     await state.set_state(YTAutoStates.waiting_schedule_time)
     await call.message.answer("📅 Vaqt kiriting: <code>YYYY-MM-DD HH:MM</code> (timezone bo‘yicha)")
+
+
+@router.callback_query(F.data.startswith("yt:auto:sched:preset:"))
+async def yt_auto_schedule_preset(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    preset = (call.data or "").split(":")[-1]
+
+    draft = await _repo.yt_draft_get(call.from_user.id)
+    tz = str((draft["timezone"] if draft else "") or "").strip()
+    if not tz:
+        data = await state.get_data()
+        tz = str(data.get("timezone") or "").strip()
+    if not tz:
+        await call.message.answer("❗️ Avval timezone tanlang.")
+        return
+
+    try:
+        z = ZoneInfo(tz)
+    except Exception:
+        await call.message.answer("❌ Timezone noto‘g‘ri. Qaytadan tanlang.")
+        return
+
+    now_local = datetime.datetime.now(tz=z)
+    if preset == "10m":
+        target = now_local + datetime.timedelta(minutes=10)
+    elif preset == "1h":
+        target = now_local + datetime.timedelta(hours=1)
+    elif preset == "tom10":
+        tomorrow = (now_local + datetime.timedelta(days=1)).date()
+        target = datetime.datetime(
+            year=tomorrow.year,
+            month=tomorrow.month,
+            day=tomorrow.day,
+            hour=10,
+            minute=0,
+            tzinfo=z,
+        )
+    else:
+        await call.message.answer("❌ Noma'lum preset.")
+        return
+
+    local_str = target.strftime("%Y-%m-%d %H:%M")
+    try:
+        utc_dt = to_utc_sqlite_datetime(local_str, tz)
+    except Exception as e:
+        await call.message.answer(f"❌ Vaqt xato: <code>{str(e)[:200]}</code>")
+        return
+
+    await _finalize_upload(call.message, state, scheduled_at=utc_dt)
 
 
 @router.message(YTAutoStates.waiting_schedule_time)

@@ -41,7 +41,34 @@ def yt_schedule_choice_kb() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="⚡ Hozir", callback_data="yt:auto:sched:now"),
-                InlineKeyboardButton(text="⏰ Vaqt belgilash", callback_data="yt:auto:sched:set"),
+                InlineKeyboardButton(text="+10 min", callback_data="yt:auto:sched:preset:10m"),
+            ],
+            [
+                InlineKeyboardButton(text="+1 soat", callback_data="yt:auto:sched:preset:1h"),
+                InlineKeyboardButton(text="Ertaga 10:00", callback_data="yt:auto:sched:preset:tom10"),
+            ],
+            [
+                InlineKeyboardButton(text="✍️ Qo‘lda", callback_data="yt:auto:sched:set"),
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:menu"),
+            ],
+        ]
+    )
+
+
+def yt_timezone_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🇺🇿 Asia/Tashkent", callback_data="yt:auto:tz:Asia/Tashkent"),
+                InlineKeyboardButton(text="🌍 UTC", callback_data="yt:auto:tz:UTC"),
+            ],
+            [
+                InlineKeyboardButton(text="🇷🇺 Europe/Moscow", callback_data="yt:auto:tz:Europe/Moscow"),
+            ],
+            [
+                InlineKeyboardButton(text="✍️ Qo‘lda yozish", callback_data="yt:auto:tz:manual"),
             ],
             [
                 InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:menu"),
