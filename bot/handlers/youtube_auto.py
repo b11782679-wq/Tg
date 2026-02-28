@@ -723,6 +723,7 @@ async def yt_auto_meta_tags(call: CallbackQuery, state: FSMContext):
         return
     await call.answer()
     await state.set_state(YTAutoStates.waiting_tags)
+    await state.update_data(last_bot_message_id=call.message.message_id)
     await call.message.edit_text(
         "🏷️ <b>Teglar (Tags)</b>\n\n"
         "Teglarni vergul bilan ajratib yozing (masalan: o'zbek, musiqa, 2024)\n"
@@ -740,12 +741,15 @@ async def yt_auto_got_tags(message: Message, state: FSMContext):
     await state.update_data(tags=tags)
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", tags=tags)
     await state.set_state(None)
-    # Try to edit the previous bot message if user is replying to it
+    # Try to edit the previous bot message
     try:
-        if message.reply_to_message and message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
-            await message.reply_to_message.edit_text(
-                "✅ Teglar saqlandi!\n\n"
-                "Boshqa sozlamalar:",
+        data = await state.get_data()
+        last_msg_id = data.get("last_bot_message_id")
+        if last_msg_id:
+            await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_msg_id,
+                text="✅ Teglar saqlandi!\n\nBoshqa sozlamalar:",
                 reply_markup=yt_metadata_menu_kb()
             )
             return
@@ -790,6 +794,7 @@ async def yt_auto_meta_language(call: CallbackQuery, state: FSMContext):
         return
     await call.answer()
     await state.set_state(YTAutoStates.waiting_language)
+    await state.update_data(last_bot_message_id=call.message.message_id)
     await call.message.edit_text(
         "🌐 <b>Video tili</b>\n\n"
         "Til kodini yozing (masalan: uz, en, ru)\n"
@@ -806,12 +811,15 @@ async def yt_auto_got_language(message: Message, state: FSMContext):
     await state.update_data(language=language)
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", language=language)
     await state.set_state(None)
-    # Try to edit the previous bot message if user is replying to it
+    # Try to edit the previous bot message
     try:
-        if message.reply_to_message and message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
-            await message.reply_to_message.edit_text(
-                "✅ Til saqlandi!\n\n"
-                "Boshqa sozlamalar:",
+        data = await state.get_data()
+        last_msg_id = data.get("last_bot_message_id")
+        if last_msg_id:
+            await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_msg_id,
+                text="✅ Til saqlandi!\n\nBoshqa sozlamalar:",
                 reply_markup=yt_metadata_menu_kb()
             )
             return
@@ -830,6 +838,7 @@ async def yt_auto_meta_recording_date(call: CallbackQuery, state: FSMContext):
         return
     await call.answer()
     await state.set_state(YTAutoStates.waiting_recording_date)
+    await state.update_data(last_bot_message_id=call.message.message_id)
     await call.message.edit_text(
         "📅 <b>Suratga olingan sana</b>\n\n"
         "Sanani yozing: <code>YYYY-MM-DD</code>\n"
@@ -847,12 +856,15 @@ async def yt_auto_got_recording_date(message: Message, state: FSMContext):
     await state.update_data(recording_date=recording_date)
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", recording_date=recording_date if recording_date else None)
     await state.set_state(None)
-    # Try to edit the previous bot message if user is replying to it
+    # Try to edit the previous bot message
     try:
-        if message.reply_to_message and message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
-            await message.reply_to_message.edit_text(
-                "✅ Sana saqlandi!\n\n"
-                "Boshqa sozlamalar:",
+        data = await state.get_data()
+        last_msg_id = data.get("last_bot_message_id")
+        if last_msg_id:
+            await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_msg_id,
+                text="✅ Sana saqlandi!\n\nBoshqa sozlamalar:",
                 reply_markup=yt_metadata_menu_kb()
             )
             return
@@ -871,6 +883,7 @@ async def yt_auto_meta_video_location(call: CallbackQuery, state: FSMContext):
         return
     await call.answer()
     await state.set_state(YTAutoStates.waiting_video_location)
+    await state.update_data(last_bot_message_id=call.message.message_id)
     await call.message.edit_text(
         "📍 <b>Video joylashuvi</b>\n\n"
         "Videoning suratga olingan joyini yozing:\n"
@@ -888,12 +901,15 @@ async def yt_auto_got_video_location(message: Message, state: FSMContext):
     await state.update_data(video_location=video_location)
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", video_location=video_location)
     await state.set_state(None)
-    # Try to edit the previous bot message if user is replying to it
+    # Try to edit the previous bot message
     try:
-        if message.reply_to_message and message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
-            await message.reply_to_message.edit_text(
-                "✅ Joylashuv saqlandi!\n\n"
-                "Boshqa sozlamalar:",
+        data = await state.get_data()
+        last_msg_id = data.get("last_bot_message_id")
+        if last_msg_id:
+            await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=last_msg_id,
+                text="✅ Joylashuv saqlandi!\n\nBoshqa sozlamalar:",
                 reply_markup=yt_metadata_menu_kb()
             )
             return
