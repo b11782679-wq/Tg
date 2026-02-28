@@ -25,7 +25,8 @@ from bot.config import Config
 from bot.db.repo import Repo
 from bot.keyboards.youtube_auto import (
     yt_auto_menu_kb, yt_visibility_kb, yt_schedule_choice_kb, yt_timezone_kb,
-    yt_metadata_menu_kb, yt_yes_no_kb, yt_category_kb, yt_licence_kb, yt_comments_kb
+    yt_metadata_menu_kb, yt_yes_no_kb, yt_category_kb, yt_licence_kb, yt_comments_kb,
+    yt_schedule_time_kb
 )
 from bot.services.youtube_uploader import to_utc_sqlite_datetime
 
@@ -302,22 +303,6 @@ async def yt_auto_set_timezone(call: CallbackQuery, state: FSMContext):
     now_local = datetime.datetime.now(tz=z)
     current_time_str = now_local.strftime("%Y-%m-%d %H:%M")
     
-    # Create inline keyboard with options
-    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="⚙️ Qo‘shimcha sozlamalar", callback_data="yt:auto:metadata:menu"),
-            ],
-            [
-                InlineKeyboardButton(text="⚡ Hozir", callback_data="yt:auto:sched:now"),
-            ],
-            [
-                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:tz:back"),
-            ],
-        ]
-    )
-    
     await call.message.edit_text(
         f"📅 <b>Vaqt kiriting:</b> <code>YYYY-MM-DD HH:MM</code>\n\n"
         f"🌍 Sizning vaqtingiz ({tz}):\n"
@@ -325,7 +310,7 @@ async def yt_auto_set_timezone(call: CallbackQuery, state: FSMContext):
         f"✍️ Yuqoridagi formatda yozing:\n"
         f"Masalan: <code>{current_time_str}</code>\n\n"
         f"ℹ️ Hozir yuklash uchun: <code>-</code> yuboring",
-        reply_markup=kb
+        reply_markup=yt_schedule_time_kb()
     )
 
 
@@ -457,9 +442,12 @@ async def yt_auto_schedule_preset(call: CallbackQuery, state: FSMContext):
 async def yt_auto_got_schedule_time(message: Message, state: FSMContext):
     if await _deny_bot_user(message):
         return
+    raw = (message.text or "").strip()
+    if raw == "-":
+        await _finalize_upload(message, state, scheduled_at=None)
+        return
     data = await state.get_data()
     tz = str(data.get("timezone") or "").strip()
-    raw = (message.text or "").strip()
     try:
         utc_dt = to_utc_sqlite_datetime(raw, tz)
     except Exception as e:

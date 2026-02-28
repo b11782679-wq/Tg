@@ -60,6 +60,22 @@ def yt_schedule_choice_kb() -> InlineKeyboardMarkup:
     )
 
 
+def yt_schedule_time_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="⚙️ Qo‘shimcha sozlamalar", callback_data="yt:auto:metadata:menu"),
+            ],
+            [
+                InlineKeyboardButton(text="⚡ Hozir", callback_data="yt:auto:sched:now"),
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:tz:back"),
+            ],
+        ]
+    )
+
+
 def yt_timezone_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
