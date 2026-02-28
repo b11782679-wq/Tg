@@ -54,25 +54,25 @@ async def _deny_bot_user(obj: Message | CallbackQuery) -> bool:
     if not u or not getattr(u, "is_bot", False):
         return False
     uid = int(getattr(u, "id", 0) or 0)
+    # Silent deny - no messages to avoid spam
     try:
         if isinstance(obj, CallbackQuery):
-            await obj.answer("❌ Bot akkauntlar uchun bu funksiya ishlamaydi.", show_alert=True)
-        else:
-            now = float(time.time())
-            last = float(_deny_bot_notice_ts.get(uid, 0.0))
-            if now - last >= 15.0:
-                _deny_bot_notice_ts[uid] = now
-                await obj.answer("❌ Bot akkauntlar uchun bu funksiya ishlamaydi.")
+            await obj.answer()  # silent - no text, no alert
     except Exception:
         pass
-    try:
-        if _cfg and (_cfg.log_channel or "").strip():
-            await (obj.bot.send_message(
-                _cfg.log_channel,
-                "<b>YT BLOCKED BOT USER</b>\n" + f"User: <code>{uid}</code>",
-            ))
-    except Exception:
-        pass
+    # Log once per user per 60 seconds to log channel only
+    now = float(time.time())
+    last = float(_deny_bot_notice_ts.get(uid, 0.0))
+    if now - last >= 60.0:
+        _deny_bot_notice_ts[uid] = now
+        try:
+            if _cfg and (_cfg.log_channel or "").strip():
+                await (obj.bot.send_message(
+                    _cfg.log_channel,
+                    "<b>YT BLOCKED BOT USER</b>\n" + f"User: <code>{uid}</code>",
+                ))
+        except Exception:
+            pass
     return True
 
 
