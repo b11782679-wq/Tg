@@ -3,6 +3,13 @@ from bot.services.pricing import PRICING
 from bot.i18n import t
 import os
 
+
+def back_to_premium_kb(lang: str = "uz"):
+    kb = InlineKeyboardBuilder()
+    kb.button(text=t(lang, "back"), callback_data="p:menu")
+    kb.adjust(1)
+    return kb.as_markup()
+
 def products_menu_kb(lang: str = "uz"):
     kb = InlineKeyboardBuilder()
     kb.button(text=t(lang, "menu.gemine"), callback_data="p:open:gemine")
@@ -55,7 +62,7 @@ def product_plans_kb(product_key: str, lang: str = "uz"):
         "gemine",
     ):
         kb.button(text=t(lang, "products.buy_points"), callback_data=f"p:buy_points:{product_key}")
-    kb.button(text=t(lang, "back"), callback_data="m:home")
+    kb.button(text=t(lang, "back"), callback_data="p:menu")
 
     if product_key not in (
         "chatgpt_business",

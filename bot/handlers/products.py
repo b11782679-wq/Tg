@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
 from bot.keyboards.menu import main_menu_kb, back_only_kb, settings_menu_kb
-from bot.keyboards.products import product_plans_kb, products_menu_kb
+from bot.keyboards.products import product_plans_kb, products_menu_kb, back_to_premium_kb
 from bot.services.pricing import PRICING
 from bot.constants import ACCOUNT_COST_POINTS
 from bot.db.repo import Repo
@@ -111,7 +111,7 @@ def setup(repo: Repo):
                         balance=_fmt_money(money_uzs),
                         need=_fmt_money(need_uzs),
                     ),
-                    reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
+                    reply_markup=back_to_premium_kb(await repo.get_language(call.from_user.id)),
                 )
                 return
 
@@ -147,7 +147,7 @@ def setup(repo: Repo):
             await _safe_show(
                 call,
                 msg,
-                reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
+                reply_markup=back_to_premium_kb(await repo.get_language(call.from_user.id)),
                 disable_web_page_preview=True,
             )
             return
@@ -164,7 +164,7 @@ def setup(repo: Repo):
                 await _safe_show(
                     call,
                     t(await repo.get_language(call.from_user.id), "products.no_stock"),
-                    reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
+                    reply_markup=back_to_premium_kb(await repo.get_language(call.from_user.id)),
                 )
                 return
 
@@ -172,7 +172,7 @@ def setup(repo: Repo):
                 await _safe_show(
                     call,
                     t(await repo.get_language(call.from_user.id), "products.race"),
-                    reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
+                    reply_markup=back_to_premium_kb(await repo.get_language(call.from_user.id)),
                 )
                 return
 
@@ -187,7 +187,7 @@ def setup(repo: Repo):
                     balance=_fmt_money(money_uzs),
                     need=_fmt_money(need_uzs),
                 ),
-                reply_markup=back_only_kb(await repo.get_language(call.from_user.id)),
+                reply_markup=back_to_premium_kb(await repo.get_language(call.from_user.id)),
             )
             return
 
@@ -207,7 +207,7 @@ def setup(repo: Repo):
             f"{(password or '').strip() or '-'}"
         )
 
-        await _safe_show(call, msg, reply_markup=back_only_kb(await repo.get_language(call.from_user.id)))
+        await _safe_show(call, msg, reply_markup=back_to_premium_kb(await repo.get_language(call.from_user.id)))
 
     @router.callback_query(F.data.startswith("p:buy_points:"))
     async def buy_points(call: CallbackQuery):
