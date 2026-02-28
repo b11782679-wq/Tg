@@ -126,6 +126,7 @@ class Repo:
         self,
         user_id: int,
         file_path: str,
+        tg_file_id: str,
         title: str,
         description: str,
         visibility: str,
@@ -147,13 +148,14 @@ class Repo:
     ) -> int:
         async with await self._conn() as db:
             cur = await db.execute(
-                "INSERT INTO youtube_pending_uploads(user_id, file_path, title, description, visibility, timezone, scheduled_at, status, error, created_at, updated_at, "
+                "INSERT INTO youtube_pending_uploads(user_id, file_path, tg_file_id, title, description, visibility, timezone, scheduled_at, status, error, created_at, updated_at, "
                 "made_for_kids, tags, category, language, recording_date, video_location, licence, allow_embedding, shorts_remixing, comments, age_restricted, paid_promotion, altered_content) "
-                "VALUES(?,?,?,?,?,?,?, 'pending', '', datetime('now'), datetime('now'), "
+                "VALUES(?,?,?,?,?,?,?, ?, 'pending', '', datetime('now'), datetime('now'), "
                 "?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     int(user_id),
                     str(file_path),
+                    str(tg_file_id or ""),
                     str(title or ""),
                     str(description or ""),
                     str(visibility or "private"),
@@ -182,7 +184,7 @@ class Repo:
         async with await self._conn() as db:
             db.row_factory = aiosqlite.Row
             cur = await db.execute(
-                "SELECT id, user_id, file_path, title, description, visibility, timezone, scheduled_at, status, error, created_at, updated_at, "
+                "SELECT id, user_id, file_path, tg_file_id, title, description, visibility, timezone, scheduled_at, status, error, created_at, updated_at, "
                 "made_for_kids, tags, category, language, recording_date, video_location, licence, allow_embedding, shorts_remixing, comments, age_restricted, paid_promotion, altered_content "
                 "FROM youtube_pending_uploads WHERE user_id=? ORDER BY id DESC LIMIT ?",
                 (int(user_id), int(limit)),
@@ -195,7 +197,7 @@ class Repo:
             db.row_factory = aiosqlite.Row
             # scheduled_at NULL => upload now
             cur = await db.execute(
-                "SELECT p.id, p.user_id, p.file_path, p.title, p.description, p.visibility, p.timezone, p.scheduled_at, "
+                "SELECT p.id, p.user_id, p.file_path, p.tg_file_id, p.title, p.description, p.visibility, p.timezone, p.scheduled_at, "
                 "p.made_for_kids, p.tags, p.category, p.language, p.recording_date, p.video_location, p.licence, "
                 "p.allow_embedding, p.shorts_remixing, p.comments, p.age_restricted, p.paid_promotion, p.altered_content "
                 "FROM youtube_pending_uploads p "
@@ -280,7 +282,7 @@ class Repo:
         async with await self._conn() as db:
             db.row_factory = aiosqlite.Row
             cur = await db.execute(
-                "SELECT user_id, step, file_path, title, description, visibility, timezone, scheduled_at, created_at, updated_at, "
+                "SELECT user_id, step, file_path, tg_file_id, title, description, visibility, timezone, scheduled_at, created_at, updated_at, "
                 "made_for_kids, tags, category, language, recording_date, video_location, licence, allow_embedding, shorts_remixing, comments, age_restricted, paid_promotion, altered_content "
                 "FROM youtube_upload_drafts WHERE user_id=?",
                 (int(user_id),),
@@ -292,6 +294,7 @@ class Repo:
         user_id: int,
         step: str,
         file_path: str | None = None,
+        tg_file_id: str | None = None,
         title: str | None = None,
         description: str | None = None,
         visibility: str | None = None,
@@ -319,14 +322,15 @@ class Repo:
             exists = await cur.fetchone()
             if not exists:
                 await db.execute(
-                    "INSERT INTO youtube_upload_drafts(user_id, step, file_path, title, description, visibility, timezone, scheduled_at, created_at, updated_at, "
+                    "INSERT INTO youtube_upload_drafts(user_id, step, file_path, tg_file_id, title, description, visibility, timezone, scheduled_at, created_at, updated_at, "
                     "made_for_kids, tags, category, language, recording_date, video_location, licence, allow_embedding, shorts_remixing, comments, age_restricted, paid_promotion, altered_content) "
-                    "VALUES(?,?,?,?,?,?,?,?, datetime('now'), datetime('now'), "
+                    "VALUES(?,?,?,?,?,?,?,?,?, datetime('now'), datetime('now'), "
                     "?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         int(user_id),
                         str(step or ""),
                         str(file_path or ""),
+                        str(tg_file_id or ""),
                         str(title or ""),
                         str(description or ""),
                         str((visibility or "private") or "private"),
@@ -353,6 +357,9 @@ class Repo:
                 if file_path is not None:
                     sets.append("file_path=?")
                     vals.append(str(file_path or ""))
+                if tg_file_id is not None:
+                    sets.append("tg_file_id=?")
+                    vals.append(str(tg_file_id or ""))
                 if title is not None:
                     sets.append("title=?")
                     vals.append(str(title or ""))

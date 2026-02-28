@@ -1,6 +1,8 @@
 import asyncio
 import os
 import traceback
+import secrets
+from pathlib import Path
 
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
@@ -199,6 +201,7 @@ async def start():
                     upload_id = int(r["id"])
                     user_id = int(r["user_id"])
                     file_path = str(r["file_path"] or "")
+                    tg_file_id = str(r["tg_file_id"] or "")
                     title = str(r["title"] or "")
                     description = str(r["description"] or "")
                     visibility = str(r["visibility"] or "private")
@@ -241,8 +244,22 @@ async def start():
                         token_json = await repo.yt_get_token(user_id)
                         if not token_json:
                             raise RuntimeError("Not connected")
+
                         if not file_path or (not os.path.exists(file_path)):
-                            raise RuntimeError("File not found")
+                            # Fallback: re-download from Telegram using stored file_id
+                            if tg_file_id:
+                                tmp_dir = Path("tmp") / "yt"
+                                tmp_dir.mkdir(parents=True, exist_ok=True)
+                                safe_name = secrets.token_hex(12) + "_video.mp4"
+                                dest = tmp_dir / safe_name
+                                try:
+                                    tg_file = await bot.get_file(tg_file_id)
+                                    await bot.download_file(tg_file.file_path, destination=dest)
+                                    file_path = str(dest)
+                                except Exception as e:
+                                    raise RuntimeError(f"File not found (redownload failed: {str(e)[:120]})")
+                            else:
+                                raise RuntimeError("File not found")
 
                         try:
                             size_bytes = int(os.path.getsize(file_path))

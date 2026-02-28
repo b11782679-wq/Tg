@@ -203,7 +203,7 @@ async def yt_auto_got_video(message: Message, state: FSMContext):
         return
 
     await state.update_data(file_path=str(dest))
-    await _repo.yt_draft_upsert(message.from_user.id, step="title", file_path=str(dest))
+    await _repo.yt_draft_upsert(message.from_user.id, step="title", file_path=str(dest), tg_file_id=str(file_id or ""))
     await state.set_state(YTAutoStates.waiting_title)
     await message.answer("✍️ Video sarlavhasini (Title) yozing:")
 
@@ -555,6 +555,7 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
             target_uid,
             step="schedule",
             file_path=data.get("file_path"),
+            tg_file_id=data.get("tg_file_id"),
             title=data.get("title"),
             description=data.get("description"),
             visibility=data.get("visibility"),
@@ -563,6 +564,7 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
         draft = await _repo.yt_draft_get(target_uid)
     
     file_path = str((draft["file_path"] if draft else data.get("file_path")) or "").strip()
+    tg_file_id = str((draft["tg_file_id"] if draft else data.get("tg_file_id")) or "").strip()
     title = str((draft["title"] if draft else data.get("title")) or "").strip()
     description = str((draft["description"] if draft else data.get("description")) or "").strip()
     visibility = str((draft["visibility"] if draft else data.get("visibility")) or "private").strip()
@@ -613,6 +615,7 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
     upload_id = await _repo.yt_create_pending_upload(
         user_id=uid if uid else (message.from_user.id if message.from_user else 0),
         file_path=file_path,
+        tg_file_id=tg_file_id,
         title=title,
         description=description,
         visibility=visibility,

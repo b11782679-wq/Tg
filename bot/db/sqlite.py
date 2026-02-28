@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS youtube_pending_uploads (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   file_path TEXT NOT NULL,
+  tg_file_id TEXT NOT NULL DEFAULT '',
   title TEXT NOT NULL DEFAULT '',
   description TEXT NOT NULL DEFAULT '',
   visibility TEXT NOT NULL DEFAULT 'private',
@@ -148,6 +149,7 @@ CREATE TABLE IF NOT EXISTS youtube_upload_drafts (
   user_id INTEGER PRIMARY KEY,
   step TEXT NOT NULL DEFAULT '',
   file_path TEXT NOT NULL DEFAULT '',
+  tg_file_id TEXT NOT NULL DEFAULT '',
   title TEXT NOT NULL DEFAULT '',
   description TEXT NOT NULL DEFAULT '',
   visibility TEXT NOT NULL DEFAULT 'private',
@@ -209,6 +211,8 @@ async def init_db(db_path: str):
         # Add extended metadata columns to youtube_pending_uploads
         cur = await db.execute("PRAGMA table_info(youtube_pending_uploads)")
         pending_cols = {str(r[1]).lower() for r in await cur.fetchall()}
+        if "tg_file_id" not in pending_cols:
+            await db.execute("ALTER TABLE youtube_pending_uploads ADD COLUMN tg_file_id TEXT NOT NULL DEFAULT ''")
         metadata_cols = [
             ("made_for_kids", "INTEGER DEFAULT 0"),
             ("tags", "TEXT DEFAULT ''"),
@@ -231,6 +235,8 @@ async def init_db(db_path: str):
         # Add extended metadata columns to youtube_upload_drafts
         cur = await db.execute("PRAGMA table_info(youtube_upload_drafts)")
         draft_cols = {str(r[1]).lower() for r in await cur.fetchall()}
+        if "tg_file_id" not in draft_cols:
+            await db.execute("ALTER TABLE youtube_upload_drafts ADD COLUMN tg_file_id TEXT NOT NULL DEFAULT ''")
         for col_name, col_type in metadata_cols:
             if col_name not in draft_cols:
                 await db.execute(f"ALTER TABLE youtube_upload_drafts ADD COLUMN {col_name} {col_type}")
