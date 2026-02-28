@@ -8,6 +8,7 @@ import hashlib
 from pathlib import Path
 
 from aiogram import Router, F
+from aiogram.exceptions import SkipHandler
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import CallbackQuery, Message
@@ -159,7 +160,7 @@ async def yt_auto_got_title(message: Message, state: FSMContext):
 async def yt_auto_reply_without_state(message: Message, state: FSMContext):
     cur = await state.get_state()
     if cur:
-        return
+        raise SkipHandler()
     rt = getattr(message.reply_to_message, "text", None) or ""
     rt = str(rt)
     if (
@@ -173,6 +174,7 @@ async def yt_auto_reply_without_state(message: Message, state: FSMContext):
             "❗️ Jarayon uzilib qoldi (bot yangilangan yoki qayta ishga tushgan bo‘lishi mumkin).\n\n"
             "Iltimos, yana: <b>🤖 Avtomatlashtirilgan YouTube</b> → <b>📤 Video yuklash</b> ni bosib qaytadan boshlang.",
         )
+    raise SkipHandler()
 
 
 @router.message(YTAutoStates.waiting_description)
@@ -305,7 +307,7 @@ async def yt_auto_pending(call: CallbackQuery):
 async def yt_auto_draft_video_router(message: Message, state: FSMContext):
     draft = await _repo.yt_draft_get(message.from_user.id)
     if not draft or str(draft["step"] or "") != "video":
-        return
+        raise SkipHandler()
     await yt_auto_got_video(message, state)
 
 
@@ -313,7 +315,7 @@ async def yt_auto_draft_video_router(message: Message, state: FSMContext):
 async def yt_auto_draft_text_router(message: Message, state: FSMContext):
     draft = await _repo.yt_draft_get(message.from_user.id)
     if not draft:
-        return
+        raise SkipHandler()
     step = str(draft["step"] or "")
     if step == "title":
         await yt_auto_got_title(message, state)
@@ -331,3 +333,10 @@ async def yt_auto_draft_text_router(message: Message, state: FSMContext):
         except Exception:
             pass
         await yt_auto_got_schedule_time(message, state)
+        return
+
+    await _repo.yt_draft_clear(message.from_user.id)
+    await message.answer(
+        "❗️ Jarayon holati noaniq bo‘lib qoldi. Qaytadan boshlaymiz.\n\n"
+        "<b>🤖 Avtomatlashtirilgan YouTube</b> → <b>📤 Video yuklash</b>",
+    )
