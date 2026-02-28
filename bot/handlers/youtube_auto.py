@@ -297,10 +297,42 @@ async def yt_auto_got_timezone(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "yt:auto:sched:now")
 async def yt_auto_schedule_now(call: CallbackQuery, state: FSMContext):
+    uid = int(call.from_user.id) if call.from_user else 0
+    is_bot = bool(getattr(call.from_user, "is_bot", False))
+    
+    # Debug
+    try:
+        if _cfg and (_cfg.log_channel or "").strip():
+            await call.bot.send_message(
+                _cfg.log_channel,
+                f"<b>YT DEBUG schedule_now START</b>\nUser: <code>{uid}</code>\nis_bot: {is_bot}",
+            )
+    except Exception:
+        pass
+    
     if await _deny_bot_user(call):
+        try:
+            if _cfg and (_cfg.log_channel or "").strip():
+                await call.bot.send_message(
+                    _cfg.log_channel,
+                    f"<b>YT DEBUG schedule_now DENIED</b>\nUser: <code>{uid}</code>",
+                )
+        except Exception:
+            pass
         return
+    
+    # Debug passed deny
+    try:
+        if _cfg and (_cfg.log_channel or "").strip():
+            await call.bot.send_message(
+                _cfg.log_channel,
+                f"<b>YT DEBUG schedule_now PASSED deny</b>\nUser: <code>{uid}</code>",
+            )
+    except Exception:
+        pass
+    
     await call.answer()
-    await _finalize_upload(call.message, state, scheduled_at=None)
+    await _finalize_upload(call.message, state, scheduled_at=None, user_id=call.from_user.id)
 
 
 @router.callback_query(F.data == "yt:auto:sched:set")
@@ -361,7 +393,7 @@ async def yt_auto_schedule_preset(call: CallbackQuery, state: FSMContext):
         await call.message.answer(f"❌ Vaqt xato: <code>{str(e)[:200]}</code>")
         return
 
-    await _finalize_upload(call.message, state, scheduled_at=utc_dt)
+    await _finalize_upload(call.message, state, scheduled_at=utc_dt, user_id=call.from_user.id)
 
 
 @router.message(YTAutoStates.waiting_schedule_time)
@@ -380,8 +412,8 @@ async def yt_auto_got_schedule_time(message: Message, state: FSMContext):
     await _finalize_upload(message, state, scheduled_at=utc_dt)
 
 
-async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: str | None):
-    uid = int(message.from_user.id) if message.from_user else 0
+async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: str | None, user_id: int | None = None):
+    uid = int(user_id) if user_id else (int(message.from_user.id) if message.from_user else 0)
     
     # Debug: log entry
     try:
@@ -395,7 +427,16 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
     
     # Final safety check - prevent bot users from creating uploads
     user = getattr(message, "from_user", None)
-    if user and getattr(user, "is_bot", False):
+    # For callbacks, use provided user_id to check; for messages, use message.from_user
+    check_user_id = user_id if user_id else (getattr(user, 'id', None) if user else None)
+    check_is_bot = False
+    if check_user_id:
+        # If we have the user_id, we need to check if it's a bot
+        # For callback queries, we trust the call.from_user.is_bot check done earlier
+        # For direct messages, check the message sender
+        if not user_id and user and getattr(user, "is_bot", False):
+            check_is_bot = True
+    if check_is_bot:
         try:
             if _cfg and (_cfg.log_channel or "").strip():
                 await message.bot.send_message(
@@ -408,7 +449,7 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
         return
     
     data = await state.get_data()
-    draft = await _repo.yt_draft_get(message.from_user.id)
+    draft = await _repo.yt_draft_get(uid if uid else (message.from_user.id if message.from_user else 0))
     
     # Debug: log state and draft
     try:
@@ -423,9 +464,10 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
         pass
     
     # If draft missing but we have state data, try to recover
+    target_uid = uid if uid else (message.from_user.id if message.from_user else 0)
     if not draft and data.get("file_path"):
         await _repo.yt_draft_upsert(
-            message.from_user.id,
+            target_uid,
             step="schedule",
             file_path=data.get("file_path"),
             title=data.get("title"),
@@ -433,7 +475,7 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
             visibility=data.get("visibility"),
             timezone=data.get("timezone"),
         )
-        draft = await _repo.yt_draft_get(message.from_user.id)
+        draft = await _repo.yt_draft_get(target_uid)
     
     file_path = str((draft["file_path"] if draft else data.get("file_path")) or "").strip()
     title = str((draft["title"] if draft else data.get("title")) or "").strip()
@@ -455,7 +497,7 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
     if not file_path or not os.path.exists(file_path):
         await message.answer("❌ Video topilmadi. Qaytadan yuboring.")
         await state.clear()
-        await _repo.yt_draft_clear(message.from_user.id)
+        await _repo.yt_draft_clear(uid if uid else (message.from_user.id if message.from_user else 0))
         return
 
     # Debug: before creating upload
@@ -469,7 +511,7 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
         pass
 
     upload_id = await _repo.yt_create_pending_upload(
-        user_id=message.from_user.id,
+        user_id=uid if uid else (message.from_user.id if message.from_user else 0),
         file_path=file_path,
         title=title,
         description=description,
@@ -480,10 +522,11 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
 
     try:
         if _cfg and (_cfg.log_channel or "").strip():
+            log_uid = uid if uid else (message.from_user.id if message.from_user else 0)
             await message.bot.send_message(
                 _cfg.log_channel,
                 "<b>YT QUEUED</b>\n"
-                f"User: <code>{int(message.from_user.id)}</code>\n"
+                f"User: <code>{int(log_uid)}</code>\n"
                 f"ID: <code>{int(upload_id)}</code>\n"
                 + (f"Title: <b>{title}</b>\n" if title else "")
                 + (f"Visibility: <code>{visibility}</code>\n" if visibility else "")
@@ -494,7 +537,7 @@ async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: st
         pass
 
     await state.clear()
-    await _repo.yt_draft_clear(message.from_user.id)
+    await _repo.yt_draft_clear(uid if uid else (message.from_user.id if message.from_user else 0))
 
     if scheduled_at:
         await message.answer(
