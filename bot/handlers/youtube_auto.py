@@ -26,7 +26,7 @@ from bot.db.repo import Repo
 from bot.keyboards.youtube_auto import (
     yt_auto_menu_kb, yt_visibility_kb, yt_schedule_choice_kb, yt_timezone_kb,
     yt_metadata_menu_kb, yt_yes_no_kb, yt_category_kb, yt_licence_kb, yt_comments_kb,
-    yt_schedule_time_kb
+    yt_schedule_time_kb, yt_metadata_input_back_kb
 )
 from bot.services.youtube_uploader import to_utc_sqlite_datetime
 
@@ -37,6 +37,15 @@ router = Router()
 _repo: Repo | None = None
 _cfg: Config | None = None
 _deny_bot_notice_ts: dict[int, float] = {}
+
+
+async def _meta_touch(state: FSMContext, key: str) -> None:
+    data = await state.get_data()
+    touched = data.get("meta_touched")
+    if not isinstance(touched, dict):
+        touched = {}
+    touched = {**touched, str(key): True}
+    await state.update_data(meta_touched=touched)
 
 
 class YTAutoStates(StatesGroup):
@@ -803,6 +812,7 @@ async def yt_auto_meta_made_for_kids_set(call: CallbackQuery, state: FSMContext)
     await call.answer()
     value = (call.data or "").split(":")[-1] == "yes"
     await state.update_data(made_for_kids=1 if value else 0)
+    await _meta_touch(state, "made_for_kids")
     await _repo.yt_draft_upsert(call.from_user.id, step="metadata", made_for_kids=1 if value else 0)
     draft = await _repo.yt_draft_get(call.from_user.id)
     state_data = await state.get_data()
@@ -824,7 +834,8 @@ async def yt_auto_meta_tags(call: CallbackQuery, state: FSMContext):
         "🏷️ <b>Teglar (Tags)</b>\n\n"
         "Teglarni vergul bilan ajratib yozing (masalan: o'zbek, musiqa, 2024)\n"
         "Maksimal 500 ta, har biri 500 belgidan oshmasligi kerak.\n\n"
-        "Yo‘q bo‘lsa <code>-</code> yuboring."
+        "Yo‘q bo‘lsa <code>-</code> yuboring.",
+        reply_markup=yt_metadata_input_back_kb(),
     )
 
 
@@ -891,6 +902,7 @@ async def yt_auto_got_tags(message: Message, state: FSMContext):
     # Save data and clear state
     try:
         await state.update_data(tags=tags)
+        await _meta_touch(state, "tags")
         await _repo.yt_draft_upsert(message.from_user.id, step="metadata", tags=tags)
         await state.set_state(None)
     except Exception as e:
@@ -972,6 +984,7 @@ async def yt_auto_meta_category_set(call: CallbackQuery, state: FSMContext):
     await call.answer()
     category = (call.data or "").split(":")[-1]
     await state.update_data(category=category)
+    await _meta_touch(state, "category")
     await _repo.yt_draft_upsert(call.from_user.id, step="metadata", category=category)
     draft = await _repo.yt_draft_get(call.from_user.id)
     state_data = await state.get_data()
@@ -992,7 +1005,8 @@ async def yt_auto_meta_language(call: CallbackQuery, state: FSMContext):
     await call.message.edit_text(
         "🌐 <b>Video tili</b>\n\n"
         "Til kodini yozing (masalan: uz, en, ru)\n"
-        "Yo‘q bo‘lsa <code>-</code> yuboring."
+        "Yo‘q bo‘lsa <code>-</code> yuboring.",
+        reply_markup=yt_metadata_input_back_kb(),
     )
 
 
@@ -1012,6 +1026,7 @@ async def yt_auto_got_language(message: Message, state: FSMContext):
         pass
     # Save data and clear state
     await state.update_data(language=language)
+    await _meta_touch(state, "language")
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", language=language)
     await state.set_state(None)
     # Try to edit the previous bot message
@@ -1046,7 +1061,8 @@ async def yt_auto_meta_recording_date(call: CallbackQuery, state: FSMContext):
         "📅 <b>Suratga olingan sana</b>\n\n"
         "Sanani yozing: <code>YYYY-MM-DD</code>\n"
         "(masalan: 2024-01-15)\n\n"
-        "Yo‘q bo‘lsa <code>-</code> yuboring."
+        "Yo‘q bo‘lsa <code>-</code> yuboring.",
+        reply_markup=yt_metadata_input_back_kb(),
     )
 
 
@@ -1066,6 +1082,7 @@ async def yt_auto_got_recording_date(message: Message, state: FSMContext):
         pass
     # Save data and clear state
     await state.update_data(recording_date=recording_date)
+    await _meta_touch(state, "recording_date")
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", recording_date=recording_date if recording_date else None)
     await state.set_state(None)
     # Try to edit the previous bot message
@@ -1100,7 +1117,8 @@ async def yt_auto_meta_video_location(call: CallbackQuery, state: FSMContext):
         "📍 <b>Video joylashuvi</b>\n\n"
         "Videoning suratga olingan joyini yozing:\n"
         "(masalan: Toshkent, O'zbekiston)\n\n"
-        "Yo‘q bo‘lsa <code>-</code> yuboring."
+        "Yo‘q bo‘lsa <code>-</code> yuboring.",
+        reply_markup=yt_metadata_input_back_kb(),
     )
 
 
@@ -1120,6 +1138,7 @@ async def yt_auto_got_video_location(message: Message, state: FSMContext):
         pass
     # Save data and clear state
     await state.update_data(video_location=video_location)
+    await _meta_touch(state, "video_location")
     await _repo.yt_draft_upsert(message.from_user.id, step="metadata", video_location=video_location)
     await state.set_state(None)
     # Try to edit the previous bot message
@@ -1162,6 +1181,7 @@ async def yt_auto_meta_licence_set(call: CallbackQuery, state: FSMContext):
     lic_type = (call.data or "").split(":")[-1]
     licence = "Creative Commons" if lic_type == "creative" else "Standard YouTube licence"
     await state.update_data(licence=licence)
+    await _meta_touch(state, "licence")
     await _repo.yt_draft_upsert(call.from_user.id, step="metadata", licence=licence)
     draft = await _repo.yt_draft_get(call.from_user.id)
     state_data = await state.get_data()
@@ -1190,6 +1210,7 @@ async def yt_auto_meta_comments_set(call: CallbackQuery, state: FSMContext):
     await call.answer()
     value = (call.data or "").split(":")[-1]
     await state.update_data(comments=value)
+    await _meta_touch(state, "comments")
     await _repo.yt_draft_upsert(call.from_user.id, step="metadata", comments=value)
     draft = await _repo.yt_draft_get(call.from_user.id)
     state_data = await state.get_data()
@@ -1219,6 +1240,7 @@ async def yt_auto_meta_age_restricted_set(call: CallbackQuery, state: FSMContext
     await call.answer()
     value = (call.data or "").split(":")[-1] == "yes"
     await state.update_data(age_restricted=1 if value else 0)
+    await _meta_touch(state, "age_restricted")
     await _repo.yt_draft_upsert(call.from_user.id, step="metadata", age_restricted=1 if value else 0)
     draft = await _repo.yt_draft_get(call.from_user.id)
     state_data = await state.get_data()
@@ -1248,6 +1270,7 @@ async def yt_auto_meta_paid_promotion_set(call: CallbackQuery, state: FSMContext
     await call.answer()
     value = (call.data or "").split(":")[-1] == "yes"
     await state.update_data(paid_promotion=1 if value else 0)
+    await _meta_touch(state, "paid_promotion")
     await _repo.yt_draft_upsert(call.from_user.id, step="metadata", paid_promotion=1 if value else 0)
     draft = await _repo.yt_draft_get(call.from_user.id)
     state_data = await state.get_data()

@@ -36,6 +36,16 @@ def yt_visibility_kb() -> InlineKeyboardMarkup:
     )
 
 
+def yt_metadata_input_back_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:metadata:menu"),
+            ],
+        ]
+    )
+
+
 def yt_schedule_choice_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -97,6 +107,10 @@ def yt_metadata_menu_kb(draft: dict | None = None, state_data: dict | None = Non
             return draft.get(key)
         return None
 
+    touched = (state_data or {}).get("meta_touched") if state_data else None
+    if not isinstance(touched, dict):
+        touched = {}
+
     def _chk(label: str, is_done: bool) -> str:
         return f"✅ {label}" if is_done else label
 
@@ -115,51 +129,51 @@ def yt_metadata_menu_kb(draft: dict | None = None, state_data: dict | None = Non
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=_chk("👶 Made for Kids", made_for_kids is not None),
+                    text=_chk("👶 Made for Kids", bool(touched.get("made_for_kids"))),
                     callback_data="yt:auto:meta:made_for_kids",
                 ),
                 InlineKeyboardButton(
-                    text=_chk("🏷️ Teglar", bool(str(tags or "").strip())),
+                    text=_chk("🏷️ Teglar", bool(touched.get("tags"))),
                     callback_data="yt:auto:meta:tags",
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text=_chk("📁 Kategoriya", bool(str(category or "").strip())),
+                    text=_chk("📁 Kategoriya", bool(touched.get("category"))),
                     callback_data="yt:auto:meta:category",
                 ),
                 InlineKeyboardButton(
-                    text=_chk("🌐 Til", bool(str(language or "").strip())),
+                    text=_chk("🌐 Til", bool(touched.get("language"))),
                     callback_data="yt:auto:meta:language",
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text=_chk("📅 Sana", bool(str(recording_date or "").strip())),
+                    text=_chk("📅 Sana", bool(touched.get("recording_date"))),
                     callback_data="yt:auto:meta:recording_date",
                 ),
                 InlineKeyboardButton(
-                    text=_chk("📍 Joy", bool(str(video_location or "").strip())),
+                    text=_chk("📍 Joy", bool(touched.get("video_location"))),
                     callback_data="yt:auto:meta:video_location",
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text=_chk("📄 Litsenziya", licence is not None),
+                    text=_chk("📄 Litsenziya", bool(touched.get("licence"))),
                     callback_data="yt:auto:meta:licence",
                 ),
                 InlineKeyboardButton(
-                    text=_chk("💬 Kommentlar", comments is not None),
+                    text=_chk("💬 Kommentlar", bool(touched.get("comments"))),
                     callback_data="yt:auto:meta:comments",
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text=_chk("🔞 Yosh cheklamasi", bool(int(age_restricted or 0))),
+                    text=_chk("🔞 Yosh cheklamasi", bool(touched.get("age_restricted"))),
                     callback_data="yt:auto:meta:age_restricted",
                 ),
                 InlineKeyboardButton(
-                    text=_chk("💰 Reklama", bool(int(paid_promotion or 0))),
+                    text=_chk("💰 Reklama", bool(touched.get("paid_promotion"))),
                     callback_data="yt:auto:meta:paid_promotion",
                 ),
             ],
