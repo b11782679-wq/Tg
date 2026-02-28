@@ -161,15 +161,27 @@ async def start():
                         if not file_path or (not os.path.exists(file_path)):
                             raise RuntimeError("File not found")
 
-                        video_id, new_token_json = await asyncio.to_thread(
-                            upload_video,
-                            token_json,
-                            file_path,
-                            title,
-                            description,
-                            visibility,
-                            scheduled_at,
-                        )
+                        try:
+                            size_bytes = int(os.path.getsize(file_path))
+                        except Exception:
+                            size_bytes = 0
+                        timeout_sec = 180 if size_bytes < (100 * 1024 * 1024) else 300
+
+                        try:
+                            video_id, new_token_json = await asyncio.wait_for(
+                                asyncio.to_thread(
+                                    upload_video,
+                                    token_json,
+                                    file_path,
+                                    title,
+                                    description,
+                                    visibility,
+                                    scheduled_at,
+                                ),
+                                timeout=float(timeout_sec),
+                            )
+                        except asyncio.TimeoutError:
+                            raise RuntimeError(f"Upload timeout ({timeout_sec}s)")
                         if new_token_json and new_token_json != token_json:
                             await repo.yt_set_token(user_id, new_token_json)
 
