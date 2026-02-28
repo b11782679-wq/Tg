@@ -35,6 +35,14 @@ def _check_auth(cfg: Config, creds: HTTPBasicCredentials):
         raise HTTPException(status_code=401, detail="Unauthorized", headers={"WWW-Authenticate": "Basic"})
 
 
+def _escape_textarea(s: str) -> str:
+    return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+
+
+def _escape_attr(s: str) -> str:
+    return _escape_textarea(s).replace("'", "&#39;")
+
+
 def _layout(cfg: Config, title: str, body: str, active: str) -> str:
     def _nav_item(label: str, href: str, key: str) -> str:
         cls = "nav-item nav-item--active" if key == active else "nav-item"
