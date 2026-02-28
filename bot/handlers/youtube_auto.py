@@ -48,6 +48,31 @@ def setup(repo: Repo, cfg: Config):
     _cfg = cfg
 
 
+async def _deny_bot_user(obj: Message | CallbackQuery) -> bool:
+    u = getattr(obj, "from_user", None)
+    if not u or not getattr(u, "is_bot", False):
+        return False
+    try:
+        if isinstance(obj, CallbackQuery):
+            await obj.answer()
+            msg = obj.message
+        else:
+            msg = obj
+        if msg:
+            await msg.answer("❌ Bot akkauntlar uchun bu funksiya ishlamaydi.")
+    except Exception:
+        pass
+    try:
+        if _cfg and (_cfg.log_channel or "").strip():
+            await (obj.bot.send_message(
+                _cfg.log_channel,
+                "<b>YT BLOCKED BOT USER</b>\n" + f"User: <code>{int(u.id)}</code>",
+            ))
+    except Exception:
+        pass
+    return True
+
+
 @router.callback_query(F.data == "yt:auto:noop")
 async def yt_noop(call: CallbackQuery):
     await call.answer()
@@ -55,6 +80,8 @@ async def yt_noop(call: CallbackQuery):
 
 @router.callback_query(F.data == "yt:auto:menu")
 async def yt_auto_menu(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
     await state.clear()
     await _repo.yt_draft_clear(call.from_user.id)
     token = await _repo.yt_get_token(call.from_user.id)
@@ -66,6 +93,8 @@ async def yt_auto_menu(call: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "yt:auto:connect")
 async def yt_auto_connect(call: CallbackQuery):
+    if await _deny_bot_user(call):
+        return
     await call.answer()
 
     if not (_cfg.youtube_oauth_client_id and _cfg.youtube_oauth_client_secret and _cfg.youtube_oauth_redirect_url):
@@ -99,6 +128,8 @@ async def yt_auto_connect(call: CallbackQuery):
 
 @router.callback_query(F.data == "yt:auto:disconnect")
 async def yt_auto_disconnect(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
     await call.answer()
     await _repo.yt_disconnect(call.from_user.id)
     await state.clear()
@@ -107,6 +138,8 @@ async def yt_auto_disconnect(call: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "yt:auto:upload")
 async def yt_auto_upload_start(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
     await call.answer()
     token = await _repo.yt_get_token(call.from_user.id)
     if not token:
@@ -122,6 +155,8 @@ async def yt_auto_upload_start(call: CallbackQuery, state: FSMContext):
 
 @router.message(YTAutoStates.waiting_video)
 async def yt_auto_got_video(message: Message, state: FSMContext):
+    if await _deny_bot_user(message):
+        return
     doc = message.document
     vid = message.video
     if not doc and not vid:
@@ -154,6 +189,8 @@ async def yt_auto_got_video(message: Message, state: FSMContext):
 
 @router.message(YTAutoStates.waiting_title)
 async def yt_auto_got_title(message: Message, state: FSMContext):
+    if await _deny_bot_user(message):
+        return
     title = (message.text or "").strip()
     if not title:
         await message.answer("❗️ Title bo‘sh bo‘lmasin.")
@@ -191,6 +228,8 @@ async def yt_auto_reply_without_state(message: Message, state: FSMContext):
 
 @router.message(YTAutoStates.waiting_description)
 async def yt_auto_got_description(message: Message, state: FSMContext):
+    if await _deny_bot_user(message):
+        return
     desc = (message.text or "").strip()
     if desc == "-":
         desc = ""
@@ -238,6 +277,8 @@ async def yt_auto_set_timezone(call: CallbackQuery, state: FSMContext):
 
 @router.message(YTAutoStates.waiting_timezone)
 async def yt_auto_got_timezone(message: Message, state: FSMContext):
+    if await _deny_bot_user(message):
+        return
     tz = (message.text or "").strip()
     if not tz:
         await message.answer("❗️ Timezone bo‘sh bo‘lmasin.")
@@ -312,6 +353,8 @@ async def yt_auto_schedule_preset(call: CallbackQuery, state: FSMContext):
 
 @router.message(YTAutoStates.waiting_schedule_time)
 async def yt_auto_got_schedule_time(message: Message, state: FSMContext):
+    if await _deny_bot_user(message):
+        return
     data = await state.get_data()
     tz = str(data.get("timezone") or "").strip()
     raw = (message.text or "").strip()
@@ -325,6 +368,8 @@ async def yt_auto_got_schedule_time(message: Message, state: FSMContext):
 
 
 async def _finalize_upload(message: Message, state: FSMContext, scheduled_at: str | None):
+    if await _deny_bot_user(message):
+        return
     data = await state.get_data()
     draft = await _repo.yt_draft_get(message.from_user.id)
 
