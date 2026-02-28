@@ -14,6 +14,9 @@ class Config:
     admin_panel_user: str
     admin_panel_pass: str
     log_channel: str
+    youtube_oauth_client_id: str
+    youtube_oauth_client_secret: str
+    youtube_oauth_redirect_url: str
 
 def load_config() -> Config:
     token = os.getenv("BOT_TOKEN")
@@ -34,6 +37,10 @@ def load_config() -> Config:
     if not log_channel:
         log_channel = "@brainrot_videos"
 
+    youtube_oauth_client_id = (os.getenv("YOUTUBE_OAUTH_CLIENT_ID") or "").strip()
+    youtube_oauth_client_secret = (os.getenv("YOUTUBE_OAUTH_CLIENT_SECRET") or "").strip()
+    youtube_oauth_redirect_url = (os.getenv("YOUTUBE_OAUTH_REDIRECT_URL") or "").strip()
+
     return Config(
         bot_token=token,
         admin_id=admin_id,
@@ -43,4 +50,7 @@ def load_config() -> Config:
         admin_panel_user=admin_panel_user,
         admin_panel_pass=admin_panel_pass,
         log_channel=log_channel,
+        youtube_oauth_client_id=youtube_oauth_client_id,
+        youtube_oauth_client_secret=youtube_oauth_client_secret,
+        youtube_oauth_redirect_url=youtube_oauth_redirect_url,
     )

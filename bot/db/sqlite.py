@@ -102,6 +102,33 @@ CREATE TABLE IF NOT EXISTS product_plan_labels (
   updated_at TEXT DEFAULT (datetime('now')),
   PRIMARY KEY(product_key, plan_key)
 );
+
+CREATE TABLE IF NOT EXISTS youtube_oauth_states (
+  state TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS youtube_oauth_tokens (
+  user_id INTEGER PRIMARY KEY,
+  token_json TEXT NOT NULL DEFAULT '',
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS youtube_pending_uploads (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  file_path TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  visibility TEXT NOT NULL DEFAULT 'private',
+  timezone TEXT NOT NULL DEFAULT '',
+  scheduled_at TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  error TEXT NOT NULL DEFAULT '',
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
 """
 
 async def init_db(db_path: str):

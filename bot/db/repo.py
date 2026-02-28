@@ -1,6 +1,7 @@
 import secrets
 import aiosqlite
 import json
+import datetime
 
 from bot.constants import REF_BONUS_POINTS, REF_MONEY_BONUS_UZS
 
@@ -52,6 +53,153 @@ class Repo:
                     (int(safe_referrer_id), int(user_id)),
                 )
 
+            await db.commit()
+
+    async def yt_oauth_create_state(self, user_id: int, state: str) -> None:
+        async with await self._conn() as db:
+            await db.execute(
+                "INSERT OR REPLACE INTO youtube_oauth_states(state, user_id, created_at) VALUES(?,?, datetime('now'))",
+                (str(state), int(user_id)),
+            )
+            await db.commit()
+
+    async def yt_oauth_consume_state(self, state: str, max_age_minutes: int = 30) -> int | None:
+        state = (state or "").strip()
+        if not state:
+            return None
+        max_age_minutes = min(max(int(max_age_minutes), 1), 240)
+        async with await self._conn() as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute(
+                "SELECT user_id, created_at FROM youtube_oauth_states WHERE state=?",
+                (str(state),),
+            )
+            row = await cur.fetchone()
+            if not row:
+                return None
+
+            try:
+                created_at = str(row["created_at"] or "")
+                created_dt = datetime.datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            except Exception:
+                created_dt = None
+
+            if created_dt is not None:
+                now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+                if created_dt.tzinfo is None:
+                    created_dt = created_dt.replace(tzinfo=datetime.timezone.utc)
+                age = now - created_dt
+                if age.total_seconds() > float(max_age_minutes) * 60.0:
+                    await db.execute("DELETE FROM youtube_oauth_states WHERE state=?", (str(state),))
+                    await db.commit()
+                    return None
+
+            uid = int(row["user_id"])
+            await db.execute("DELETE FROM youtube_oauth_states WHERE state=?", (str(state),))
+            await db.commit()
+            return uid
+
+    async def yt_set_token(self, user_id: int, token_json: str) -> None:
+        async with await self._conn() as db:
+            await db.execute(
+                "INSERT INTO youtube_oauth_tokens(user_id, token_json, updated_at) VALUES(?,?, datetime('now')) "
+                "ON CONFLICT(user_id) DO UPDATE SET token_json=excluded.token_json, updated_at=datetime('now')",
+                (int(user_id), str(token_json or "")),
+            )
+            await db.commit()
+
+    async def yt_get_token(self, user_id: int) -> str | None:
+        async with await self._conn() as db:
+            cur = await db.execute("SELECT token_json FROM youtube_oauth_tokens WHERE user_id=?", (int(user_id),))
+            row = await cur.fetchone()
+            if not row:
+                return None
+            val = str(row[0] or "").strip()
+            return val or None
+
+    async def yt_disconnect(self, user_id: int) -> None:
+        async with await self._conn() as db:
+            await db.execute("DELETE FROM youtube_oauth_tokens WHERE user_id=?", (int(user_id),))
+            await db.commit()
+
+    async def yt_create_pending_upload(
+        self,
+        user_id: int,
+        file_path: str,
+        title: str,
+        description: str,
+        visibility: str,
+        timezone: str,
+        scheduled_at: str | None,
+    ) -> int:
+        async with await self._conn() as db:
+            cur = await db.execute(
+                "INSERT INTO youtube_pending_uploads(user_id, file_path, title, description, visibility, timezone, scheduled_at, status, error, created_at, updated_at) "
+                "VALUES(?,?,?,?,?,?,?, 'pending', '', datetime('now'), datetime('now'))",
+                (
+                    int(user_id),
+                    str(file_path),
+                    str(title or ""),
+                    str(description or ""),
+                    str(visibility or "private"),
+                    str(timezone or ""),
+                    (str(scheduled_at) if scheduled_at else None),
+                ),
+            )
+            await db.commit()
+            return int(cur.lastrowid or 0)
+
+    async def yt_list_pending_uploads(self, user_id: int, limit: int = 20):
+        limit = min(max(int(limit), 1), 200)
+        async with await self._conn() as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute(
+                "SELECT id, user_id, file_path, title, description, visibility, timezone, scheduled_at, status, error, created_at, updated_at "
+                "FROM youtube_pending_uploads WHERE user_id=? ORDER BY id DESC LIMIT ?",
+                (int(user_id), int(limit)),
+            )
+            return await cur.fetchall()
+
+    async def yt_claim_due_uploads(self, limit: int = 5):
+        limit = min(max(int(limit), 1), 50)
+        async with await self._conn() as db:
+            db.row_factory = aiosqlite.Row
+            # scheduled_at NULL => upload now
+            cur = await db.execute(
+                "SELECT id, user_id, file_path, title, description, visibility, timezone, scheduled_at "
+                "FROM youtube_pending_uploads "
+                "WHERE status='pending' AND (scheduled_at IS NULL OR scheduled_at <= datetime('now')) "
+                "ORDER BY id ASC LIMIT ?",
+                (int(limit),),
+            )
+            rows = await cur.fetchall()
+            ids = [int(r["id"]) for r in rows]
+            if not ids:
+                return []
+            q = "UPDATE youtube_pending_uploads SET status='uploading', updated_at=datetime('now') WHERE id IN (" + ",".join(["?"] * len(ids)) + ")"
+            await db.execute(q, tuple(ids))
+            await db.commit()
+            return rows
+
+    async def yt_mark_upload_done(self, upload_id: int) -> None:
+        async with await self._conn() as db:
+            await db.execute(
+                "UPDATE youtube_pending_uploads SET status='done', error='', updated_at=datetime('now') WHERE id=?",
+                (int(upload_id),),
+            )
+            await db.commit()
+
+    async def yt_mark_upload_failed(self, upload_id: int, error: str) -> None:
+        async with await self._conn() as db:
+            await db.execute(
+                "UPDATE youtube_pending_uploads SET status='failed', error=?, updated_at=datetime('now') WHERE id=?",
+                (str(error or "")[:800], int(upload_id)),
+            )
+            await db.commit()
+
+    async def yt_delete_pending_upload(self, upload_id: int) -> None:
+        async with await self._conn() as db:
+            await db.execute("DELETE FROM youtube_pending_uploads WHERE id=?", (int(upload_id),))
             await db.commit()
 
     async def get_language(self, user_id: int) -> str:

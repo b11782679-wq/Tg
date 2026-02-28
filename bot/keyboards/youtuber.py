@@ -67,6 +67,9 @@ def youtuber_entry_kb(lang: str = "uz") -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🧠 AI Tahlil", callback_data="youtuber:audit"),
         ],
         [
+            InlineKeyboardButton(text="🤖 Avtomatlashtirilgan YouTube", callback_data="yt:auto:menu"),
+        ],
+        [
             InlineKeyboardButton(text="🔙 Ortga", callback_data="m:home"),
         ],
     ]

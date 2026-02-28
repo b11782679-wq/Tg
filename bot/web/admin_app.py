@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Annotated
 import mimetypes
 import re
+import urllib.parse
 
 import aiosqlite
 from fastapi import Depends, File, Form, HTTPException, Request, UploadFile
@@ -18,6 +19,8 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from bot.config import Config
 from bot.db.repo import Repo
 from fastapi import APIRouter
+
+from google_auth_oauthlib.flow import Flow
 
 
 _security = HTTPBasic()
@@ -78,6 +81,101 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
     async def _auth(creds: Annotated[HTTPBasicCredentials, Depends(_security)]):
         _check_auth(cfg, creds)
         return creds
+
+    def _yt_oauth_enabled() -> bool:
+        return bool(
+            (cfg.youtube_oauth_client_id or "").strip()
+            and (cfg.youtube_oauth_client_secret or "").strip()
+            and (cfg.youtube_oauth_redirect_url or "").strip()
+        )
+
+    def _yt_flow(state: str | None = None) -> Flow:
+        client_config = {
+            "web": {
+                "client_id": (cfg.youtube_oauth_client_id or "").strip(),
+                "client_secret": (cfg.youtube_oauth_client_secret or "").strip(),
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }
+        }
+        flow = Flow.from_client_config(
+            client_config,
+            scopes=["https://www.googleapis.com/auth/youtube.upload"],
+            redirect_uri=(cfg.youtube_oauth_redirect_url or "").strip(),
+        )
+        if state:
+            flow.state = str(state)
+        return flow
+
+    @router.get("/oauth/youtube/start")
+    async def yt_oauth_start(state: str):
+        if not _yt_oauth_enabled():
+            raise HTTPException(status_code=500, detail="YouTube OAuth is not configured")
+        state = (state or "").strip()
+        if not state:
+            raise HTTPException(status_code=400, detail="Missing state")
+
+        flow = _yt_flow(state=state)
+        auth_url, _ = flow.authorization_url(
+            access_type="offline",
+            include_granted_scopes="true",
+            prompt="consent",
+            state=state,
+        )
+        return RedirectResponse(url=str(auth_url), status_code=302)
+
+    @router.get("/oauth/youtube/callback", response_class=HTMLResponse)
+    async def yt_oauth_callback(state: str | None = None, code: str | None = None, error: str | None = None):
+        if error:
+            body = (
+                "<div class='stack'>"
+                "<div class='card'><b>Status</b><div class='num'>Failed</div></div>"
+                + f"<div class='meta'>Error: <code>{_escape_textarea(str(error))}</code></div>"
+                + "<div class='meta'>Siz botga qayting.</div>"
+                + "</div>"
+            )
+            return _layout("YouTube Connect", body, active="dashboard")
+
+        st = (state or "").strip()
+        if not st or not code:
+            raise HTTPException(status_code=400, detail="Missing state/code")
+
+        user_id = await repo.yt_oauth_consume_state(st)
+        if not user_id:
+            body = (
+                "<div class='stack'>"
+                "<div class='card'><b>Status</b><div class='num'>Expired</div></div>"
+                "<div class='meta'>State eskirgan yoki noto'g'ri. Botdan qaytadan ulab ko'ring.</div>"
+                "</div>"
+            )
+            return _layout("YouTube Connect", body, active="dashboard")
+
+        if not _yt_oauth_enabled():
+            raise HTTPException(status_code=500, detail="YouTube OAuth is not configured")
+
+        flow = _yt_flow(state=st)
+        try:
+            await asyncio.to_thread(flow.fetch_token, code=code)
+        except Exception as e:
+            body = (
+                "<div class='stack'>"
+                "<div class='card'><b>Status</b><div class='num'>Failed</div></div>"
+                + f"<div class='meta'>Token error: <code>{_escape_textarea(str(e))}</code></div>"
+                + "</div>"
+            )
+            return _layout("YouTube Connect", body, active="dashboard")
+
+        creds = flow.credentials
+        await repo.yt_set_token(int(user_id), creds.to_json())
+
+        body = (
+            "<div class='stack'>"
+            "<div class='card'><b>Status</b><div class='num'>Connected</div></div>"
+            + f"<div class='meta'>User ID: <code>{int(user_id)}</code></div>"
+            + "<div class='meta'>Endi botga qaytib video yuklashingiz mumkin.</div>"
+            + "</div>"
+        )
+        return _layout("YouTube Connect", body, active="dashboard")
 
     def _layout(title: str, body: str, active: str) -> str:
         def _nav_item(label: str, href: str, key: str) -> str:

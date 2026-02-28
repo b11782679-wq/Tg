@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
@@ -26,6 +27,9 @@ from bot.handlers import stats as h_stats
 from bot.handlers import profile as h_profile
 from bot.handlers import topup as h_topup
 from bot.handlers import admin as h_admin
+from bot.handlers import youtube_auto as h_youtube_auto
+
+from bot.services.youtube_uploader import upload_video
 
 
 async def start():
@@ -62,6 +66,7 @@ async def start():
     h_profile.setup(repo)
     h_topup.setup(repo)
     h_admin.setup(repo, cfg)
+    h_youtube_auto.setup(repo, cfg)
 
     dp.include_router(h_start.router)
     dp.include_router(h_products.router)
@@ -72,6 +77,7 @@ async def start():
     dp.include_router(h_profile.router)
     dp.include_router(h_topup.router)
     dp.include_router(h_admin.router)
+    dp.include_router(h_youtube_auto.router)
 
     app = FastAPI()
     admin_router = create_admin_app(cfg, repo)
@@ -86,12 +92,79 @@ async def start():
         )
     )
 
+    async def _yt_worker():
+        while True:
+            try:
+                due = await repo.yt_claim_due_uploads(limit=3)
+                for r in due:
+                    upload_id = int(r["id"])
+                    user_id = int(r["user_id"])
+                    file_path = str(r["file_path"] or "")
+                    title = str(r["title"] or "")
+                    description = str(r["description"] or "")
+                    visibility = str(r["visibility"] or "private")
+                    scheduled_at = str(r["scheduled_at"] or "").strip() or None
+
+                    try:
+                        token_json = await repo.yt_get_token(user_id)
+                        if not token_json:
+                            raise RuntimeError("Not connected")
+                        if not file_path or (not os.path.exists(file_path)):
+                            raise RuntimeError("File not found")
+
+                        video_id, new_token_json = await asyncio.to_thread(
+                            upload_video,
+                            token_json,
+                            file_path,
+                            title,
+                            description,
+                            visibility,
+                            scheduled_at,
+                        )
+                        if new_token_json and new_token_json != token_json:
+                            await repo.yt_set_token(user_id, new_token_json)
+
+                        try:
+                            os.remove(file_path)
+                        except Exception:
+                            pass
+
+                        await repo.yt_mark_upload_done(upload_id)
+                        await repo.yt_delete_pending_upload(upload_id)
+
+                        await bot.send_message(
+                            user_id,
+                            "✅ YouTube’ga video yuklandi!\n\n"
+                            f"Video ID: <code>{video_id}</code>\n"
+                            f"Link: https://youtu.be/{video_id}",
+                            disable_web_page_preview=True,
+                        )
+                    except Exception as e:
+                        await repo.yt_mark_upload_failed(upload_id, str(e))
+                        try:
+                            await bot.send_message(
+                                user_id,
+                                "❌ YouTube upload xatolik.\n\n"
+                                f"ID: <code>{upload_id}</code>\n"
+                                f"<code>{str(e)[:350]}</code>",
+                            )
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+            await asyncio.sleep(15)
+
     web_task = asyncio.create_task(server.serve())
+    yt_task = asyncio.create_task(_yt_worker())
     try:
         await dp.start_polling(bot)
     finally:
         server.should_exit = True
         try:
             await web_task
+        except Exception:
+            pass
+        try:
+            yt_task.cancel()
         except Exception:
             pass
