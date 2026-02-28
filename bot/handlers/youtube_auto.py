@@ -620,12 +620,46 @@ async def yt_auto_draft_video_router(message: Message, state: FSMContext):
 
 @router.message(F.text)
 async def yt_auto_draft_text_router(message: Message, state: FSMContext):
+    # DEBUG: Log entry
+    try:
+        if _cfg and (_cfg.log_channel or "").strip():
+            current_state = await state.get_state()
+            draft = await _repo.yt_draft_get(message.from_user.id)
+            draft_step = draft["step"] if draft else None
+            await message.bot.send_message(
+                _cfg.log_channel,
+                f"<b>YT DEBUG text_router ENTRY</b>\n"
+                f"User: <code>{message.from_user.id}</code>\n"
+                f"State: <code>{current_state}</code>\n"
+                f"Draft step: <code>{draft_step}</code>\n"
+                f"Text: <code>{message.text[:50] if message.text else 'None'}</code>"
+            )
+    except Exception:
+        pass
+    
     draft = await _repo.yt_draft_get(message.from_user.id)
     if not draft:
         if SkipHandler:
             raise SkipHandler()
         return
     step = str(draft["step"] or "")
+    
+    # Check metadata states FIRST (before checking draft step)
+    current_state = await state.get_state()
+    if current_state == YTAutoStates.waiting_tags.state:
+        await yt_auto_got_tags(message, state)
+        return
+    if current_state == YTAutoStates.waiting_language.state:
+        await yt_auto_got_language(message, state)
+        return
+    if current_state == YTAutoStates.waiting_recording_date.state:
+        await yt_auto_got_recording_date(message, state)
+        return
+    if current_state == YTAutoStates.waiting_video_location.state:
+        await yt_auto_got_video_location(message, state)
+        return
+    
+    # Then check draft step
     if step == "title":
         await yt_auto_got_title(message, state)
         return
@@ -642,20 +676,6 @@ async def yt_auto_draft_text_router(message: Message, state: FSMContext):
         except Exception:
             pass
         await yt_auto_got_schedule_time(message, state)
-        return
-    # Metadata collection steps
-    current_state = await state.get_state()
-    if current_state == YTAutoStates.waiting_tags.state:
-        await yt_auto_got_tags(message, state)
-        return
-    if current_state == YTAutoStates.waiting_language.state:
-        await yt_auto_got_language(message, state)
-        return
-    if current_state == YTAutoStates.waiting_recording_date.state:
-        await yt_auto_got_recording_date(message, state)
-        return
-    if current_state == YTAutoStates.waiting_video_location.state:
-        await yt_auto_got_video_location(message, state)
         return
 
     await _repo.yt_draft_clear(message.from_user.id)
