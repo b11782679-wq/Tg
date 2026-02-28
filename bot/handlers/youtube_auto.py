@@ -786,9 +786,33 @@ async def yt_auto_sched_choice(call: CallbackQuery, state: FSMContext):
     if await _deny_bot_user(call):
         return
     await call.answer()
+    await _repo.yt_draft_upsert(call.from_user.id, step="schedule_time")
+    await state.set_state(YTAutoStates.waiting_schedule_time)
+
+    draft = await _repo.yt_draft_get(call.from_user.id)
+    tz = str((draft["timezone"] if draft else "") or "").strip()
+    if not tz:
+        data = await state.get_data()
+        tz = str(data.get("timezone") or "").strip()
+    if not tz:
+        tz = "Asia/Tashkent"
+        await state.update_data(timezone=tz)
+        await _repo.yt_draft_upsert(call.from_user.id, timezone=tz)
+
+    current_time_str = ""
+    try:
+        z = ZoneInfo(tz)
+        now_local = datetime.datetime.now(tz=z)
+        current_time_str = now_local.strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        current_time_str = ""
+
     await call.message.edit_text(
-        "⏰ Qachon yuklaymiz?",
-        reply_markup=yt_schedule_choice_kb()
+        "📅 <b>Vaqt kiriting:</b> <code>YYYY-MM-DD HH:MM</code>\n\n"
+        + (f"🌍 Sizning vaqtingiz ({tz}):\n<code>{current_time_str}</code>\n\n" if current_time_str else f"🌍 Sizning vaqtingiz ({tz}):\n\n")
+        + (f"✍️ Yuqoridagi formatda yozing:\nMasalan: <code>{current_time_str}</code>\n\n" if current_time_str else "")
+        + "ℹ️ Hozir yuklash uchun: <code>-</code> yuboring",
+        reply_markup=yt_schedule_time_kb(),
     )
 
 
