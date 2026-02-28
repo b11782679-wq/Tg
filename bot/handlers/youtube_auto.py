@@ -302,6 +302,22 @@ async def yt_auto_set_timezone(call: CallbackQuery, state: FSMContext):
     now_local = datetime.datetime.now(tz=z)
     current_time_str = now_local.strftime("%Y-%m-%d %H:%M")
     
+    # Create inline keyboard with options
+    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="⚙️ Qo‘shimcha sozlamalar", callback_data="yt:auto:metadata:menu"),
+            ],
+            [
+                InlineKeyboardButton(text="⚡ Hozir", callback_data="yt:auto:sched:now"),
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Ortga", callback_data="yt:auto:tz:back"),
+            ],
+        ]
+    )
+    
     await call.message.edit_text(
         f"📅 <b>Vaqt kiriting:</b> <code>YYYY-MM-DD HH:MM</code>\n\n"
         f"🌍 Sizning vaqtingiz ({tz}):\n"
@@ -309,7 +325,18 @@ async def yt_auto_set_timezone(call: CallbackQuery, state: FSMContext):
         f"✍️ Yuqoridagi formatda yozing:\n"
         f"Masalan: <code>{current_time_str}</code>\n\n"
         f"ℹ️ Hozir yuklash uchun: <code>-</code> yuboring",
+        reply_markup=kb
     )
+
+
+@router.callback_query(F.data == "yt:auto:tz:back")
+async def yt_auto_back_to_timezone(call: CallbackQuery, state: FSMContext):
+    if await _deny_bot_user(call):
+        return
+    await call.answer()
+    await state.set_state(YTAutoStates.waiting_timezone)
+    await _repo.yt_draft_upsert(call.from_user.id, step="timezone")
+    await call.message.edit_text("🌍 Timezone tanlang:", reply_markup=yt_timezone_kb())
 
 
 @router.message(YTAutoStates.waiting_timezone)
