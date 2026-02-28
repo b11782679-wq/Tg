@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
 from bot.db.repo import Repo
-from bot.keyboards.menu import back_only_kb
+from bot.keyboards.menu import back_to_settings_kb
 from bot.i18n import t
 
 router = Router()
@@ -32,4 +32,4 @@ def setup(repo: Repo):
             points=points,
         )
 
-        await call.message.edit_text(text, reply_markup=back_only_kb(await repo.get_language(call.from_user.id)))
+        await call.message.edit_text(text, reply_markup=back_to_settings_kb(await repo.get_language(call.from_user.id)))

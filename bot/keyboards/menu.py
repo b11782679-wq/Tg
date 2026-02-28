@@ -39,3 +39,10 @@ def back_only_kb(lang: str = "uz"):
     kb.button(text=t(lang, "back"), callback_data="m:home")
     kb.adjust(1)
     return kb.as_markup()
+
+
+def back_to_settings_kb(lang: str = "uz"):
+    kb = InlineKeyboardBuilder()
+    kb.button(text=t(lang, "back"), callback_data="settings:open")
+    kb.adjust(1)
+    return kb.as_markup()
