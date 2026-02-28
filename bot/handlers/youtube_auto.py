@@ -150,6 +150,26 @@ async def yt_auto_got_title(message: Message, state: FSMContext):
     await message.answer("📝 Description (ixtiyoriy). Bo‘sh qoldirish uchun <code>-</code> yuboring:")
 
 
+@router.message(F.text, F.reply_to_message)
+async def yt_auto_reply_without_state(message: Message, state: FSMContext):
+    cur = await state.get_state()
+    if cur:
+        return
+    rt = getattr(message.reply_to_message, "text", None) or ""
+    rt = str(rt)
+    if (
+        "Video sarlavhasini" in rt
+        or "Videoni yuboring" in rt
+        or "Description" in rt
+        or "Timezone" in rt
+        or "Vaqt kiriting" in rt
+    ):
+        await message.answer(
+            "❗️ Jarayon uzilib qoldi (bot yangilangan yoki qayta ishga tushgan bo‘lishi mumkin).\n\n"
+            "Iltimos, yana: <b>🤖 Avtomatlashtirilgan YouTube</b> → <b>📤 Video yuklash</b> ni bosib qaytadan boshlang.",
+        )
+
+
 @router.message(YTAutoStates.waiting_description)
 async def yt_auto_got_description(message: Message, state: FSMContext):
     desc = (message.text or "").strip()
