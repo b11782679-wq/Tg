@@ -1,4 +1,11 @@
 from aiogram import Router, F
+try:
+    from aiogram.exceptions import SkipHandler
+except Exception:
+    try:
+        from aiogram.dispatcher.event.bases import SkipHandler
+    except Exception:
+        SkipHandler = None  # type: ignore
 from aiogram.types import CallbackQuery, Message
 
 from bot.keyboards.payments import (
@@ -195,6 +202,8 @@ def setup(repo: Repo):
 
         pending = await repo.find_pending_manual_topup_needing_proof(message.from_user.id)
         if not pending:
+            if SkipHandler:
+                raise SkipHandler()
             return
 
         proof_type = "photo" if message.photo else "document"
@@ -252,6 +261,8 @@ def setup(repo: Repo):
         lang = await repo.get_language(user_id)
         provider = awaiting_custom_amount.get(user_id)
         if not provider:
+            if SkipHandler:
+                raise SkipHandler()
             return
 
         raw = (message.text or "").strip()
