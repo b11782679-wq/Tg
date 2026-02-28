@@ -14,7 +14,10 @@ def setup(repo: Repo, cfg: Config):
     async def admin_cmd(message: Message):
         if message.from_user and message.from_user.id != cfg.admin_id:
             return
-        url = f"http://{cfg.admin_panel_host}:{cfg.admin_panel_port}/admin"
+        if (cfg.admin_public_url or "").strip():
+            url = f"{cfg.admin_public_url}/admin"
+        else:
+            url = f"http://{cfg.admin_panel_host}:{cfg.admin_panel_port}/admin"
         await message.answer(f"Admin panel: {url}")
 
     @router.message(Command("getlogchatid"))

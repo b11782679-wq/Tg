@@ -11,6 +11,7 @@ class Config:
     db_path: str
     admin_panel_host: str
     admin_panel_port: int
+    admin_public_url: str
     admin_panel_user: str
     admin_panel_pass: str
     log_channel: str
@@ -30,6 +31,7 @@ def load_config() -> Config:
     admin_panel_host = os.getenv("ADMIN_PANEL_HOST", "0.0.0.0")
     port_env = (os.getenv("PORT") or "").strip()
     admin_panel_port = int(port_env) if port_env else int(os.getenv("ADMIN_PANEL_PORT", "8080"))
+    admin_public_url = (os.getenv("ADMIN_PUBLIC_URL") or "").strip().rstrip("/")
     admin_panel_user = os.getenv("ADMIN_PANEL_USER", "admin")
     admin_panel_pass = os.getenv("ADMIN_PANEL_PASS", "admin")
 
@@ -47,6 +49,7 @@ def load_config() -> Config:
         db_path=db_path,
         admin_panel_host=admin_panel_host,
         admin_panel_port=admin_panel_port,
+        admin_public_url=admin_public_url,
         admin_panel_user=admin_panel_user,
         admin_panel_pass=admin_panel_pass,
         log_channel=log_channel,
