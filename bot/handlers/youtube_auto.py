@@ -8,7 +8,13 @@ import hashlib
 from pathlib import Path
 
 from aiogram import Router, F
-from aiogram.exceptions import SkipHandler
+try:
+    from aiogram.exceptions import SkipHandler
+except Exception:
+    try:
+        from aiogram.dispatcher.event.bases import SkipHandler
+    except Exception:
+        SkipHandler = None  # type: ignore
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import CallbackQuery, Message
@@ -160,7 +166,9 @@ async def yt_auto_got_title(message: Message, state: FSMContext):
 async def yt_auto_reply_without_state(message: Message, state: FSMContext):
     cur = await state.get_state()
     if cur:
-        raise SkipHandler()
+        if SkipHandler:
+            raise SkipHandler()
+        return
     rt = getattr(message.reply_to_message, "text", None) or ""
     rt = str(rt)
     if (
@@ -174,7 +182,9 @@ async def yt_auto_reply_without_state(message: Message, state: FSMContext):
             "❗️ Jarayon uzilib qoldi (bot yangilangan yoki qayta ishga tushgan bo‘lishi mumkin).\n\n"
             "Iltimos, yana: <b>🤖 Avtomatlashtirilgan YouTube</b> → <b>📤 Video yuklash</b> ni bosib qaytadan boshlang.",
         )
-    raise SkipHandler()
+    if SkipHandler:
+        raise SkipHandler()
+    return
 
 
 @router.message(YTAutoStates.waiting_description)
@@ -307,7 +317,9 @@ async def yt_auto_pending(call: CallbackQuery):
 async def yt_auto_draft_video_router(message: Message, state: FSMContext):
     draft = await _repo.yt_draft_get(message.from_user.id)
     if not draft or str(draft["step"] or "") != "video":
-        raise SkipHandler()
+        if SkipHandler:
+            raise SkipHandler()
+        return
     await yt_auto_got_video(message, state)
 
 
@@ -315,7 +327,9 @@ async def yt_auto_draft_video_router(message: Message, state: FSMContext):
 async def yt_auto_draft_text_router(message: Message, state: FSMContext):
     draft = await _repo.yt_draft_get(message.from_user.id)
     if not draft:
-        raise SkipHandler()
+        if SkipHandler:
+            raise SkipHandler()
+        return
     step = str(draft["step"] or "")
     if step == "title":
         await yt_auto_got_title(message, state)
