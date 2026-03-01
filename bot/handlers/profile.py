@@ -43,21 +43,23 @@ def setup(repo: Repo):
             text += "\n\n" + t(lang, "profile.accounts_title")
             for a in accs:
                 product_key = str(a["product_key"] or "")
-                title = (PRICING.get(product_key) or {}).get("title") or product_key
+                if product_key == "gemine_3m":
+                    base_title = (PRICING.get("gemine") or {}).get("title") or "Gemini Pro"
+                    title = f"{base_title} — 3 oy"
+                else:
+                    title = (PRICING.get(product_key) or {}).get("title") or product_key
                 login = str(a["login"] or "").strip()
                 password = str(a["password"] or "").strip()
 
                 # Special display for Canva Pro Link
-                if product_key == "canva_pro_link" and login:
-                    text += (
-                        f"\n\n<b>{title}</b>\n"
-                        f"🔗 <a href='{login}'>Canva Pro ga o'tish</a>"
-                    )
+                if product_key in ("canva_pro_link", "gemine_3m") and login:
+                    text += f"\n\n<blockquote><b>{title}</b>\n🔗 <code>{login}</code></blockquote>"
                 else:
                     text += (
-                        f"\n\n<b>{title}</b>"
-                        f"\n{t(lang, 'profile.login')}: <code>{login}</code>"
-                        f"\n{t(lang, 'profile.password')}: <code>{password}</code>"
+                        f"\n\n<blockquote><b>{title}</b>"
+                        f"\nL: <code>{login or '-'}</code>"
+                        f"\nP: <code>{password or '-'}</code>"
+                        f"</blockquote>"
                     )
 
         await call.message.edit_text(
