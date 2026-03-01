@@ -54,7 +54,6 @@ def _layout(cfg: Config, title: str, body: str, active: str) -> str:
         + _nav_item("Users", "/admin/users", "users")
         + _nav_item("Prices", "/admin/prices", "prices")
         + _nav_item("Premium Akkauntlar", "/admin/premium_accounts", "premium_accounts")
-        + _nav_item("Orders", "/admin/orders", "orders")
         + _nav_item("Buyers", "/admin/buyers", "buyers")
         + _nav_item("Topups", "/admin/topups", "topups")
         + _nav_item("Purchases", "/admin/purchases", "purchases")
@@ -701,117 +700,6 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         await repo.admin_set_user_blocked(user_id=user_id, blocked=False)
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/users"), status_code=303)
 
-    @router.get("/orders", response_class=HTMLResponse)
-    async def admin_orders(
-        credentials: HTTPBasicCredentials = Depends(_auth),
-        status: str | None = None,
-        pay_type: str | None = None,
-        limit: int = 200,
-    ):
-        pay_type = (pay_type or "money").strip() or "money"
-        if pay_type not in ("money", "points"):
-            pay_type = "money"
-
-        rows = await repo.admin_list_orders(
-            status=status,
-            pay_type=pay_type,
-            limit=min(max(limit, 1), 500),
-        )
-
-        def _opt(label: str, v: str | None):
-            sel = " selected" if v == status else ""
-            return f"<option value='{v or ''}'{sel}>{label}</option>"
-
-        def _tab(label: str, v: str) -> str:
-            cls = "btn" if v == pay_type else "btn btn--ghost"
-            href = f"/admin/orders?pay_type={v}&status={_escape_attr(str(status or ''))}&limit={int(limit)}"
-            return f"<a class='{cls}' href='{href}' style='text-decoration:none'>" + label + "</a>"
-
-        body = "".join(
-            [
-                "<div class='rowform' style='justify-content:flex-start;margin-bottom:10px'>",
-                _tab("Pul bilan", "money"),
-                _tab("Referal (ball)", "points"),
-                "</div>",
-                "<form method='get' class='toolbar'>",
-                f"<input type='hidden' name='pay_type' value='{_escape_attr(str(pay_type))}'>",
-                "<span class='meta'>Status</span>",
-                "<select class='select' name='status'>",
-                _opt("All", None),
-                _opt("new", "new"),
-                _opt("paid", "paid"),
-                _opt("delivered", "delivered"),
-                _opt("cancelled", "cancelled"),
-                "</select>",
-                "<span class='meta'>Limit</span>",
-                f"<input class='input' name='limit' value='{int(limit)}' style='width:90px'>",
-                "<button class='btn' type='submit'>Apply</button>",
-                "</form>",
-                "<div class='table-wrap'>",
-                "<table>",
-                "<thead><tr>",
-                "<th>ID</th>",
-                "<th>User</th>",
-                "<th>Product</th>",
-                "<th>Plan</th>",
-                ("<th>Price</th>" if pay_type == "money" else "<th>Points</th>"),
-                "<th>Status</th>",
-                "<th>Update</th>",
-                "</tr></thead><tbody>",
-            ]
-        )
-
-        for r in rows:
-            price_cell = (
-                f"<td>{_fmt_money(int(r['price_uzs'] or 0))}</td>"
-                if pay_type == "money"
-                else f"<td>{int(r['points_cost'] or 0)}</td>"
-            )
-
-            try:
-                username = str(r["username"] or "")
-            except Exception:
-                username = ""
-            try:
-                full_name = str(r["full_name"] or "")
-            except Exception:
-                full_name = ""
-            user_cell = f"<code>{int(r['user_id'])}</code>"
-            if username:
-                u = username
-                if not u.startswith("@"):  # keep consistent display
-                    u = "@" + u
-                user_cell += f"<div class='meta'>{_escape_textarea(u)}</div>"
-            elif full_name:
-                user_cell += f"<div class='meta'>{_escape_textarea(full_name)}</div>"
-            body += "".join(
-                [
-                    "<tr>",
-                    f"<td><code>{int(r['id'])}</code></td>",
-                    f"<td>{user_cell}</td>",
-                    f"<td>{r['product_key']}</td>",
-                    f"<td>{r['plan_key']}</td>",
-                    price_cell,
-                    f"<td>{r['status']}</td>",
-                    "<td>",
-                    "<form method='post' action='/admin/orders/update' class='rowform'>",
-                    f"<input type='hidden' name='order_id' value='{int(r['id'])}'>",
-                    "<select class='select' name='status'>",
-                    "<option value='new'>new</option>",
-                    "<option value='paid'>paid</option>",
-                    "<option value='delivered'>delivered</option>",
-                    "<option value='cancelled'>cancelled</option>",
-                    "</select>",
-                    "<button class='btn' type='submit'>Set</button>",
-                    "</form>",
-                    "</td>",
-                    "</tr>",
-                ]
-            )
-
-        body += "</tbody></table></div>"
-        return _layout(cfg, "Orders", body, active="orders")
-
     @router.get("/referrals", response_class=HTMLResponse)
     async def admin_referrals(
         credentials: HTTPBasicCredentials = Depends(_auth),
@@ -851,16 +739,6 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
 
         body += "</tbody></table></div>"
         return _layout(cfg, "Referrals", body, active="referrals")
-
-    @router.post("/orders/update")
-    async def admin_orders_update(
-        request: Request,
-        credentials: HTTPBasicCredentials = Depends(_auth),
-        order_id: int = Form(...),
-        status: str = Form(...),
-    ):
-        await repo.admin_set_order_status(order_id=order_id, status=status)
-        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/orders"), status_code=303)
 
     @router.get("/topups", response_class=HTMLResponse)
     async def admin_topups(
