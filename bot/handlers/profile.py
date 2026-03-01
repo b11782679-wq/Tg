@@ -53,10 +53,10 @@ def setup(repo: Repo):
 
                 # Special display for Canva Pro Link
                 if product_key in ("canva_pro_link", "gemine_3m") and login:
-                    text += f"\n\n<blockquote><b>{title}</b>\n🔗 <code>{login}</code></blockquote>"
+                    text += f"\n<blockquote><b>{title}</b>\n🔗 <code>{login}</code></blockquote>"
                 else:
                     text += (
-                        f"\n\n<blockquote><b>{title}</b>"
+                        f"\n<blockquote><b>{title}</b>"
                         f"\nL: <code>{login or '-'}</code>"
                         f"\nP: <code>{password or '-'}</code>"
                         f"</blockquote>"
