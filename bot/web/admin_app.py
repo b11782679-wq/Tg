@@ -3,6 +3,7 @@ from __future__ import annotations
 import secrets
 import asyncio
 import json
+import urllib.error
 import urllib.request
 import time
 import hmac
@@ -396,8 +397,22 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=15) as _:
-            return
+        try:
+            with urllib.request.urlopen(req, timeout=15) as _:
+                return
+        except urllib.error.HTTPError as e:
+            raw = ""
+            try:
+                raw = (e.read() or b"").decode("utf-8", errors="ignore")
+            except Exception:
+                raw = ""
+            desc = ""
+            try:
+                j = json.loads(raw) if raw else {}
+                desc = str((j or {}).get("description") or "")
+            except Exception:
+                desc = ""
+            raise RuntimeError(f"HTTP {int(getattr(e, 'code', 0) or 0)}: {desc or str(e)}")
 
     def _tg_send_photo(chat_id: int, photo_bytes: bytes, filename: str, caption: str | None = None):
         boundary = "----tgform" + secrets.token_hex(16)
@@ -434,8 +449,22 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=30) as _:
-            return
+        try:
+            with urllib.request.urlopen(req, timeout=30) as _:
+                return
+        except urllib.error.HTTPError as e:
+            raw = ""
+            try:
+                raw = (e.read() or b"").decode("utf-8", errors="ignore")
+            except Exception:
+                raw = ""
+            desc = ""
+            try:
+                j = json.loads(raw) if raw else {}
+                desc = str((j or {}).get("description") or "")
+            except Exception:
+                desc = ""
+            raise RuntimeError(f"HTTP {int(getattr(e, 'code', 0) or 0)}: {desc or str(e)}")
 
     @router.get("/", response_class=HTMLResponse)
     async def admin_home(credentials: HTTPBasicCredentials = Depends(_auth)):
@@ -1232,6 +1261,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         deactivated = 0
         not_found = 0
         flood = 0
+        not_started = 0
         other = 0
 
         offset = 0
@@ -1255,6 +1285,8 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                         deactivated += 1
                     elif "chat not found" in emsg or "user not found" in emsg:
                         not_found += 1
+                    elif "can't initiate conversation" in emsg or "cant initiate conversation" in emsg:
+                        not_started += 1
                     elif "too many requests" in emsg or "retry after" in emsg or "flood" in emsg:
                         flood += 1
                     else:
@@ -1290,6 +1322,9 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<div class='card'><b>Flood / Retry</b><div class='num'>"
             + str(int(flood))
             + "</div></div>"
+            "<div class='card'><b>Not started</b><div class='num'>"
+            + str(int(not_started))
+            + "</div></div>"
             "<div class='card'><b>Other</b><div class='num'>"
             + str(int(other))
             + "</div></div>"
@@ -1321,6 +1356,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         deactivated = 0
         not_found = 0
         flood = 0
+        not_started = 0
         other = 0
 
         offset = 0
@@ -1343,6 +1379,8 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                         deactivated += 1
                     elif "chat not found" in emsg or "user not found" in emsg:
                         not_found += 1
+                    elif "can't initiate conversation" in emsg or "cant initiate conversation" in emsg:
+                        not_started += 1
                     elif "too many requests" in emsg or "retry after" in emsg or "flood" in emsg:
                         flood += 1
                     else:
@@ -1377,6 +1415,9 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             + "</div></div>"
             "<div class='card'><b>Flood / Retry</b><div class='num'>"
             + str(int(flood))
+            + "</div></div>"
+            "<div class='card'><b>Not started</b><div class='num'>"
+            + str(int(not_started))
             + "</div></div>"
             "<div class='card'><b>Other</b><div class='num'>"
             + str(int(other))
