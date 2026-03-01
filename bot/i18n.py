@@ -128,7 +128,11 @@ _TEXTS: dict[str, dict[str, str]] = {
         "plan.1w": "1 hafta",
         "menu.canva_pro_link": "🔗 Canva Pro Link",
         "settings.open": "⚙️ <b>Sozlamalar</b>",
-        "premium.open": "💎 <b>Premium Obunalar</b>\n\nQuyidagilardan birini tanlang 👇",
+        "premium.open": (
+            "💎 <b>Premium Obunalar</b>\n\n"
+            "Quyidagilardan birini tanlang 👇\n\n"
+            "<blockquote>🧾 Sotib olingan akkauntlar profil menyusida 7 kungacha saqlanib turadi.</blockquote>"
+        ),
         "products.choose_plan": "📌 Quyidagilardan birini tanlang 👇",
         "products.no_stock": "❌ Hozircha akkaunt qolmagan.\n\nKeyinroq qayta urinib ko‘ring.",
         "products.race": "❌ Xatolik yuz berdi.\n\nKeyinroq qayta urinib ko‘ring.",
