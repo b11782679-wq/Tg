@@ -226,9 +226,12 @@ def setup(repo: Repo):
 
         if product_key == "gemine":
             link = (login or "").strip()
-            msg += (
-                "🔗 Link:\n"
-                + (f"<a href='{link}'>🔗 Gemini Pro ga o'tish</a>\n\n<code>{link}</code>" if link else "-")
+            msg = (
+                "✅ Tanlandi:\n"
+                f"{PRICING[product_key]['title']} — {plan['label']}\n"
+                f"💰 Narx: {_fmt_money(need_uzs)} so'm\n"
+                "🔗 Gemini Pro ga o‘tish uchun havola:\n"
+                + (link if link else "-")
             )
             await _safe_show(
                 call,
