@@ -36,8 +36,15 @@ def load_config() -> Config:
     port_env = (os.getenv("PORT") or "").strip()
     admin_panel_port = int(port_env) if port_env else int(os.getenv("ADMIN_PANEL_PORT", "8080"))
     admin_public_url = (os.getenv("ADMIN_PUBLIC_URL") or "").strip().rstrip("/")
-    admin_panel_user = os.getenv("ADMIN_PANEL_USER", "admin")
-    admin_panel_pass = os.getenv("ADMIN_PANEL_PASS", "admin")
+    admin_panel_user = (os.getenv("ADMIN_PANEL_USER") or "").strip()
+    admin_panel_pass = (os.getenv("ADMIN_PANEL_PASS") or "").strip()
+
+    if not admin_panel_user or not admin_panel_pass:
+        raise RuntimeError("ADMIN_PANEL_USER/ADMIN_PANEL_PASS topilmadi. .env ga ADMIN_PANEL_USER=... va ADMIN_PANEL_PASS=... qo‘ying.")
+    if admin_panel_user.lower() in ("admin", "root") and admin_panel_pass.lower() in ("admin", "password", "123456", "qwerty"):
+        raise RuntimeError("ADMIN_PANEL_USER/ADMIN_PANEL_PASS juda sodda. Iltimos kuchli login/parol qo‘ying.")
+    if len(admin_panel_pass) < 10:
+        raise RuntimeError("ADMIN_PANEL_PASS juda qisqa. Kamida 10 ta belgi bo‘lsin.")
 
     log_channel = (os.getenv("LOG_CHANNEL") or "@brainrot_videos").strip()
     if not log_channel:

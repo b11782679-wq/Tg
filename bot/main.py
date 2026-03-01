@@ -135,6 +135,21 @@ async def start():
     dp.include_router(h_youtube_auto.router)
 
     app = FastAPI()
+
+    @app.middleware("http")
+    async def _security_headers(request, call_next):
+        response = await call_next(request)
+        path = getattr(request.url, "path", "") or ""
+        if path.startswith("/admin") or path.startswith("/yt/oauth"):
+            response.headers.setdefault("X-Frame-Options", "DENY")
+            response.headers.setdefault("X-Content-Type-Options", "nosniff")
+            response.headers.setdefault("Referrer-Policy", "no-referrer")
+            response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+            response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+            response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+            response.headers.setdefault("Cache-Control", "no-store")
+            response.headers.setdefault("Pragma", "no-cache")
+        return response
     admin_router = create_admin_app(cfg, repo)
     app.include_router(admin_router, prefix="/admin")
 

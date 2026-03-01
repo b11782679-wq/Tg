@@ -29,11 +29,51 @@ from google_auth_oauthlib.flow import Flow
 _security = HTTPBasic()
 
 
-def _check_auth(cfg: Config, creds: HTTPBasicCredentials):
+_ADMIN_AUTH_WINDOW_SECONDS = 5 * 60
+_ADMIN_AUTH_LOCK_SECONDS = 15 * 60
+_ADMIN_AUTH_MAX_ATTEMPTS = 8
+_admin_auth_failures: dict[str, list[float]] = {}
+_admin_auth_locked_until: dict[str, float] = {}
+
+
+def _get_client_ip(request: Request) -> str:
+    fwd = (request.headers.get("x-forwarded-for") or "").strip()
+    if fwd:
+        return fwd.split(",")[0].strip() or "unknown"
+    real = (request.headers.get("x-real-ip") or "").strip()
+    if real:
+        return real
+    client = getattr(request, "client", None)
+    host = getattr(client, "host", None) if client else None
+    return str(host or "unknown")
+
+
+def _check_auth(cfg: Config, creds: HTTPBasicCredentials, request: Request):
+    ip = _get_client_ip(request)
+    now = time.time()
+
+    locked_until = float(_admin_auth_locked_until.get(ip, 0) or 0)
+    if locked_until > now:
+        raise HTTPException(status_code=429, detail="Too many attempts. Try later.")
+
     u_ok = secrets.compare_digest(creds.username or "", cfg.admin_panel_user)
     p_ok = secrets.compare_digest(creds.password or "", cfg.admin_panel_pass)
-    if not (u_ok and p_ok):
-        raise HTTPException(status_code=401, detail="Unauthorized", headers={"WWW-Authenticate": "Basic"})
+    if u_ok and p_ok:
+        _admin_auth_failures.pop(ip, None)
+        _admin_auth_locked_until.pop(ip, None)
+        return
+
+    failures = list(_admin_auth_failures.get(ip, []))
+    cutoff = now - _ADMIN_AUTH_WINDOW_SECONDS
+    failures = [t for t in failures if t >= cutoff]
+    failures.append(now)
+    _admin_auth_failures[ip] = failures
+    if len(failures) >= _ADMIN_AUTH_MAX_ATTEMPTS:
+        _admin_auth_locked_until[ip] = now + _ADMIN_AUTH_LOCK_SECONDS
+        _admin_auth_failures.pop(ip, None)
+        raise HTTPException(status_code=429, detail="Too many attempts. Try later.")
+
+    raise HTTPException(status_code=401, detail="Unauthorized", headers={"WWW-Authenticate": "Basic"})
 
 
 def _escape_textarea(s: str) -> str:
@@ -347,8 +387,8 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         except Exception:
             return
 
-    async def _auth(creds: Annotated[HTTPBasicCredentials, Depends(_security)]):
-        _check_auth(cfg, creds)
+    async def _auth(request: Request, creds: Annotated[HTTPBasicCredentials, Depends(_security)]):
+        _check_auth(cfg, creds, request)
         return creds
 
     def _fmt_money(n: int) -> str:
