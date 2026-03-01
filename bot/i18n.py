@@ -117,6 +117,7 @@ _TEXTS: dict[str, dict[str, str]] = {
             "<blockquote>🎁 Botga do'stingizni taklif qiling. Do'stingiz kanalga qo'shilib \"Tekshirish\" tugmasini bosilganda va menyudagi tugmalardan birini bosganda hisobingizga pul qo'shiladi. Har bir taklif qilgan do'stingiz uchun hisobingizga 5000 so'mdan qo'shiladi</blockquote>\n\n"
             "📊 <b>Taklif qilgan do'stlaringiz:</b> {invited} ta\n\n"
             "🔗 <b>Referal havolangizni do'stlaringizga yuborib ularni botga taklif qiling</b>\n"
+            "🔗 <a href='{link}'>Referal havola</a>\n"
             "<code>{link}</code>"
         ),
         "profile.body": "🆔 <b>User ID:</b> <code>[{user_id}]</code>\n💰 <b>Balans:</b> {money} so'm",
