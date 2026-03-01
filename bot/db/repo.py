@@ -831,6 +831,10 @@ class Repo:
         plan_key = str(plan_key)
         price_uzs = int(price_uzs)
 
+        stock_product_key = product_key
+        if product_key == "gemine" and plan_key == "3m":
+            stock_product_key = "gemine_3m"
+
         async with await self._conn() as db:
             db.row_factory = aiosqlite.Row
 
@@ -854,7 +858,7 @@ class Repo:
                 cur = await db.execute(
                     "SELECT id, login, password FROM product_accounts "
                     "WHERE product_key=? AND status='available' ORDER BY id ASC LIMIT 1",
-                    (product_key,),
+                    (stock_product_key,),
                 )
                 acc = await cur.fetchone()
                 if not acc:

@@ -645,7 +645,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
     async def admin_gemine_3m(credentials: HTTPBasicCredentials = Depends(_auth)):
         return await _account_page(
             "Gemine Pro 3 oy (Link)",
-            product_key="gemine",
+            product_key="gemine_3m",
             active="gemine_3m",
             post_url="/admin/accounts/gemine_3m",
             delete_post_url="/admin/accounts/gemine_3m/delete",
@@ -2325,12 +2325,12 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             return RedirectResponse(url="/admin/gemine_3m", status_code=303)
 
         password = "-"
-        if await repo.admin_exists_available_product_account("gemine", login=login, password=password):
+        if await repo.admin_exists_available_product_account("gemine_3m", login=login, password=password):
             if request.headers.get("X-Requested-With") == "fetch":
                 return JSONResponse({"ok": False, "error": "Dublikat link (bazada bor)"})
             return RedirectResponse(url="/admin/gemine_3m", status_code=303)
 
-        acc_id = await repo.admin_add_product_account("gemine", login=login, password=password)
+        acc_id = await repo.admin_add_product_account("gemine_3m", login=login, password=password)
         if request.headers.get("X-Requested-With") == "fetch":
             return JSONResponse(
                 {
@@ -2353,7 +2353,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         login: str = Form(""),
         password: str = Form(""),
     ):
-        await repo.admin_update_product_account("gemine", account_id=account_id, login=login, password="-")
+        await repo.admin_update_product_account("gemine_3m", account_id=account_id, login=login, password="-")
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/gemine_3m"), status_code=303)
 
     @router.post("/accounts/gemine_3m/delete")
@@ -2362,7 +2362,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         credentials: HTTPBasicCredentials = Depends(_auth),
         account_id: int = Form(...),
     ):
-        await repo.admin_delete_product_account("gemine", account_id=account_id)
+        await repo.admin_delete_product_account("gemine_3m", account_id=account_id)
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/gemine_3m"), status_code=303)
 
     @router.post("/accounts/gemini/delete")
