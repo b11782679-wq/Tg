@@ -24,4 +24,8 @@ def setup(repo: Repo):
         lang = await repo.get_language(call.from_user.id)
         text = t(lang, "referral.body", invited=invited, link=link)
 
-        await call.message.edit_text(text, reply_markup=back_to_settings_kb(await repo.get_language(call.from_user.id)))
+        await call.message.edit_text(
+            text,
+            reply_markup=back_to_settings_kb(await repo.get_language(call.from_user.id)),
+            disable_web_page_preview=True,
+        )
