@@ -124,6 +124,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "profile.login": "Login",
         "profile.password": "Parol",
         "plan.1m": "1 oy",
+        "plan.3m": "3 oy",
         "plan.1w": "1 hafta",
         "menu.canva_pro_link": "🔗 Canva Pro Link",
         "settings.open": "⚙️ <b>Sozlamalar</b>",

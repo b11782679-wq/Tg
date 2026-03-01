@@ -224,6 +224,20 @@ def setup(repo: Repo):
             f"{t(await repo.get_language(call.from_user.id), 'products.buy.price')} {_fmt_money(need_uzs)} so'm\n\n"
         )
 
+        if product_key == "gemine":
+            link = (login or "").strip()
+            msg += (
+                "🔗 Link:\n"
+                + (f"<a href='{link}'>🔗 Gemini Pro ga o'tish</a>\n\n<code>{link}</code>" if link else "-")
+            )
+            await _safe_show(
+                call,
+                msg,
+                reply_markup=back_to_premium_kb(await repo.get_language(call.from_user.id)),
+                disable_web_page_preview=True,
+            )
+            return
+
         msg += (
             f"{t(await repo.get_language(call.from_user.id), 'profile.login')}:\n"
             f"{(login or '').strip() or '-'}\n\n"

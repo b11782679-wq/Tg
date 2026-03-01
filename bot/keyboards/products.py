@@ -43,6 +43,8 @@ def product_plans_kb(
         label = str(p.get("label") or "")
         if str(plan_key) == "1m":
             label = t(lang, "plan.1m")
+        if str(plan_key) == "3m":
+            label = t(lang, "plan.3m")
         if str(plan_key) == "1w":
             label = t(lang, "plan.1w")
         if label_overrides and str(plan_key) in label_overrides:

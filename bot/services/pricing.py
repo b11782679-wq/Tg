@@ -3,6 +3,7 @@ PRICING = {
         "title": "💎 Gemini Pro akkaunt",
         "plans": {
             "1m": {"label": "1 oy", "price_uzs": 25000},
+            "3m": {"label": "3 oy", "price_uzs": 65000},
         },
     },
     "chatgpt_business": {

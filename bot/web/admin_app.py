@@ -1588,15 +1588,19 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
 
             s = re.sub(r"\s*\|\s*", "|", s)
             if "|" not in s:
-                skipped += 1
-                continue
-
-            login, password = s.split("|", 1)
-            login = (login or "").strip()
-            password = (password or "").strip()
-            if not login or not password:
-                skipped += 1
-                continue
+                if str(product_key) == "gemine":
+                    login = s
+                    password = "-"
+                else:
+                    skipped += 1
+                    continue
+            else:
+                login, password = s.split("|", 1)
+                login = (login or "").strip()
+                password = (password or "").strip()
+                if not login or not password:
+                    skipped += 1
+                    continue
 
             key = f"{login}|{password}".lower()
             if key in seen:
@@ -2226,9 +2230,10 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 return JSONResponse({"ok": True, "bulk": True, **res})
             return RedirectResponse(url="/admin/accounts/gemini", status_code=303)
 
+        password = "-"
         if await repo.admin_exists_available_product_account("gemine", login=login, password=password):
             if request.headers.get("X-Requested-With") == "fetch":
-                return JSONResponse({"ok": False, "error": "Dublikat login/parol (bazada bor)"})
+                return JSONResponse({"ok": False, "error": "Dublikat link (bazada bor)"})
             return RedirectResponse(url="/admin/accounts/gemini", status_code=303)
 
         acc_id = await repo.admin_add_product_account("gemine", login=login, password=password)
@@ -2254,7 +2259,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         login: str = Form(""),
         password: str = Form(""),
     ):
-        await repo.admin_update_product_account("gemine", account_id=account_id, login=login, password=password)
+        await repo.admin_update_product_account("gemine", account_id=account_id, login=login, password="-")
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/gemini"), status_code=303)
 
     @router.post("/accounts/gemini/delete")
