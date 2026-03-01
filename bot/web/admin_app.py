@@ -94,6 +94,7 @@ def _layout(cfg: Config, title: str, body: str, active: str) -> str:
         + _nav_item("Dashboard", "/admin", "dashboard")
         + _nav_item("Users", "/admin/users", "users")
         + _nav_item("Prices", "/admin/prices", "prices")
+        + _nav_item("Gemine Pro 3 oy", "/admin/gemine_3m", "gemine_3m")
         + _nav_item("Premium Akkauntlar", "/admin/premium_accounts", "premium_accounts")
         + _nav_item("Buyers", "/admin/buyers", "buyers")
         + _nav_item("Topups", "/admin/topups", "topups")
@@ -640,9 +641,73 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         return _layout(cfg, "Prices", body, active="prices")
 
 
+    @router.get("/gemine_3m", response_class=HTMLResponse)
+    async def admin_gemine_3m(credentials: HTTPBasicCredentials = Depends(_auth)):
+        from bot.services.pricing import PRICING
+
+        product_key = "gemine"
+        plan_key = "3m"
+        product = PRICING.get(product_key) or {}
+        plan = ((product.get("plans") or {}).get(plan_key) or {})
+
+        default_price = int(plan.get("price_uzs") or 0)
+        default_label = str(plan.get("label") or "")
+        cur_price = await repo.get_plan_price_override(product_key=product_key, plan_key=plan_key)
+        cur_label = await repo.get_plan_label_override(product_key=product_key, plan_key=plan_key)
+
+        show_price = "" if cur_price is None else str(int(cur_price))
+        show_label = "" if cur_label is None else str(cur_label)
+
+        body = "<div class='stack'>"
+        body += "<div class='meta'>Gemine Pro uchun 3 oylik tarif sozlamalari (override). Bo'sh qoldirsangiz default qoladi.</div>"
+        body += "<div class='card'>"
+        body += "<div style='font-weight:700;margin-bottom:8px'>💎 Gemini Pro — 3 oy <span class='meta'>(key: <code>gemine</code>, plan: <code>3m</code>)</span></div>"
+        body += "<form method='post' action='/admin/gemine_3m/set' class='rowform'>"
+        body += "<div class='field' style='min-width:240px'>"
+        body += f"<b>Narx (UZS)</b><div class='meta'>default: {_fmt_money(default_price)} so'm</div>"
+        body += f"<input class='input' name='price_uzs' placeholder='default: {_fmt_money(default_price)}' value='{_escape_attr(show_price)}' style='width:220px'>"
+        body += "</div>"
+        body += "<div class='field' style='min-width:240px'>"
+        body += f"<b>Label</b><div class='meta'>default: {_escape_textarea(default_label)}</div>"
+        body += f"<input class='input' name='label' placeholder='label: {_escape_attr(default_label)}' value='{_escape_attr(show_label)}' style='width:220px'>"
+        body += "</div>"
+        body += "<div style='align-self:flex-end'><button class='btn' type='submit'>Save</button></div>"
+        body += "</form>"
+        body += "</div>"
+        body += "</div>"
+        return _layout(cfg, "Gemine Pro 3 oy", body, active="gemine_3m")
+
+
+    @router.post("/gemine_3m/set")
+    async def admin_gemine_3m_set(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        price_uzs: str = Form(""),
+        label: str = Form(""),
+    ):
+        product_key = "gemine"
+        plan_key = "3m"
+
+        raw_price = (price_uzs or "").strip()
+        if raw_price != "":
+            try:
+                val = int(raw_price)
+            except Exception:
+                val = 0
+            if val > 0:
+                await repo.admin_set_plan_price(product_key=product_key, plan_key=plan_key, price_uzs=int(val))
+
+        raw_label = (label or "").strip()
+        if raw_label != "":
+            await repo.admin_set_plan_label(product_key=product_key, plan_key=plan_key, label=str(raw_label))
+
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/gemine_3m"), status_code=303)
+
+
     @router.get("/premium_accounts", response_class=HTMLResponse)
     async def admin_premium_accounts(credentials: HTTPBasicCredentials = Depends(_auth)):
         items = [
+            ("Gemine Pro 3 oy (narx)", "/admin/gemine_3m"),
             ("Gemini akkaunt", "/admin/accounts/gemini"),
             ("ChatGPT Business", "/admin/accounts/chatgpt"),
             ("ChatGPT Plus", "/admin/accounts/chatgpt_plus"),
