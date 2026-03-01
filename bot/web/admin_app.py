@@ -647,9 +647,9 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "Gemine Pro 3 oy (Link)",
             product_key="gemine",
             active="gemine_3m",
-            post_url="/admin/accounts/gemini",
-            delete_post_url="/admin/accounts/gemini/delete",
-            edit_post_url="/admin/accounts/gemini/edit",
+            post_url="/admin/accounts/gemine_3m",
+            delete_post_url="/admin/accounts/gemine_3m/delete",
+            edit_post_url="/admin/accounts/gemine_3m/edit",
             link_only=True,
         )
 
@@ -1603,7 +1603,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
 
             s = re.sub(r"\s*\|\s*", "|", s)
             if "|" not in s:
-                if str(product_key) == "gemine":
+                if str(product_key) == "gemine_3m":
                     login = s
                     password = "-"
                 else:
@@ -2262,7 +2262,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             post_url="/admin/accounts/gemini",
             delete_post_url="/admin/accounts/gemini/delete",
             edit_post_url="/admin/accounts/gemini/edit",
-            link_only=True,
+            link_only=False,
         )
 
     @router.post("/accounts/gemini")
@@ -2279,10 +2279,9 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
                 return JSONResponse({"ok": True, "bulk": True, **res})
             return RedirectResponse(url="/admin/accounts/gemini", status_code=303)
 
-        password = "-"
         if await repo.admin_exists_available_product_account("gemine", login=login, password=password):
             if request.headers.get("X-Requested-With") == "fetch":
-                return JSONResponse({"ok": False, "error": "Dublikat link (bazada bor)"})
+                return JSONResponse({"ok": False, "error": "Dublikat login/parol (bazada bor)"})
             return RedirectResponse(url="/admin/accounts/gemini", status_code=303)
 
         acc_id = await repo.admin_add_product_account("gemine", login=login, password=password)
@@ -2308,8 +2307,63 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         login: str = Form(""),
         password: str = Form(""),
     ):
-        await repo.admin_update_product_account("gemine", account_id=account_id, login=login, password="-")
+        await repo.admin_update_product_account("gemine", account_id=account_id, login=login, password=password)
         return RedirectResponse(url=str(request.headers.get("referer") or "/admin/accounts/gemini"), status_code=303)
+
+    @router.post("/accounts/gemine_3m")
+    async def admin_gemine_3m_save(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        login: str = Form(""),
+        password: str = Form(""),
+        accounts_file: UploadFile | None = File(None),
+    ):
+        if accounts_file and (accounts_file.filename or ""):
+            res = await _bulk_add_from_txt("gemine_3m", accounts_file)
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": True, "bulk": True, **res})
+            return RedirectResponse(url="/admin/gemine_3m", status_code=303)
+
+        password = "-"
+        if await repo.admin_exists_available_product_account("gemine", login=login, password=password):
+            if request.headers.get("X-Requested-With") == "fetch":
+                return JSONResponse({"ok": False, "error": "Dublikat link (bazada bor)"})
+            return RedirectResponse(url="/admin/gemine_3m", status_code=303)
+
+        acc_id = await repo.admin_add_product_account("gemine", login=login, password=password)
+        if request.headers.get("X-Requested-With") == "fetch":
+            return JSONResponse(
+                {
+                    "ok": True,
+                    "id": acc_id,
+                    "login": login,
+                    "password": password,
+                    "created_at": "",
+                    "delete_url": "/admin/accounts/gemine_3m/delete",
+                    "edit_url": "/admin/accounts/gemine_3m/edit",
+                }
+            )
+        return RedirectResponse(url="/admin/gemine_3m", status_code=303)
+
+    @router.post("/accounts/gemine_3m/edit")
+    async def admin_gemine_3m_edit(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+        login: str = Form(""),
+        password: str = Form(""),
+    ):
+        await repo.admin_update_product_account("gemine", account_id=account_id, login=login, password="-")
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/gemine_3m"), status_code=303)
+
+    @router.post("/accounts/gemine_3m/delete")
+    async def admin_gemine_3m_delete(
+        request: Request,
+        credentials: HTTPBasicCredentials = Depends(_auth),
+        account_id: int = Form(...),
+    ):
+        await repo.admin_delete_product_account("gemine", account_id=account_id)
+        return RedirectResponse(url=str(request.headers.get("referer") or "/admin/gemine_3m"), status_code=303)
 
     @router.post("/accounts/gemini/delete")
     async def admin_gemini_delete(
