@@ -136,8 +136,17 @@ _TEXTS: dict[str, dict[str, str]] = {
         "products.desc.spotify_premium": "🎧 Reklamasiz musiqa • Offline yuklash • Unlimited skip",
         "products.desc.youtube_premium": "▶️ Reklamasiz video • Background • Offline yuklash",
         "products.gemine.open": (
-            "💎 <b>Gemini Pro akkaunt</b>\n"
-            "Ushbu akkauntni xarid qilsangiz, Gemini’ning barcha Pro funksiyalaridan to‘liq foydalanish imkoniyatiga ega bo‘lasiz.\n\n"
+            "✨ <b>Gemini Premium imkoniyatlari</b>\n\n"
+            "🤖 <b>Gemini 3.1 Pro</b> – Eng kuchli modelga yuqori kirish + Deep Research\n"
+            "🎬 <b>Veo 3.1</b> – Video yaratish\n"
+            "🎥 <b>Flow</b> – AI yordamida kino darajasidagi sahnalar yaratish\n"
+            "🖼 <b>Whisk</b> – Rasmdan video yasash imkoniyati\n"
+            "💎 <b>1,000 ta AI kredit</b> har oy\n"
+            "<blockquote>(Flow va Whisk uchun)</blockquote>\n"
+            "⚡️ <b>Google Antigravity</b> – Agent model uchun yuqori limitlar\n"
+            "👨‍💻 <b>Google Developer Premium</b> – CLI, Code Assist, Cloud kreditlar va boshqalar\n"
+            "☁️ <b>2 TB xotira</b>\n"
+            "<blockquote>(Google Drive, Photos, Gmail uchun)</blockquote>\n\n"
             "📌 Kerakli tarifni quyidagilardan tanlang 👇"
         ),
         "products.buy.selected": "Tanlandi:",
