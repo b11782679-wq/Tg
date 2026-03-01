@@ -53,14 +53,7 @@ def _layout(cfg: Config, title: str, body: str, active: str) -> str:
         + _nav_item("Dashboard", "/admin", "dashboard")
         + _nav_item("Users", "/admin/users", "users")
         + _nav_item("Prices", "/admin/prices", "prices")
-        + _nav_item("Gemini akkaunt", "/admin/accounts/gemini", "gemini")
-        + _nav_item("ChatGPT Business", "/admin/accounts/chatgpt", "chatgpt")
-        + _nav_item("ChatGPT Plus", "/admin/accounts/chatgpt_plus", "chatgpt_plus")
-        + _nav_item("Spotify Premium", "/admin/accounts/spotify_premium", "spotify_premium")
-        + _nav_item("YouTube Premium", "/admin/accounts/youtube_premium", "youtube_premium")
-        + _nav_item("Super Grok", "/admin/accounts/super_grok", "super_grok")
-        + _nav_item("Canva Pro", "/admin/accounts/canva_pro", "canva_pro")
-        + _nav_item("CapCut Pro", "/admin/accounts/capcut_pro", "capcut_pro")
+        + _nav_item("Premium Akkauntlar", "/admin/premium_accounts", "premium_accounts")
         + _nav_item("Orders", "/admin/orders", "orders")
         + _nav_item("Buyers", "/admin/buyers", "buyers")
         + _nav_item("Topups", "/admin/topups", "topups")
@@ -577,6 +570,50 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
 
         body += "</div>"
         return _layout(cfg, "Prices", body, active="prices")
+
+
+    @router.get("/premium_accounts", response_class=HTMLResponse)
+    async def admin_premium_accounts(credentials: HTTPBasicCredentials = Depends(_auth)):
+        items = [
+            ("Gemini akkaunt", "/admin/accounts/gemini"),
+            ("ChatGPT Business", "/admin/accounts/chatgpt"),
+            ("ChatGPT Plus", "/admin/accounts/chatgpt_plus"),
+            ("Spotify Premium", "/admin/accounts/spotify_premium"),
+            ("YouTube Premium", "/admin/accounts/youtube_premium"),
+            ("Super Grok", "/admin/accounts/super_grok"),
+            ("Canva Pro", "/admin/accounts/canva_pro"),
+            ("CapCut Pro", "/admin/accounts/capcut_pro"),
+        ]
+
+        body = "<div class='stack'>"
+        body += "<div class='grid'>"
+        for label, href in items:
+            body += (
+                "<a class='card' style='text-decoration:none;color:#e8e8e8' href='"
+                + _escape_attr(href)
+                + "'>"
+                + f"<b>{_escape_textarea(label)}</b>"
+                + "<div class='meta' style='margin-top:6px'>Akkauntlarni boshqarish</div>"
+                + "</a>"
+            )
+        body += "</div>"
+
+        body += "<div class='card'>"
+        body += "<b>Tanlash</b>"
+        body += "<div class='meta' style='margin-top:6px'>Pastdan tanlab sahifaga o'ting</div>"
+        body += "<div style='display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px'>"
+        body += "<select class='input' id='prem-acct-sel' style='min-width:260px'>"
+        body += "<option value=''>Tanlang...</option>"
+        for label, href in items:
+            body += f"<option value='{_escape_attr(href)}'>{_escape_textarea(label)}</option>"
+        body += "</select>"
+        body += "<button class='btn' type='button' id='prem-acct-go'>Ochish</button>"
+        body += "</div>"
+        body += "<script>(function(){var s=document.getElementById('prem-acct-sel');var b=document.getElementById('prem-acct-go');if(!s||!b)return;function go(){var v=(s.value||'').trim();if(!v)return;window.location.href=v;}b.addEventListener('click',go);s.addEventListener('change',go);})();</script>"
+        body += "</div>"
+        body += "</div>"
+
+        return _layout(cfg, "Premium Akkauntlar", body, active="premium_accounts")
 
     @router.post("/prices/set")
     async def admin_prices_set(
