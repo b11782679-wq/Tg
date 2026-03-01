@@ -650,6 +650,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             post_url="/admin/accounts/gemini",
             delete_post_url="/admin/accounts/gemini/delete",
             edit_post_url="/admin/accounts/gemini/edit",
+            link_only=True,
         )
 
 
@@ -1651,23 +1652,58 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
         post_url: str,
         delete_post_url: str,
         edit_post_url: str,
+        link_only: bool = False,
     ) -> str:
         rows = await repo.admin_list_available_product_accounts(product_key=product_key, limit=300)
+        label_login = "Link" if link_only else "Login"
+        label_pass = "Parol"
+        placeholder_login = "Link" if link_only else "Login"
+        placeholder_pass = "-" if link_only else "Parol"
+        file_hint = ".txt file (link)" if link_only else ".txt file (login|password)"
+        add_btn = "+ Yangi Link" if link_only else "+ Yangi Login/Parol"
+
+        if link_only:
+            js_row_html = (
+                "<td><code>" + "'+d.id+'" + "</code></td>"
+                "<td>" + "'+d.login+'" + "</td>"
+                "<td>" + "'+d.created_at+'" + "</td>"
+                "<td><form method=\\'post\\' action=\\'" + "'+d.edit_url+'" + "\\' class=\\'rowform\\' style=\\'gap:6px\\'>"
+                "<input type=\\'hidden\\' name=\\'account_id\\' value=\\'" + "'+d.id+'" + "\\'>"
+                "<input class=\\'input\\' name=\\'login\\' value=\\'" + "'+(d.login||'')+'" + "\\' style=\\'width:220px\\'>"
+                "<input type=\\'hidden\\' name=\\'password\\' value=\\'-\\'>"
+                "<button class=\\'btn\\' type=\\'submit\\'>Save</button></form></td>"
+                "<td><form method=\\'post\\' action=\\'" + "'+d.delete_url+'" + "\\' class=\\'rowform\\'>"
+                "<input type=\\'hidden\\' name=\\'account_id\\' value=\\'" + "'+d.id+'" + "\\'>"
+                "<button class=\\'btn\\' type=\\'submit\\' onclick=\\\"return confirm(\\\\'O\\\\'chirish?\\\\')\\\" style=\\'border-color:rgba(248,113,113,.65);background:rgba(248,113,113,.12)\\'>Delete</button></form></td>"
+            )
+        else:
+            js_row_html = (
+                "<td><code>" + "'+d.id+'" + "</code></td>"
+                "<td>" + "'+d.login+'" + "</td>"
+                "<td>" + "'+d.password+'" + "</td>"
+                "<td>" + "'+d.created_at+'" + "</td>"
+                "<td><form method=\\'post\\' action=\\'" + "'+d.edit_url+'" + "\\' class=\\'rowform\\' style=\\'gap:6px\\'>"
+                "<input type=\\'hidden\\' name=\\'account_id\\' value=\\'" + "'+d.id+'" + "\\'>"
+                "<input class=\\'input\\' name=\\'login\\' value=\\'" + "'+(d.login||'')+'" + "\\' style=\\'width:140px\\'>"
+                "<input class=\\'input\\' name=\\'password\\' value=\\'" + "'+(d.password||'')+'" + "\\' style=\\'width:140px\\'>"
+                "<button class=\\'btn\\' type=\\'submit\\'>Save</button></form></td>"
+                "<td><form method=\\'post\\' action=\\'" + "'+d.delete_url+'" + "\\' class=\\'rowform\\'>"
+                "<input type=\\'hidden\\' name=\\'account_id\\' value=\\'" + "'+d.id+'" + "\\'>"
+                "<button class=\\'btn\\' type=\\'submit\\' onclick=\\\"return confirm(\\\\'O\\\\'chirish?\\\\')\\\" style=\\'border-color:rgba(248,113,113,.65);background:rgba(248,113,113,.12)\\'>Delete</button></form></td>"
+            )
         body = (
             "<div class='stack'>"
             "<div id='acct-forms' class='stack'>"
             f"<form method='post' action='{post_url}' class='stack acct-form' enctype='multipart/form-data'>"
             "<div class='field'>"
-            "<b>Login</b>"
-            "<input class='input' name='login' placeholder='Login' value=''>"
+            f"<b>{label_login}</b>"
+            + f"<input class='input' name='login' placeholder='{_escape_attr(placeholder_login)}' value=''>"
             "</div>"
-            "<div class='field'>"
-            "<b>Parol</b>"
-            "<input class='input' name='password' placeholder='Parol' value=''>"
-            "</div>"
-            "<div class='field'>"
-            "<b>.txt file (login|password)</b>"
-            "<input class='input' type='file' name='accounts_file' accept='.txt,text/plain'>"
+            + ("" if link_only else "<div class='field'><b>Parol</b><input class='input' name='password' placeholder='Parol' value=''></div>")
+            + ("<input type='hidden' name='password' value='-'>" if link_only else "")
+            + "<div class='field'>"
+            + f"<b>{file_hint}</b>"
+            + "<input class='input' type='file' name='accounts_file' accept='.txt,text/plain'>"
             "</div>"
             "<div>"
             "<button class='btn' type='submit'>Saqlash</button>"
@@ -1675,21 +1711,19 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "</form>"
             "</div>"
             "<div style='margin-top:10px'>"
-            "<button class='btn' type='button' id='btn-add-acct'>+ Yangi Login/Parol</button>"
+            + f"<button class='btn' type='button' id='btn-add-acct'>{_escape_textarea(add_btn)}</button>"
             "</div>"
             "<template id='acct-form-template'>"
             f"<form method='post' action='{post_url}' class='stack acct-form' style='margin-top:10px' enctype='multipart/form-data'>"
             "<div class='field'>"
-            "<b>Login</b>"
-            "<input class='input' name='login' placeholder='Login' value=''>"
+            f"<b>{label_login}</b>"
+            + f"<input class='input' name='login' placeholder='{_escape_attr(placeholder_login)}' value=''>"
             "</div>"
-            "<div class='field'>"
-            "<b>Parol</b>"
-            "<input class='input' name='password' placeholder='Parol' value=''>"
-            "</div>"
-            "<div class='field'>"
-            "<b>.txt file (login|password)</b>"
-            "<input class='input' type='file' name='accounts_file' accept='.txt,text/plain'>"
+            + ("" if link_only else "<div class='field'><b>Parol</b><input class='input' name='password' placeholder='Parol' value=''></div>")
+            + ("<input type='hidden' name='password' value='-'>" if link_only else "")
+            + "<div class='field'>"
+            + f"<b>{file_hint}</b>"
+            + "<input class='input' type='file' name='accounts_file' accept='.txt,text/plain'>"
             "</div>"
             "<div>"
             "<button class='btn' type='submit'>Saqlash</button>"
@@ -1720,7 +1754,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "var tb=document.getElementById('acct-table-body');"
             "if(tb){"
             "var tr=document.createElement('tr');"
-            "tr.innerHTML='<td><code>'+d.id+'</code></td><td>'+d.login+'</td><td>'+d.password+'</td><td>'+d.created_at+'</td><td><form method=\'post\' action=\''+d.edit_url+'\' class=\'rowform\' style=\'gap:6px\'><input type=\'hidden\' name=\'account_id\' value=\''+d.id+'\'><input class=\'input\' name=\'login\' value=\''+(d.login||'')+'\' style=\'width:140px\'><input class=\'input\' name=\'password\' value=\''+(d.password||'')+'\' style=\'width:140px\'><button class=\'btn\' type=\'submit\'>Save</button></form></td><td><form method=\'post\' action=\''+d.delete_url+'\' class=\'rowform\'><input type=\'hidden\' name=\'account_id\' value=\''+d.id+'\'><button class=\'btn\' type=\'submit\' onclick=\"return confirm(\\'O\\'chirish?\\')\" style=\'border-color:rgba(248,113,113,.65);background:rgba(248,113,113,.12)\'>Delete</button></form></td>';"
+            "tr.innerHTML='" + js_row_html + "';"
             "tb.appendChild(tr);"
             "}"
             "});"
@@ -1733,25 +1767,25 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             "<div class='meta'>Available: " + str(len(rows)) + "</div>"
             "<div class='table-wrap'>"
             "<table>"
-            "<thead><tr><th>ID</th><th>Login</th><th>Parol</th><th>Created</th><th>Edit</th><th>Delete</th></tr></thead>"
-            "<tbody id='acct-table-body'>"
+            + ("<thead><tr><th>ID</th><th>Link</th><th>Created</th><th>Edit</th><th>Delete</th></tr></thead>" if link_only else "<thead><tr><th>ID</th><th>Login</th><th>Parol</th><th>Created</th><th>Edit</th><th>Delete</th></tr></thead>")
+            + "<tbody id='acct-table-body'>"
         )
 
         for r in rows:
             body += (
                 "<tr>"
                 f"<td><code>{int(r['id'])}</code></td>"
-                f"<td>{(r['login'] or '')}</td>"
-                f"<td>{(r['password'] or '')}</td>"
-                f"<td>{(r['created_at'] or '')}</td>"
-                "<td>"
-                f"<form method='post' action='{_escape_attr(str(edit_post_url))}' class='rowform' style='gap:6px'>"
-                f"<input type='hidden' name='account_id' value='{int(r['id'])}'>"
-                f"<input class='input' name='login' value='{_escape_attr(str(r['login'] or ''))}' style='width:140px'>"
-                f"<input class='input' name='password' value='{_escape_attr(str(r['password'] or ''))}' style='width:140px'>"
-                "<button class='btn' type='submit'>Save</button>"
-                "</form>"
-                "</td>"
+                + f"<td>{(r['login'] or '')}</td>"
+                + ("" if link_only else f"<td>{(r['password'] or '')}</td>")
+                + f"<td>{(r['created_at'] or '')}</td>"
+                + "<td>"
+                + f"<form method='post' action='{_escape_attr(str(edit_post_url))}' class='rowform' style='gap:6px'>"
+                + f"<input type='hidden' name='account_id' value='{int(r['id'])}'>"
+                + f"<input class='input' name='login' value='{_escape_attr(str(r['login'] or ''))}' style='width:220px'>"
+                + ("<input type='hidden' name='password' value='-'>" if link_only else f"<input class='input' name='password' value='{_escape_attr(str(r['password'] or ''))}' style='width:140px'>")
+                + "<button class='btn' type='submit'>Save</button>"
+                + "</form>"
+                + "</td>"
                 "<td>"
                 f"<form method='post' action='{_escape_attr(str(delete_post_url))}' class='rowform'>"
                 f"<input type='hidden' name='account_id' value='{int(r['id'])}'>"
@@ -2228,6 +2262,7 @@ def create_admin_app(cfg: Config, repo: Repo) -> APIRouter:
             post_url="/admin/accounts/gemini",
             delete_post_url="/admin/accounts/gemini/delete",
             edit_post_url="/admin/accounts/gemini/edit",
+            link_only=True,
         )
 
     @router.post("/accounts/gemini")
