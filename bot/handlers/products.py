@@ -224,7 +224,7 @@ def setup(repo: Repo):
             f"{t(await repo.get_language(call.from_user.id), 'products.buy.price')} {_fmt_money(need_uzs)} so'm\n\n"
         )
 
-        if product_key == "gemine":
+        if product_key == "gemine" and str(plan_key) == "3m":
             link = (login or "").strip()
             msg = (
                 "✅ Tanlandi:\n"
