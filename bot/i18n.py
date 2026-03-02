@@ -138,6 +138,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "tts.processing": "⏳ Audio tayyorlanyapti...",
         "tts.too_long": "❗️ Matn juda uzun. Qisqaroq qilib yuboring.",
         "tts.quota": "⏳ Hozir TTS limiti tugagan (quota). Iltimos, birozdan keyin qayta urinib ko‘ring.",
+        "tts.unusual_activity": "⚠️ ElevenLabs xavfsizlik tizimi shubhali faollikni aniqladi va Free tier vaqtincha o‘chirilgan. Agar VPN/Proxy ishlatayotgan bo‘lsangiz o‘chirib ko‘ring. Aks holda Paid Plan kerak bo‘lishi mumkin.",
         "tts.error": "❌ TTS xatolik. Keyinroq qayta urinib ko‘ring.",
         "products.choose_plan": "📌 Quyidagilardan birini tanlang 👇",
         "products.no_stock": "❌ Hozircha akkaunt qolmagan.\n\nKeyinroq qayta urinib ko‘ring.",
@@ -465,6 +466,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "tts.processing": "⏳ Generating audio...",
         "tts.too_long": "❗️ Text is too long. Please send a shorter text.",
         "tts.quota": "⏳ TTS quota is currently exhausted. Please try again later.",
+        "tts.unusual_activity": "⚠️ ElevenLabs detected unusual activity and disabled Free Tier usage. If you're using a VPN/proxy, try disabling it. Otherwise you may need a Paid Plan.",
         "tts.error": "❌ TTS error. Please try again later.",
     },
     "ru": {
@@ -590,6 +592,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "tts.processing": "⏳ Генерирую аудио...",
         "tts.too_long": "❗️ Текст слишком длинный. Отправьте короче.",
         "tts.quota": "⏳ Квота TTS сейчас исчерпана. Пожалуйста, попробуйте позже.",
+        "tts.unusual_activity": "⚠️ ElevenLabs обнаружил подозрительную активность и отключил Free Tier. Если используете VPN/прокси — выключите. Иначе может понадобиться платный план.",
         "tts.error": "❌ Ошибка TTS. Попробуйте позже.",
         "products.choose_plan": "Выберите вариант 👇",
         "products.no_stock": "❌ Сейчас нет аккаунтов в наличии.\n\nПожалуйста, попробуйте позже.",

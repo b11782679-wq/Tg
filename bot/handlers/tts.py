@@ -37,6 +37,15 @@ def _get_elevenlabs_api_key() -> str:
     return (os.getenv("ELEVENLABS_API_KEY") or "").strip()
 
 
+def _is_elevenlabs_unusual_activity_error(exc: Exception) -> bool:
+    s = (str(exc) or "").lower()
+    return (
+        "detected_unusual_activity" in s
+        or "unusual activity" in s
+        or "free tier usage disabled" in s
+    )
+
+
 def _tts_sync(text: str, api_key: str) -> bytes:
     from elevenlabs.client import ElevenLabs
 
@@ -130,11 +139,14 @@ async def tts_receive_text(message: Message, state: FSMContext):
             await processing.delete()
         except Exception:
             pass
-        err = str(e)[:250]
-        await message.answer(
-            t(lang, "tts.error") + (f"\n\n<code>{err}</code>" if err else ""),
-            reply_markup=back_only_kb(lang),
-        )
+        if _is_elevenlabs_unusual_activity_error(e):
+            await message.answer(t(lang, "tts.unusual_activity"), reply_markup=back_only_kb(lang))
+        else:
+            err = str(e)[:250]
+            await message.answer(
+                t(lang, "tts.error") + (f"\n\n<code>{err}</code>" if err else ""),
+                reply_markup=back_only_kb(lang),
+            )
         return
 
     try:
