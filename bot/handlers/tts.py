@@ -128,13 +128,17 @@ async def tts_receive_text(message: Message, state: FSMContext):
     try:
         pcm_bytes = await _generate_tts(text=text, api_key=api_key)
         wav_bytes = _pcm_to_wav_bytes(pcm_bytes)
-    except Exception:
+    except Exception as e:
         logger.exception("TTS generation failed")
         try:
             await processing.delete()
         except Exception:
             pass
-        await message.answer(t(lang, "tts.error"), reply_markup=back_only_kb(lang))
+        err = str(e)[:250]
+        await message.answer(
+            t(lang, "tts.error") + (f"\n\n<code>{err}</code>" if err else ""),
+            reply_markup=back_only_kb(lang),
+        )
         await state.clear()
         return
 
@@ -146,9 +150,13 @@ async def tts_receive_text(message: Message, state: FSMContext):
     try:
         audio = BufferedInputFile(wav_bytes, filename="tts.wav")
         await message.answer_audio(audio)
-    except Exception:
+    except Exception as e:
         logger.exception("Sending TTS audio failed")
-        await message.answer(t(lang, "tts.error"), reply_markup=back_only_kb(lang))
+        err = str(e)[:250]
+        await message.answer(
+            t(lang, "tts.error") + (f"\n\n<code>{err}</code>" if err else ""),
+            reply_markup=back_only_kb(lang),
+        )
         await state.clear()
         return
 
