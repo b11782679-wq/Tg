@@ -171,7 +171,6 @@ async def tts_receive_text(message: Message, state: FSMContext):
             t(lang, "tts.error") + (f"\n\n<code>{err}</code>" if err else ""),
             reply_markup=back_only_kb(lang),
         )
-        await state.clear()
         return
 
     try:
@@ -189,11 +188,6 @@ async def tts_receive_text(message: Message, state: FSMContext):
             t(lang, "tts.error") + (f"\n\n<code>{err}</code>" if err else ""),
             reply_markup=back_only_kb(lang),
         )
-        await state.clear()
         return
 
-    await state.clear()
-    await message.answer(
-        t(lang, "home", name=message.from_user.full_name or "Foydalanuvchi"),
-        reply_markup=main_menu_kb(lang),
-    )
+    await state.set_state(TTSStates.waiting_text)
