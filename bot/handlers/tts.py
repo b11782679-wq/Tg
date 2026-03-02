@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import base64
-import io
 import logging
 import os
-import wave
 from typing import Optional
 
 from aiogram import Router, F
@@ -35,98 +32,32 @@ class TTSStates(StatesGroup):
     waiting_text = State()
 
 
-def _get_gemini_api_key() -> str:
-    return (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or "").strip()
-
-
-def _get_gemini_api_keys() -> list[str]:
-    raw = (
-        os.getenv("GEMINI_API_KEYS")
-        or os.getenv("GOOGLE_API_KEYS")
-        or os.getenv("GEMINI_API_KEY")
-        or os.getenv("GOOGLE_API_KEY")
-        or ""
-    )
-    keys = [k.strip() for k in raw.replace(";", ",").split(",") if k.strip()]
-    return keys
-
-
-def _is_quota_error(exc: Exception) -> bool:
-    s = (str(exc) or "").upper()
-    return "RESOURCE_EXHAUSTED" in s or "HTTP 429" in s or " 429" in s
-
-
-def _pcm_to_wav_bytes(pcm: bytes, channels: int = 1, rate: int = 24000, sample_width: int = 2) -> bytes:
-    buf = io.BytesIO()
-    with wave.open(buf, "wb") as wf:
-        wf.setnchannels(int(channels))
-        wf.setsampwidth(int(sample_width))
-        wf.setframerate(int(rate))
-        wf.writeframes(pcm)
-    return buf.getvalue()
+def _get_elevenlabs_api_key() -> str:
+    return (os.getenv("ELEVENLABS_API_KEY") or "").strip()
 
 
 def _tts_sync(text: str, api_key: str) -> bytes:
-    from google import genai
-    from google.genai import types
+    from elevenlabs.client import ElevenLabs
 
-    client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model="gemini-2.5-flash-preview-tts",
-        contents=text,
-        config=types.GenerateContentConfig(
-            response_modalities=["AUDIO"],
-            speech_config=types.SpeechConfig(
-                voice_config=types.VoiceConfig(
-                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name="Kore",
-                    )
-                )
-            ),
-        ),
+    voice_id = (os.getenv("ELEVENLABS_VOICE_ID") or "JBFqnCBsd6RMkjVDRZzb").strip()
+    model_id = (os.getenv("ELEVENLABS_MODEL_ID") or "eleven_multilingual_v2").strip()
+    output_format = (os.getenv("ELEVENLABS_OUTPUT_FORMAT") or "mp3_44100_128").strip()
+
+    client = ElevenLabs(api_key=api_key)
+    audio = client.text_to_speech.convert(
+        text=text,
+        voice_id=voice_id,
+        model_id=model_id,
+        output_format=output_format,
     )
 
-    candidates = list(getattr(response, "candidates", None) or [])
-    for c in candidates:
-        content = getattr(c, "content", None)
-        parts = list(getattr(content, "parts", None) or []) if content is not None else []
-        for p in parts:
-            inline = getattr(p, "inline_data", None)
-            if inline is None:
-                continue
-            data = getattr(inline, "data", None)
-            if not data:
-                continue
+    if isinstance(audio, (bytes, bytearray)):
+        return bytes(audio)
 
-            if isinstance(data, str):
-                try:
-                    data = base64.b64decode(data)
-                except Exception:
-                    data = data.encode("utf-8", errors="ignore")
-            if not isinstance(data, (bytes, bytearray)):
-                data = bytes(data)
-            return bytes(data)
-
-    # If no inline audio found, raise a descriptive error
-    finish_reasons: list[str] = []
-    for c in candidates:
-        fr = getattr(c, "finish_reason", None)
-        if fr is not None:
-            finish_reasons.append(str(fr))
-
-    pf = getattr(response, "prompt_feedback", None)
-    pf_text = ""
-    if pf is not None:
-        try:
-            pf_text = str(pf)
-        except Exception:
-            pf_text = ""
-
-    raise RuntimeError(
-        "Gemini TTS returned no audio. "
-        + (f"finish_reasons={finish_reasons}. " if finish_reasons else "")
-        + (f"prompt_feedback={pf_text}" if pf_text else "")
-    )
+    try:
+        return bytes(audio)
+    except Exception:
+        return b""  # will be handled by caller
 
 
 async def _generate_tts(text: str, api_key: str, timeout_seconds: float = 40.0) -> bytes:
@@ -166,42 +97,28 @@ async def tts_receive_text(message: Message, state: FSMContext):
         await message.answer(t(lang, "tts.too_long"), reply_markup=back_only_kb(lang))
         return
 
-    api_keys = _get_gemini_api_keys()
-    if not api_keys:
+    api_key = _get_elevenlabs_api_key()
+    if not api_key:
         await message.answer(t(lang, "tts.error"), reply_markup=back_only_kb(lang))
         return
 
     processing = await message.answer(t(lang, "tts.processing"))
 
-    last_exc: Exception | None = None
-    wav_bytes: bytes | None = None
-    for api_key in api_keys:
-        try:
-            pcm_bytes = await _generate_tts(text=text, api_key=api_key)
-            wav_bytes = _pcm_to_wav_bytes(pcm_bytes)
-            last_exc = None
-            break
-        except Exception as e:
-            last_exc = e
-            if _is_quota_error(e) and api_key != api_keys[-1]:
-                continue
-            break
-
-    if wav_bytes is None:
-        e = last_exc or RuntimeError("Unknown TTS error")
-        logger.exception("TTS generation failed", exc_info=e)
+    try:
+        mp3_bytes = await _generate_tts(text=text, api_key=api_key)
+        if not mp3_bytes:
+            raise RuntimeError("ElevenLabs returned empty audio")
+    except Exception as e:
+        logger.exception("TTS generation failed")
         try:
             await processing.delete()
         except Exception:
             pass
-        if _is_quota_error(e):
-            await message.answer(t(lang, "tts.quota"), reply_markup=back_only_kb(lang))
-        else:
-            err = str(e)[:250]
-            await message.answer(
-                t(lang, "tts.error") + (f"\n\n<code>{err}</code>" if err else ""),
-                reply_markup=back_only_kb(lang),
-            )
+        err = str(e)[:250]
+        await message.answer(
+            t(lang, "tts.error") + (f"\n\n<code>{err}</code>" if err else ""),
+            reply_markup=back_only_kb(lang),
+        )
         return
 
     try:
@@ -210,7 +127,7 @@ async def tts_receive_text(message: Message, state: FSMContext):
         pass
 
     try:
-        audio = BufferedInputFile(wav_bytes, filename="tts.wav")
+        audio = BufferedInputFile(mp3_bytes, filename="tts.mp3")
         await message.answer_audio(audio)
     except Exception as e:
         logger.exception("Sending TTS audio failed")
