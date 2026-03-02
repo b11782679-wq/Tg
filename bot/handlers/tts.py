@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from collections.abc import Iterable
 from typing import Optional
 
 from aiogram import Router, F
@@ -53,6 +54,21 @@ def _tts_sync(text: str, api_key: str) -> bytes:
 
     if isinstance(audio, (bytes, bytearray)):
         return bytes(audio)
+
+    # ElevenLabs SDK may return an iterator/stream of chunks
+    if isinstance(audio, Iterable) and not isinstance(audio, (str, bytes, bytearray)):
+        buf = bytearray()
+        for chunk in audio:
+            if not chunk:
+                continue
+            if isinstance(chunk, (bytes, bytearray)):
+                buf.extend(chunk)
+            else:
+                try:
+                    buf.extend(bytes(chunk))
+                except Exception:
+                    continue
+        return bytes(buf)
 
     try:
         return bytes(audio)
