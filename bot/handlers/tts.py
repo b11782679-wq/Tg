@@ -69,15 +69,47 @@ def _tts_sync(text: str, api_key: str) -> bytes:
         ),
     )
 
-    data = response.candidates[0].content.parts[0].inline_data.data
-    if isinstance(data, str):
+    candidates = list(getattr(response, "candidates", None) or [])
+    for c in candidates:
+        content = getattr(c, "content", None)
+        parts = list(getattr(content, "parts", None) or []) if content is not None else []
+        for p in parts:
+            inline = getattr(p, "inline_data", None)
+            if inline is None:
+                continue
+            data = getattr(inline, "data", None)
+            if not data:
+                continue
+
+            if isinstance(data, str):
+                try:
+                    data = base64.b64decode(data)
+                except Exception:
+                    data = data.encode("utf-8", errors="ignore")
+            if not isinstance(data, (bytes, bytearray)):
+                data = bytes(data)
+            return bytes(data)
+
+    # If no inline audio found, raise a descriptive error
+    finish_reasons: list[str] = []
+    for c in candidates:
+        fr = getattr(c, "finish_reason", None)
+        if fr is not None:
+            finish_reasons.append(str(fr))
+
+    pf = getattr(response, "prompt_feedback", None)
+    pf_text = ""
+    if pf is not None:
         try:
-            data = base64.b64decode(data)
+            pf_text = str(pf)
         except Exception:
-            data = data.encode("utf-8", errors="ignore")
-    if not isinstance(data, (bytes, bytearray)):
-        data = bytes(data)
-    return bytes(data)
+            pf_text = ""
+
+    raise RuntimeError(
+        "Gemini TTS returned no audio. "
+        + (f"finish_reasons={finish_reasons}. " if finish_reasons else "")
+        + (f"prompt_feedback={pf_text}" if pf_text else "")
+    )
 
 
 async def _generate_tts(text: str, api_key: str, timeout_seconds: float = 40.0) -> bytes:
