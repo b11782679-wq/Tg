@@ -17,7 +17,7 @@ from aiogram.types import BufferedInputFile
 
 from bot.db.repo import Repo
 from bot.i18n import t
-from bot.keyboards.menu import back_only_kb, main_menu_kb
+from bot.keyboards.menu import back_only_kb
 
 
 router = Router()
@@ -37,6 +37,23 @@ class TTSStates(StatesGroup):
 
 def _get_gemini_api_key() -> str:
     return (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or "").strip()
+
+
+def _get_gemini_api_keys() -> list[str]:
+    raw = (
+        os.getenv("GEMINI_API_KEYS")
+        or os.getenv("GOOGLE_API_KEYS")
+        or os.getenv("GEMINI_API_KEY")
+        or os.getenv("GOOGLE_API_KEY")
+        or ""
+    )
+    keys = [k.strip() for k in raw.replace(";", ",").split(",") if k.strip()]
+    return keys
+
+
+def _is_quota_error(exc: Exception) -> bool:
+    s = (str(exc) or "").upper()
+    return "RESOURCE_EXHAUSTED" in s or "HTTP 429" in s or " 429" in s
 
 
 def _pcm_to_wav_bytes(pcm: bytes, channels: int = 1, rate: int = 24000, sample_width: int = 2) -> bytes:
@@ -149,28 +166,42 @@ async def tts_receive_text(message: Message, state: FSMContext):
         await message.answer(t(lang, "tts.too_long"), reply_markup=back_only_kb(lang))
         return
 
-    api_key = _get_gemini_api_key()
-    if not api_key:
+    api_keys = _get_gemini_api_keys()
+    if not api_keys:
         await message.answer(t(lang, "tts.error"), reply_markup=back_only_kb(lang))
-        await state.clear()
         return
 
     processing = await message.answer(t(lang, "tts.processing"))
 
-    try:
-        pcm_bytes = await _generate_tts(text=text, api_key=api_key)
-        wav_bytes = _pcm_to_wav_bytes(pcm_bytes)
-    except Exception as e:
-        logger.exception("TTS generation failed")
+    last_exc: Exception | None = None
+    wav_bytes: bytes | None = None
+    for api_key in api_keys:
+        try:
+            pcm_bytes = await _generate_tts(text=text, api_key=api_key)
+            wav_bytes = _pcm_to_wav_bytes(pcm_bytes)
+            last_exc = None
+            break
+        except Exception as e:
+            last_exc = e
+            if _is_quota_error(e) and api_key != api_keys[-1]:
+                continue
+            break
+
+    if wav_bytes is None:
+        e = last_exc or RuntimeError("Unknown TTS error")
+        logger.exception("TTS generation failed", exc_info=e)
         try:
             await processing.delete()
         except Exception:
             pass
-        err = str(e)[:250]
-        await message.answer(
-            t(lang, "tts.error") + (f"\n\n<code>{err}</code>" if err else ""),
-            reply_markup=back_only_kb(lang),
-        )
+        if _is_quota_error(e):
+            await message.answer(t(lang, "tts.quota"), reply_markup=back_only_kb(lang))
+        else:
+            err = str(e)[:250]
+            await message.answer(
+                t(lang, "tts.error") + (f"\n\n<code>{err}</code>" if err else ""),
+                reply_markup=back_only_kb(lang),
+            )
         return
 
     try:
