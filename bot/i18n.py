@@ -133,6 +133,11 @@ _TEXTS: dict[str, dict[str, str]] = {
             "Quyidagilardan birini tanlang 👇\n\n"
             "<blockquote>🧾 Sotib olingan akkauntlar profil menyusida 7 kungacha saqlanib turadi.</blockquote>"
         ),
+        "tts.open": "🗣 <b>Text to Speech</b>\n\nMatn yuboring — men uni audio qilib beraman.",
+        "tts.ask_text": "✍️ Matn yuboring:",
+        "tts.processing": "⏳ Audio tayyorlanyapti...",
+        "tts.too_long": "❗️ Matn juda uzun. Qisqaroq qilib yuboring.",
+        "tts.error": "❌ TTS xatolik. Keyinroq qayta urinib ko‘ring.",
         "products.choose_plan": "📌 Quyidagilardan birini tanlang 👇",
         "products.no_stock": "❌ Hozircha akkaunt qolmagan.\n\nKeyinroq qayta urinib ko‘ring.",
         "products.race": "❌ Xatolik yuz berdi.\n\nKeyinroq qayta urinib ko‘ring.",
@@ -454,6 +459,11 @@ _TEXTS: dict[str, dict[str, str]] = {
             "Please try again."
         ),
         "youtuber.done": "✅ Analysis complete! Check it out above.",
+        "tts.open": "🗣 <b>Text to Speech</b>\n\nSend text — I will convert it to audio.",
+        "tts.ask_text": "✍️ Send the text:",
+        "tts.processing": "⏳ Generating audio...",
+        "tts.too_long": "❗️ Text is too long. Please send a shorter text.",
+        "tts.error": "❌ TTS error. Please try again later.",
     },
     "ru": {
         "menu.youtuber": "📺 Для YouTuberов",
