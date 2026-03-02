@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import io
+import logging
 import os
+import wave
 from typing import Optional
 
 from aiogram import Router, F
@@ -19,6 +23,8 @@ from bot.keyboards.menu import back_only_kb, main_menu_kb
 router = Router()
 _repo: Repo | None = None
 
+logger = logging.getLogger(__name__)
+
 
 def setup(repo: Repo) -> None:
     global _repo
@@ -31,6 +37,16 @@ class TTSStates(StatesGroup):
 
 def _get_gemini_api_key() -> str:
     return (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or "").strip()
+
+
+def _pcm_to_wav_bytes(pcm: bytes, channels: int = 1, rate: int = 24000, sample_width: int = 2) -> bytes:
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(int(channels))
+        wf.setsampwidth(int(sample_width))
+        wf.setframerate(int(rate))
+        wf.writeframes(pcm)
+    return buf.getvalue()
 
 
 def _tts_sync(text: str, api_key: str) -> bytes:
@@ -53,7 +69,15 @@ def _tts_sync(text: str, api_key: str) -> bytes:
         ),
     )
 
-    return response.candidates[0].content.parts[0].inline_data.data
+    data = response.candidates[0].content.parts[0].inline_data.data
+    if isinstance(data, str):
+        try:
+            data = base64.b64decode(data)
+        except Exception:
+            data = data.encode("utf-8", errors="ignore")
+    if not isinstance(data, (bytes, bytearray)):
+        data = bytes(data)
+    return bytes(data)
 
 
 async def _generate_tts(text: str, api_key: str, timeout_seconds: float = 40.0) -> bytes:
@@ -102,8 +126,10 @@ async def tts_receive_text(message: Message, state: FSMContext):
     processing = await message.answer(t(lang, "tts.processing"))
 
     try:
-        wav_bytes = await _generate_tts(text=text, api_key=api_key)
+        pcm_bytes = await _generate_tts(text=text, api_key=api_key)
+        wav_bytes = _pcm_to_wav_bytes(pcm_bytes)
     except Exception:
+        logger.exception("TTS generation failed")
         try:
             await processing.delete()
         except Exception:
@@ -121,6 +147,7 @@ async def tts_receive_text(message: Message, state: FSMContext):
         audio = BufferedInputFile(wav_bytes, filename="tts.wav")
         await message.answer_audio(audio)
     except Exception:
+        logger.exception("Sending TTS audio failed")
         await message.answer(t(lang, "tts.error"), reply_markup=back_only_kb(lang))
         await state.clear()
         return
