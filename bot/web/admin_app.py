@@ -54,10 +54,20 @@ def _check_auth(cfg: Config, creds: HTTPBasicCredentials, request: Request):
 
     locked_until = float(_admin_auth_locked_until.get(ip, 0) or 0)
     if locked_until > now:
-        raise HTTPException(status_code=429, detail="Too many attempts. Try later.")
+        retry_after = int(max(locked_until - now, 1))
+        raise HTTPException(
+            status_code=403,
+            detail=f"Too many attempts. Try later. Retry after {retry_after}s.",
+            headers={"Retry-After": str(retry_after)},
+        )
 
-    u_ok = secrets.compare_digest(creds.username or "", cfg.admin_panel_user)
-    p_ok = secrets.compare_digest(creds.password or "", cfg.admin_panel_pass)
+    user_in = (creds.username or "").strip()
+    pass_in = (creds.password or "").strip()
+    user_cfg = (cfg.admin_panel_user or "").strip()
+    pass_cfg = (cfg.admin_panel_pass or "").strip()
+
+    u_ok = secrets.compare_digest(user_in, user_cfg)
+    p_ok = secrets.compare_digest(pass_in, pass_cfg)
     if u_ok and p_ok:
         _admin_auth_failures.pop(ip, None)
         _admin_auth_locked_until.pop(ip, None)
