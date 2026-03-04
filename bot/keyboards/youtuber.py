@@ -73,9 +73,6 @@ def youtuber_entry_kb(lang: str = "uz") -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🎙 Text to Speech", callback_data="tts:open"),
         ],
         [
-            InlineKeyboardButton(text="� Telegram Azo", callback_data="tgazo:open"),
-        ],
-        [
             InlineKeyboardButton(text="�🔙 Ortga", callback_data="m:home"),
         ],
     ]

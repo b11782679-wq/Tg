@@ -140,16 +140,6 @@ _TEXTS: dict[str, dict[str, str]] = {
         "tts.quota": "⏳ Hozir TTS limiti tugagan (quota). Iltimos, birozdan keyin qayta urinib ko‘ring.",
         "tts.unusual_activity": "⚠️ ElevenLabs xavfsizlik tizimi shubhali faollikni aniqladi va Free tier vaqtincha o‘chirilgan. Agar VPN/Proxy ishlatayotgan bo‘lsangiz o‘chirib ko‘ring. Aks holda Paid Plan kerak bo‘lishi mumkin.",
         "tts.error": "❌ TTS xatolik. Keyinroq qayta urinib ko‘ring.",
-        "tgazo.open": (
-            "👥 <b>Telegram Azo</b>\n\n"
-            "Men guruh/kanallardan a’zolarni scrape qilib boshqa joyga avtomatik qo‘shish bo‘yicha bot yozib bera olmayman (Telegram qoidalari va spam/abuse xavfi).\n\n"
-            "✅ <b>Ruxsat etilgan usullar:</b>\n"
-            "1) Invite link orqali a’zolarni taklif qilish\n"
-            "2) <b>Join Request</b> yoqib, kelgan so‘rovlarni tasdiqlash\n"
-            "3) Kontent + reklama (target), kollab va cross‑promo\n"
-            "4) Admin/Moderatorlar orqali qo‘lda qo‘shish\n\n"
-            "Agar xohlasangiz, men sizga ruxsatli usulda ishlaydigan: join request boshqaruvi, invite link generator, statistika va auto‑reply kabi funksiyalarni qo‘shib beraman."
-        ),
         "products.choose_plan": "📌 Quyidagilardan birini tanlang 👇",
         "products.no_stock": "❌ Hozircha akkaunt qolmagan.\n\nKeyinroq qayta urinib ko‘ring.",
         "products.race": "❌ Xatolik yuz berdi.\n\nKeyinroq qayta urinib ko‘ring.",
@@ -478,16 +468,6 @@ _TEXTS: dict[str, dict[str, str]] = {
         "tts.quota": "⏳ TTS quota is currently exhausted. Please try again later.",
         "tts.unusual_activity": "⚠️ ElevenLabs detected unusual activity and disabled Free Tier usage. If you're using a VPN/proxy, try disabling it. Otherwise you may need a Paid Plan.",
         "tts.error": "❌ TTS error. Please try again later.",
-        "tgazo.open": (
-            "👥 <b>Telegram Members</b>\n\n"
-            "I can’t help build a bot that scrapes members from one group/channel and mass-adds them elsewhere (it violates Telegram rules and is abusive).\n\n"
-            "✅ <b>Allowed ways:</b>\n"
-            "1) Invite users via an invite link\n"
-            "2) Enable <b>Join Requests</b> and approve requests\n"
-            "3) Content marketing, ads, collaborations, cross‑promo\n"
-            "4) Manual adding by admins/moderators\n\n"
-            "If you want, I can add safe features like join request workflow, invite link generator, stats, and auto-replies."
-        ),
     },
     "ru": {
         "menu.youtuber": "📺 Для YouTuberов",
@@ -614,16 +594,6 @@ _TEXTS: dict[str, dict[str, str]] = {
         "tts.quota": "⏳ Квота TTS сейчас исчерпана. Пожалуйста, попробуйте позже.",
         "tts.unusual_activity": "⚠️ ElevenLabs обнаружил подозрительную активность и отключил Free Tier. Если используете VPN/прокси — выключите. Иначе может понадобиться платный план.",
         "tts.error": "❌ Ошибка TTS. Попробуйте позже.",
-        "tgazo.open": (
-            "👥 <b>Telegram участники</b>\n\n"
-            "Я не могу помочь сделать бота, который скрейпит участников из одной группы/канала и массово добавляет в другую (это нарушает правила Telegram и относится к abuse).\n\n"
-            "✅ <b>Разрешённые способы:</b>\n"
-            "1) Приглашение по invite‑ссылке\n"
-            "2) Включить <b>заявки на вступление</b> и подтверждать\n"
-            "3) Контент, реклама, коллаборации, кросс‑промо\n"
-            "4) Ручное добавление админами/модераторами\n\n"
-            "Если хотите — могу добавить безопасные функции: workflow заявок, генератор ссылок, статистику, автоответы."
-        ),
         "products.choose_plan": "Выберите вариант 👇",
         "products.no_stock": "❌ Сейчас нет аккаунтов в наличии.\n\nПожалуйста, попробуйте позже.",
         "products.race": "❌ Произошла ошибка.\n\nПожалуйста, попробуйте позже.",
