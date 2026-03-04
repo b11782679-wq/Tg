@@ -172,6 +172,14 @@ CREATE TABLE IF NOT EXISTS youtube_upload_drafts (
   paid_promotion INTEGER DEFAULT 0,
   altered_content INTEGER DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS telegram_sessions (
+  user_id INTEGER PRIMARY KEY,
+  api_id INTEGER NOT NULL,
+  api_hash TEXT NOT NULL,
+  session_string TEXT NOT NULL,
+  updated_at TEXT DEFAULT (datetime('now'))
+);
 """
 
 async def init_db(db_path: str):

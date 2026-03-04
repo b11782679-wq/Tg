@@ -436,6 +436,38 @@ class Repo:
             lang = str(row["language"] or "").strip().lower()
             return lang or "uz"
 
+    async def telegram_get_session(self, user_id: int) -> dict | None:
+        async with await self._conn() as db:
+            db.row_factory = aiosqlite.Row
+            cur = await db.execute(
+                "SELECT api_id, api_hash, session_string FROM telegram_sessions WHERE user_id=?",
+                (int(user_id),),
+            )
+            row = await cur.fetchone()
+            if not row:
+                return None
+            return {
+                "api_id": int(row["api_id"]),
+                "api_hash": str(row["api_hash"] or ""),
+                "session_string": str(row["session_string"] or ""),
+            }
+
+    async def telegram_upsert_session(self, user_id: int, api_id: int, api_hash: str, session_string: str) -> None:
+        async with await self._conn() as db:
+            await db.execute(
+                "INSERT INTO telegram_sessions(user_id, api_id, api_hash, session_string, updated_at) "
+                "VALUES(?,?,?,?, datetime('now')) "
+                "ON CONFLICT(user_id) DO UPDATE SET "
+                "api_id=excluded.api_id, api_hash=excluded.api_hash, session_string=excluded.session_string, updated_at=datetime('now')",
+                (int(user_id), int(api_id), str(api_hash or ""), str(session_string or "")),
+            )
+            await db.commit()
+
+    async def telegram_delete_session(self, user_id: int) -> None:
+        async with await self._conn() as db:
+            await db.execute("DELETE FROM telegram_sessions WHERE user_id=?", (int(user_id),))
+            await db.commit()
+
     async def set_language(self, user_id: int, language: str) -> None:
         async with await self._conn() as db:
             await db.execute("UPDATE users SET language=? WHERE id=?", (str(language), int(user_id)))

@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from pyrogram import Client
-from pyrogram.errors import FloodWait, UserPrivacyRestricted
+from pyrogram.errors import FloodWait, UserPrivacyRestricted, SessionPasswordNeeded
 
 from bot.db.repo import Repo
 from bot.i18n import t
@@ -19,6 +19,9 @@ _repo: Repo | None = None
 class TelegramAuth(StatesGroup):
     api_id = State()
     api_hash = State()
+    phone = State()
+    otp = State()
+    two_fa = State()
     session_string = State()
 
 class ScraperTask(StatesGroup):
@@ -27,6 +30,31 @@ class ScraperTask(StatesGroup):
 
 # Foydalanuvchi sessiyalarini vaqtinchalik saqlash
 user_clients: dict[int, Client] = {}
+
+
+async def _try_connect_saved_session(user_id: int) -> Client | None:
+    if _repo is None:
+        return None
+    saved = await _repo.telegram_get_session(user_id)
+    if not saved:
+        return None
+    session_string = str(saved.get("session_string") or "").strip()
+    if not session_string:
+        return None
+
+    try:
+        client = Client(
+            name=f"session_{user_id}",
+            api_id=int(saved["api_id"]),
+            api_hash=str(saved["api_hash"]),
+            session_string=session_string,
+            in_memory=True,
+        )
+        await client.start()
+        user_clients[user_id] = client
+        return client
+    except Exception:
+        return None
 
 def setup(repo: Repo) -> None:
     global _repo
@@ -40,6 +68,17 @@ async def telegram_open(call: CallbackQuery, state: FSMContext):
 
     lang = await _repo.get_language(call.from_user.id)
     await state.clear()
+
+    client = await _try_connect_saved_session(call.from_user.id)
+    if client is not None:
+        await call.message.edit_text(
+            "Akkaunt ulandi! ✅\n\nEndi a'zolarni ko'chirish uchun **Manba guruh** (Source) ID yoki Username yuboring:",
+            reply_markup=back_only_kb(lang),
+            disable_web_page_preview=True,
+        )
+        await state.set_state(ScraperTask.source_chat)
+        await call.answer()
+        return
 
     await call.message.edit_text(
         "Telegram Scraper & Adder xizmatiga xush kelibsiz!\n\nAkkauntingizni ulash uchun **API ID** yuboring:",
@@ -61,36 +100,150 @@ async def process_api_id(message: Message, state: FSMContext):
 async def process_api_hash(message: Message, state: FSMContext):
     await state.update_data(api_hash=message.text)
     await message.answer(
-        "Endi **Pyrogram StringSession** yuboring:\n\n"
-        "1) Lokal kompyuteringizda bir marta session yaratasiz\n"
-        "2) Chiqadigan session string’ni shu yerga yuborasiz\n\n"
-        "Eslatma: Railway serverda SMS/OTP bilan login kodlar tez eskiradi, shuning uchun StringSession kerak."
+        "Telefon raqamingizni yuboring (masalan: +998901234567).\n\n"
+        "Agar sizda tayyor **StringSession** bo'lsa, uni ham yuborishingiz mumkin."
     )
-    await state.set_state(TelegramAuth.session_string)
+    await state.set_state(TelegramAuth.phone)
 
-@router.message(TelegramAuth.session_string)
-async def process_session_string(message: Message, state: FSMContext):
+@router.message(TelegramAuth.phone)
+async def process_phone(message: Message, state: FSMContext):
+    if _repo is None:
+        return
+
     data = await state.get_data()
-    session_string = (message.text or "").strip()
-    await state.update_data(session_string=session_string)
+    text = (message.text or "").strip()
+    if not text:
+        await message.answer("Telefon raqam yoki StringSession yuboring.")
+        return
+
+    # If user pasted a session string (usually long), try to use it directly.
+    if "+" not in text and len(text) > 120:
+        session_string = text
+        try:
+            client = Client(
+                name=f"session_{message.from_user.id}",
+                api_id=int(data["api_id"]),
+                api_hash=str(data["api_hash"]),
+                session_string=session_string,
+                in_memory=True,
+            )
+            await client.start()
+            user_clients[message.from_user.id] = client
+            await _repo.telegram_upsert_session(
+                user_id=message.from_user.id,
+                api_id=int(data["api_id"]),
+                api_hash=str(data["api_hash"]),
+                session_string=session_string,
+            )
+            await message.answer(
+                "Akkaunt ulandi! ✅\n\nEndi a'zolarni ko'chirish uchun **Manba guruh** (Source) ID yoki Username yuboring:"
+            )
+            await state.set_state(ScraperTask.source_chat)
+            return
+        except Exception as e:
+            await message.answer(f"Xatolik: {e}")
+            return
+
+    phone = text
+    await state.update_data(phone=phone)
+
+    client = Client(
+        name=f"session_{message.from_user.id}",
+        api_id=int(data["api_id"]),
+        api_hash=str(data["api_hash"]),
+        in_memory=True,
+    )
 
     try:
-        client = Client(
-            name=f"session_{message.from_user.id}",
-            api_id=int(data["api_id"]),
-            api_hash=data["api_hash"],
-            session_string=session_string,
-            in_memory=True,
-        )
-        await client.start()
+        await client.connect()
+        code_info = await client.send_code(phone)
         user_clients[message.from_user.id] = client
+        await state.update_data(phone_code_hash=code_info.phone_code_hash)
+        await message.answer("Telegramdan kelgan tasdiqlash kodini yuboring:")
+        await state.set_state(TelegramAuth.otp)
+    except Exception as e:
+        await message.answer(f"Xatolik: {e}")
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+
+
+@router.message(TelegramAuth.otp)
+async def process_otp(message: Message, state: FSMContext):
+    if _repo is None:
+        return
+
+    data = await state.get_data()
+    client = user_clients.get(message.from_user.id)
+    if not client:
+        await message.answer("Sessiya topilmadi. Qaytadan boshlang.")
+        await state.clear()
+        return
+
+    try:
+        await client.sign_in(
+            str(data.get("phone") or ""),
+            str(data.get("phone_code_hash") or ""),
+            str(message.text or "").strip(),
+        )
+    except SessionPasswordNeeded:
+        await message.answer("Ikki bosqichli parol (2FA) so'ralmoqda. Parolni yuboring:")
+        await state.set_state(TelegramAuth.two_fa)
+        return
+    except Exception as e:
+        await message.answer(f"Xatolik: {e}")
+        return
+
+    # Persist session for future logins
+    try:
+        session_string = client.export_session_string()
+        await _repo.telegram_upsert_session(
+            user_id=message.from_user.id,
+            api_id=int(data["api_id"]),
+            api_hash=str(data["api_hash"]),
+            session_string=session_string,
+        )
+    except Exception:
+        pass
+
+    await message.answer(
+        "Akkaunt ulandi! ✅\n\nEndi a'zolarni ko'chirish uchun **Manba guruh** (Source) ID yoki Username yuboring:"
+    )
+    await state.set_state(ScraperTask.source_chat)
+
+
+@router.message(TelegramAuth.two_fa)
+async def process_2fa(message: Message, state: FSMContext):
+    if _repo is None:
+        return
+
+    data = await state.get_data()
+    client = user_clients.get(message.from_user.id)
+    if not client:
+        await message.answer("Sessiya topilmadi. Qaytadan boshlang.")
+        await state.clear()
+        return
+
+    try:
+        await client.check_password(str(message.text or ""))
+        try:
+            session_string = client.export_session_string()
+            await _repo.telegram_upsert_session(
+                user_id=message.from_user.id,
+                api_id=int(data["api_id"]),
+                api_hash=str(data["api_hash"]),
+                session_string=session_string,
+            )
+        except Exception:
+            pass
 
         await message.answer(
             "Akkaunt ulandi! ✅\n\nEndi a'zolarni ko'chirish uchun **Manba guruh** (Source) ID yoki Username yuboring:"
         )
         await state.set_state(ScraperTask.source_chat)
     except Exception as e:
-        await message.answer(f"Xatolik: {e}")
+        await message.answer(f"Parol noto'g'ri: {e}")
 
 # --- KO'CHIRISH HANDLERLARI ---
 
