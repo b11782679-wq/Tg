@@ -7,6 +7,10 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 COPY requirements.txt ./
+RUN echo "--- requirements.txt (build-time) ---" \
+ && cat requirements.txt \
+ && echo "--- end requirements.txt ---" \
+ && (grep -n "^ollama==" requirements.txt || true)
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
