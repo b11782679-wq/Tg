@@ -156,7 +156,20 @@ async def process_phone(message: Message, state: FSMContext):
 
     try:
         await client.connect()
-        code_info = await client.send_code(phone)
+        try:
+            code_info = await client.send_code(phone)
+        except FloodWait as e:
+            await message.answer(
+                f"Telegram cheklovi (FLOOD_WAIT). ⏳\n\n"
+                f"Iltimos, {int(e.value)} soniya kuting va keyin telefon raqamni qaytadan yuboring." 
+            )
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+            user_clients.pop(message.from_user.id, None)
+            await state.set_state(TelegramAuth.phone)
+            return
         user_clients[message.from_user.id] = client
         await state.update_data(phone_code_hash=code_info.phone_code_hash)
         await message.answer("Telegramdan kelgan tasdiqlash kodini yuboring:")
@@ -206,7 +219,15 @@ async def process_otp(message: Message, state: FSMContext):
             await state.clear()
             return
         try:
-            code_info = await client.send_code(phone)
+            try:
+                code_info = await client.send_code(phone)
+            except FloodWait as e:
+                await message.answer(
+                    f"Telegram cheklovi (FLOOD_WAIT). ⏳\n\n"
+                    f"Iltimos, {int(e.value)} soniya kuting va keyin yangi kod so'rash uchun OTPni qaytadan yuboring."
+                )
+                await state.set_state(TelegramAuth.otp)
+                return
             await state.update_data(phone_code_hash=code_info.phone_code_hash)
             await message.answer(
                 "Kodning muddati tugab qolgan. ✅\n"
