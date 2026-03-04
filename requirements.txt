@@ -8,7 +8,6 @@ uvicorn==0.30.*
 python-multipart==0.0.9
 httpx==0.27.*
 openai==1.*
-ollama==0.4.*
 elevenlabs==1.*
 
 pyrogram==2.0.106
