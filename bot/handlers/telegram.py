@@ -185,9 +185,26 @@ async def process_otp(message: Message, state: FSMContext):
     phone_code_hash = str(data.get("phone_code_hash") or "").strip()
     otp = str(message.text or "").strip()
 
+    # Track how many times code expired to avoid endless loops
+    expired_attempts = int(data.get("otp_expired_attempts") or 0)
+
     try:
         await client.sign_in(phone, phone_code_hash, otp)
     except PhoneCodeExpired:
+        expired_attempts += 1
+        await state.update_data(otp_expired_attempts=expired_attempts)
+        if expired_attempts >= 3:
+            await message.answer(
+                "Kod bir necha marta eskirib qoldi. ❌\n\n"
+                "Iltimos, boshidan qayta urinib ko'ring: Telegram menyuni qayta oching va yangi kod kelishi bilan darhol yuboring."
+            )
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+            user_clients.pop(message.from_user.id, None)
+            await state.clear()
+            return
         try:
             code_info = await client.send_code(phone)
             await state.update_data(phone_code_hash=code_info.phone_code_hash)
@@ -207,6 +224,12 @@ async def process_otp(message: Message, state: FSMContext):
     except Exception as e:
         await message.answer(f"Xatolik: {e}")
         return
+
+    # Reset counter after successful sign in
+    try:
+        await state.update_data(otp_expired_attempts=0)
+    except Exception:
+        pass
 
     # Persist session for future logins
     try:
