@@ -55,6 +55,19 @@ async def open_youtuber_menu(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
+@router.callback_query(F.data == "tgazo:open")
+async def open_telegram_azo_menu(call: CallbackQuery, state: FSMContext):
+    lang = await _repo.get_language(call.from_user.id)
+
+    await state.clear()
+    await call.message.edit_text(
+        t(lang, "tgazo.open"),
+        reply_markup=back_only_kb(lang),
+        disable_web_page_preview=True,
+    )
+    await call.answer()
+
+
 @router.callback_query(F.data == "youtuber:audit")
 async def start_youtuber_audit(call: CallbackQuery, state: FSMContext):
     lang = await _repo.get_language(call.from_user.id)
