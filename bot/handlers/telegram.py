@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from pyrogram import Client
-from pyrogram.errors import FloodWait, UserPrivacyRestricted, SessionPasswordNeeded
+from pyrogram.errors import FloodWait, UserPrivacyRestricted
 
 from bot.db.repo import Repo
 from bot.i18n import t
@@ -19,9 +19,7 @@ _repo: Repo | None = None
 class TelegramAuth(StatesGroup):
     api_id = State()
     api_hash = State()
-    phone = State()
-    otp = State()
-    two_fa = State()
+    session_string = State()
 
 class ScraperTask(StatesGroup):
     source_chat = State()
@@ -62,56 +60,37 @@ async def process_api_id(message: Message, state: FSMContext):
 @router.message(TelegramAuth.api_hash)
 async def process_api_hash(message: Message, state: FSMContext):
     await state.update_data(api_hash=message.text)
-    await message.answer("Telefon raqamingizni yuboring (masalan: +998901234567):")
-    await state.set_state(TelegramAuth.phone)
-
-@router.message(TelegramAuth.phone)
-async def process_phone(message: Message, state: FSMContext):
-    data = await state.get_data()
-    phone = message.text
-    await state.update_data(phone=phone)
-    
-    client = Client(
-        name=f"session_{message.from_user.id}",
-        api_id=int(data['api_id']),
-        api_hash=data['api_hash'],
-        in_memory=True
+    await message.answer(
+        "Endi **Pyrogram StringSession** yuboring:\n\n"
+        "1) Lokal kompyuteringizda bir marta session yaratasiz\n"
+        "2) Chiqadigan session string’ni shu yerga yuborasiz\n\n"
+        "Eslatma: Railway serverda SMS/OTP bilan login kodlar tez eskiradi, shuning uchun StringSession kerak."
     )
-    await client.connect()
-    
-    try:
-        code_info = await client.send_code(phone)
-        user_clients[message.from_user.id] = client
-        await state.update_data(phone_code_hash=code_info.phone_code_hash)
-        await message.answer("Telegramdan kelgan tasdiqlash kodini yuboring:")
-        await state.set_state(TelegramAuth.otp)
-    except Exception as e:
-        await message.answer(f"Xatolik: {e}")
-        await client.disconnect()
+    await state.set_state(TelegramAuth.session_string)
 
-@router.message(TelegramAuth.otp)
-async def process_otp(message: Message, state: FSMContext):
+@router.message(TelegramAuth.session_string)
+async def process_session_string(message: Message, state: FSMContext):
     data = await state.get_data()
-    client = user_clients.get(message.from_user.id)
+    session_string = (message.text or "").strip()
+    await state.update_data(session_string=session_string)
+
     try:
-        await client.sign_in(data['phone'], data['phone_code_hash'], message.text)
-        await message.answer("Akkaunt ulandi! ✅\n\nEndi a'zolarni ko'chirish uchun **Manba guruh** (Source) ID yoki Username yuboring:")
+        client = Client(
+            name=f"session_{message.from_user.id}",
+            api_id=int(data["api_id"]),
+            api_hash=data["api_hash"],
+            session_string=session_string,
+            in_memory=True,
+        )
+        await client.start()
+        user_clients[message.from_user.id] = client
+
+        await message.answer(
+            "Akkaunt ulandi! ✅\n\nEndi a'zolarni ko'chirish uchun **Manba guruh** (Source) ID yoki Username yuboring:"
+        )
         await state.set_state(ScraperTask.source_chat)
-    except SessionPasswordNeeded:
-        await message.answer("Ikki bosqichli parol (2FA) so'ralmoqda. Parolni yuboring:")
-        await state.set_state(TelegramAuth.two_fa)
     except Exception as e:
         await message.answer(f"Xatolik: {e}")
-
-@router.message(TelegramAuth.two_fa)
-async def process_2fa(message: Message, state: FSMContext):
-    client = user_clients.get(message.from_user.id)
-    try:
-        await client.check_password(message.text)
-        await message.answer("Akkaunt ulandi! ✅\n\nManba guruh (Source) ID yoki Username yuboring:")
-        await state.set_state(ScraperTask.source_chat)
-    except Exception as e:
-        await message.answer(f"Parol noto'g'ri: {e}")
 
 # --- KO'CHIRISH HANDLERLARI ---
 
