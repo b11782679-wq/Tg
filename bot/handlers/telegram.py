@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from pyrogram import Client
-from pyrogram.errors import FloodWait, UserPrivacyRestricted, SessionPasswordNeeded
+from pyrogram.errors import FloodWait, UserPrivacyRestricted, SessionPasswordNeeded, PhoneCodeExpired
 
 from bot.db.repo import Repo
 from bot.i18n import t
@@ -181,12 +181,25 @@ async def process_otp(message: Message, state: FSMContext):
         await state.clear()
         return
 
+    phone = str(data.get("phone") or "").strip()
+    phone_code_hash = str(data.get("phone_code_hash") or "").strip()
+    otp = str(message.text or "").strip()
+
     try:
-        await client.sign_in(
-            str(data.get("phone") or ""),
-            str(data.get("phone_code_hash") or ""),
-            str(message.text or "").strip(),
-        )
+        await client.sign_in(phone, phone_code_hash, otp)
+    except PhoneCodeExpired:
+        try:
+            code_info = await client.send_code(phone)
+            await state.update_data(phone_code_hash=code_info.phone_code_hash)
+            await message.answer(
+                "Kodning muddati tugab qolgan. ✅\n"
+                "Men sizga yangi kod yubordim. Iltimos, yangi kelgan tasdiqlash kodini yuboring:"
+            )
+            await state.set_state(TelegramAuth.otp)
+            return
+        except Exception as e:
+            await message.answer(f"Xatolik: {e}")
+            return
     except SessionPasswordNeeded:
         await message.answer("Ikki bosqichli parol (2FA) so'ralmoqda. Parolni yuboring:")
         await state.set_state(TelegramAuth.two_fa)
