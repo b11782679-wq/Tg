@@ -30,6 +30,7 @@ from bot.handlers import referral as h_referral
 from bot.handlers import stats as h_stats
 from bot.handlers import profile as h_profile
 from bot.handlers import tts as h_tts
+from bot.handlers import telegram as h_telegram
 from bot.handlers import topup as h_topup
 from bot.handlers import admin as h_admin
 from bot.handlers import youtube_auto as h_youtube_auto
@@ -121,6 +122,7 @@ async def start():
     h_stats.setup(repo)
     h_profile.setup(repo)
     h_tts.setup(repo)
+    h_telegram.setup(repo)
     h_topup.setup(repo)
     h_admin.setup(repo, cfg)
     h_youtube_auto.setup(repo, cfg)
@@ -133,6 +135,7 @@ async def start():
     dp.include_router(h_stats.router)
     dp.include_router(h_profile.router)
     dp.include_router(h_tts.router)
+    dp.include_router(h_telegram.router)
     dp.include_router(h_topup.router)
     dp.include_router(h_admin.router)
     dp.include_router(h_youtube_auto.router)

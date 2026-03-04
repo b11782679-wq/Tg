@@ -140,6 +140,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "tts.quota": "⏳ Hozir TTS limiti tugagan (quota). Iltimos, birozdan keyin qayta urinib ko‘ring.",
         "tts.unusual_activity": "⚠️ ElevenLabs xavfsizlik tizimi shubhali faollikni aniqladi va Free tier vaqtincha o‘chirilgan. Agar VPN/Proxy ishlatayotgan bo‘lsangiz o‘chirib ko‘ring. Aks holda Paid Plan kerak bo‘lishi mumkin.",
         "tts.error": "❌ TTS xatolik. Keyinroq qayta urinib ko‘ring.",
+        "telegram.open": "👥 <b>Telegram Azo</b>\n\nBu bo‘lim uchun kodni keyinroq qo‘shasiz.",
         "products.choose_plan": "📌 Quyidagilardan birini tanlang 👇",
         "products.no_stock": "❌ Hozircha akkaunt qolmagan.\n\nKeyinroq qayta urinib ko‘ring.",
         "products.race": "❌ Xatolik yuz berdi.\n\nKeyinroq qayta urinib ko‘ring.",
@@ -468,6 +469,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "tts.quota": "⏳ TTS quota is currently exhausted. Please try again later.",
         "tts.unusual_activity": "⚠️ ElevenLabs detected unusual activity and disabled Free Tier usage. If you're using a VPN/proxy, try disabling it. Otherwise you may need a Paid Plan.",
         "tts.error": "❌ TTS error. Please try again later.",
+        "telegram.open": "👥 <b>Telegram Members</b>\n\nYou will add the code for this section later.",
     },
     "ru": {
         "menu.youtuber": "📺 Для YouTuberов",
@@ -594,6 +596,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "tts.quota": "⏳ Квота TTS сейчас исчерпана. Пожалуйста, попробуйте позже.",
         "tts.unusual_activity": "⚠️ ElevenLabs обнаружил подозрительную активность и отключил Free Tier. Если используете VPN/прокси — выключите. Иначе может понадобиться платный план.",
         "tts.error": "❌ Ошибка TTS. Попробуйте позже.",
+        "telegram.open": "👥 <b>Telegram участники</b>\n\nВы добавите код для этого раздела позже.",
         "products.choose_plan": "Выберите вариант 👇",
         "products.no_stock": "❌ Сейчас нет аккаунтов в наличии.\n\nПожалуйста, попробуйте позже.",
         "products.race": "❌ Произошла ошибка.\n\nПожалуйста, попробуйте позже.",
