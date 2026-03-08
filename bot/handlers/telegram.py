@@ -8,6 +8,16 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from pyrogram import Client
 from pyrogram.errors import FloodWait, UserPrivacyRestricted, SessionPasswordNeeded, PhoneCodeExpired
+from pyrogram.errors import (
+    ApiIdInvalid,
+    ApiIdPublishedFlood,
+    PhoneNumberInvalid,
+    PhoneNumberBanned,
+    PhoneCodeInvalid,
+    PhoneCodeEmpty,
+    PhoneNumberFlood,
+    PasswordHashInvalid,
+)
 
 from bot.db.repo import Repo
 from bot.keyboards.menu import back_only_kb
@@ -30,6 +40,85 @@ class ScraperTask(StatesGroup):
 
 
 user_clients: dict[int, Client] = {}
+
+
+def _err_detail(e: BaseException) -> str:
+    code = getattr(e, "CODE", None)
+    msg = getattr(e, "MESSAGE", None)
+    if code is not None or msg is not None:
+        return f"({code} {msg})".strip()
+    return f"({type(e).__name__})"
+
+
+def _format_auth_error(e: BaseException) -> str:
+    # Most actionable Telegram auth errors first.
+    if isinstance(e, FloodWait):
+        sec = int(getattr(e, "value", 0) or 0)
+        sec = max(sec, 1)
+        return (
+            "Telegram vaqtincha cheklov qo'ydi: juda ko'p urinish.\n\n"
+            f"Kutish kerak: {sec} soniya.\n"
+            "Keyin qayta urinib ko'ring."
+        )
+
+    if isinstance(e, PhoneNumberBanned):
+        return (
+            "Bu telefon raqam Telegram tomonidan bloklangan (banned).\n\n"
+            "Boshqa raqam bilan urinib ko'ring yoki Telegram support orqali yechib oling."
+        )
+
+    if isinstance(e, PhoneNumberInvalid):
+        return (
+            "Telefon raqam formati noto'g'ri.\n\n"
+            "Masalan: +998901234567 ko'rinishida yuboring."
+        )
+
+    if isinstance(e, (ApiIdInvalid, ApiIdPublishedFlood)):
+        return (
+            "API ID / API HASH noto'g'ri yoki Telegram bu API'ni cheklagan.\n\n"
+            "my.telegram.org saytidan API ID/HASH ni qayta tekshiring yoki yangisini yarating."
+        )
+
+    if isinstance(e, PhoneNumberFlood):
+        return (
+            "Bu raqam uchun kod yuborish juda ko'p bo'ldi (PHONE_NUMBER_FLOOD).\n\n"
+            "Bir necha soat kuting va qayta urinib ko'ring."
+        )
+
+    if isinstance(e, PhoneCodeExpired):
+        return (
+            "Tasdiqlash kodi muddati tugagan.\n\n"
+            "Yangi kod so'rang va kelishi bilan 1-2 daqiqada yuboring."
+        )
+
+    if isinstance(e, (PhoneCodeInvalid, PhoneCodeEmpty)):
+        return (
+            "Tasdiqlash kodi noto'g'ri kiritilgan.\n\n"
+            "Telegram yuborgan eng oxirgi kodni (5 raqam) aynan o'sha holatda yuboring."
+        )
+
+    if isinstance(e, SessionPasswordNeeded):
+        return (
+            "Akkountda 2FA (ikki bosqichli parol) yoqilgan.\n\n"
+            "Davom etish uchun 2FA parolni yuboring."
+        )
+
+    if isinstance(e, PasswordHashInvalid):
+        return (
+            "2FA parol noto'g'ri.\n\n"
+            "Parolni to'g'ri kiriting yoki Telegram ilovasida parolni tiklang."
+        )
+
+    return f"Noma'lum xatolik {_err_detail(e)}"
+
+
+def _format_auth_error_full(e: BaseException) -> str:
+    """Userga 1-urinishdayoq aniq sabab + texnik RPC detail chiqarish."""
+    base = _format_auth_error(e)
+    detail = _err_detail(e)
+    if detail and detail not in base:
+        return base + "\n\nTexnik: " + detail
+    return base
 
 
 # ---------------------------------------------------------------------------
@@ -65,19 +154,16 @@ async def _safe_disconnect(client: Client) -> None:
         pass
 
 
-async def _send_code_safe(client: Client, phone: str) -> tuple[str | None, str | None]:
+async def _send_code_safe(client: Client, phone: str) -> tuple[str | None, BaseException | None]:
     """
-    Returns: (phone_code_hash, None)     — muvaffaqiyatli
-             (None, "flood:<seconds>")   — FLOOD_WAIT
-             (None, "<xato>")            — boshqa xato
+    Returns: (phone_code_hash, None)  — muvaffaqiyatli
+             (None, exc)             — xato (FloodWait ham shu yerda)
     """
     try:
         code_info = await client.send_code(phone)
         return code_info.phone_code_hash, None
-    except FloodWait as e:
-        return None, f"flood:{int(e.value)}"
     except Exception as e:
-        return None, str(e)
+        return None, e
 
 
 async def _try_connect_saved_session(user_id: int) -> Client | None:
@@ -200,7 +286,7 @@ async def process_phone(message: Message, state: FSMContext):
             )
             await state.set_state(ScraperTask.source_chat)
         except Exception as e:
-            await message.answer(f"StringSession xatoligi: {e}\n\nQaytadan urinib ko'ring.")
+            await message.answer(_format_auth_error(e))
         return
 
     # --- Telefon raqam ---
@@ -219,7 +305,7 @@ async def process_phone(message: Message, state: FSMContext):
     try:
         await client.connect()
     except Exception as e:
-        await message.answer(f"Ulanishda xatolik: {e}")
+        await message.answer(_format_auth_error_full(e))
         return
 
     user_clients[message.from_user.id] = client
@@ -229,13 +315,7 @@ async def process_phone(message: Message, state: FSMContext):
     if err is not None:
         await _safe_disconnect(client)
         user_clients.pop(message.from_user.id, None)
-        if err.startswith("flood:"):
-            secs = err.split(":")[1]
-            await message.answer(
-                f"Telegram cheklovi (FLOOD_WAIT).\n\nIltimos, {secs} soniya kuting, keyin telefon raqamni qaytadan yuboring."
-            )
-        else:
-            await message.answer(f"Kod yuborishda xatolik: {err}\n\nQaytadan urinib ko'ring.")
+        await message.answer(_format_auth_error_full(err))
         return
 
     await state.update_data(phone_code_hash=phone_code_hash)
@@ -282,23 +362,14 @@ async def process_otp(message: Message, state: FSMContext):
             try:
                 await client.connect()
             except Exception as e:
-                await message.answer(f"Qayta ulanishda xatolik: {e}\n\nQaytadan boshlang.")
+                await message.answer(_format_auth_error_full(e))
                 user_clients.pop(message.from_user.id, None)
                 await state.clear()
                 return
 
         new_hash, err = await _send_code_safe(client, phone)
         if err is not None:
-            if err.startswith("flood:"):
-                secs = err.split(":")[1]
-                await message.answer(
-                    f"Telegram cheklovi (FLOOD_WAIT).\n\n{secs} soniya kuting, keyin kodni qaytadan yuboring."
-                )
-            else:
-                await message.answer(f"Yangi kod yuborishda xatolik: {err}\n\nQaytadan boshlang.")
-                await _safe_disconnect(client)
-                user_clients.pop(message.from_user.id, None)
-                await state.clear()
+            await message.answer(_format_auth_error_full(err))
             return
 
         await state.update_data(phone_code_hash=new_hash)
@@ -311,19 +382,16 @@ async def process_otp(message: Message, state: FSMContext):
         return
 
     except SessionPasswordNeeded:
-        await message.answer("Ikki bosqichli parol (2FA) soralmoqda. Parolni yuboring:")
+        await message.answer("Ikki bosqichli parol (2FA) so'ralmoqda. Parolni yuboring:")
         await state.set_state(TelegramAuth.two_fa)
         return
 
     except FloodWait as e:
-        wait_sec = int(e.value)
-        await message.answer(
-            f"Telegram cheklovi (FLOOD_WAIT).\n\n{wait_sec} soniya kuting, keyin kodni qaytadan yuboring."
-        )
+        await message.answer(_format_auth_error_full(e))
         return
 
     except Exception as e:
-        await message.answer(f"Xatolik: {e}")
+        await message.answer(_format_auth_error_full(e))
         return
 
     # Muvaffaqiyatli login
@@ -360,13 +428,10 @@ async def process_2fa(message: Message, state: FSMContext):
     try:
         await client.check_password(str(message.text or ""))
     except FloodWait as e:
-        wait_sec = int(e.value)
-        await message.answer(
-            f"Telegram cheklovi (FLOOD_WAIT).\n\n{wait_sec} soniya kuting, keyin parolni qaytadan yuboring."
-        )
+        await message.answer(_format_auth_error_full(e))
         return
     except Exception as e:
-        await message.answer(f"Parol notogri: {e}\n\nQaytadan yuboring:")
+        await message.answer(_format_auth_error_full(e) + "\n\nQaytadan yuboring:")
         return
 
     try:
