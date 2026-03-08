@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import random
+import uuid
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -21,7 +22,6 @@ class TelegramAuth(StatesGroup):
     phone = State()
     otp = State()
     two_fa = State()
-    session_string = State()
 
 
 class ScraperTask(StatesGroup):
@@ -30,6 +30,32 @@ class ScraperTask(StatesGroup):
 
 
 user_clients: dict[int, Client] = {}
+
+
+# ---------------------------------------------------------------------------
+# YORDAMCHI FUNKSIYALAR
+# ---------------------------------------------------------------------------
+
+def _make_client(api_id: int, api_hash: str, session_string: str | None = None) -> Client:
+    """
+    Har safar YANGI unikal nom bilan Client yaratadi.
+    Bu Pyrogram local cache / .session fayl konfliktini bartaraf etadi.
+    """
+    unique_name = f"tg_{uuid.uuid4().hex}"
+    kwargs: dict = dict(
+        name=unique_name,
+        api_id=api_id,
+        api_hash=api_hash,
+        in_memory=True,
+        # Real qurilma kabi ko'rinish uchun
+        device_model="Samsung Galaxy S23",
+        system_version="Android 13",
+        app_version="9.6.7",
+        lang_code="uz",
+    )
+    if session_string:
+        kwargs["session_string"] = session_string
+    return Client(**kwargs)
 
 
 async def _safe_disconnect(client: Client) -> None:
@@ -41,9 +67,9 @@ async def _safe_disconnect(client: Client) -> None:
 
 async def _send_code_safe(client: Client, phone: str) -> tuple[str | None, str | None]:
     """
-    Returns: (phone_code_hash, None) on success
-             (None, "flood:<seconds>") on FloodWait
-             (None, "<error>") on other errors
+    Returns: (phone_code_hash, None)     — muvaffaqiyatli
+             (None, "flood:<seconds>")   — FLOOD_WAIT
+             (None, "<xato>")            — boshqa xato
     """
     try:
         code_info = await client.send_code(phone)
@@ -64,12 +90,10 @@ async def _try_connect_saved_session(user_id: int) -> Client | None:
     if not session_string:
         return None
     try:
-        client = Client(
-            name=f"session_{user_id}",
+        client = _make_client(
             api_id=int(saved["api_id"]),
             api_hash=str(saved["api_hash"]),
             session_string=session_string,
-            in_memory=True,
         )
         await client.start()
         user_clients[user_id] = client
@@ -82,6 +106,10 @@ def setup(repo: Repo) -> None:
     global _repo
     _repo = repo
 
+
+# ---------------------------------------------------------------------------
+# MENYUNI OCHISH
+# ---------------------------------------------------------------------------
 
 @router.callback_query(F.data == "telegram:open")
 async def telegram_open(call: CallbackQuery, state: FSMContext):
@@ -111,6 +139,10 @@ async def telegram_open(call: CallbackQuery, state: FSMContext):
     await state.set_state(TelegramAuth.api_id)
     await call.answer()
 
+
+# ---------------------------------------------------------------------------
+# AVTORIZATSIYA
+# ---------------------------------------------------------------------------
 
 @router.message(TelegramAuth.api_id)
 async def process_api_id(message: Message, state: FSMContext):
@@ -144,15 +176,16 @@ async def process_phone(message: Message, state: FSMContext):
         await message.answer("Telefon raqam yoki StringSession yuboring.")
         return
 
-    # StringSession bo'lsa bevosita ulanish (uzun matn, '+' yo'q)
+    # --- StringSession ---
     if "+" not in text and len(text) > 120:
+        old = user_clients.pop(message.from_user.id, None)
+        if old:
+            await _safe_disconnect(old)
         try:
-            client = Client(
-                name=f"session_{message.from_user.id}",
+            client = _make_client(
                 api_id=int(data["api_id"]),
                 api_hash=str(data["api_hash"]),
                 session_string=text,
-                in_memory=True,
             )
             await client.start()
             user_clients[message.from_user.id] = client
@@ -170,20 +203,17 @@ async def process_phone(message: Message, state: FSMContext):
             await message.answer(f"StringSession xatoligi: {e}\n\nQaytadan urinib ko'ring.")
         return
 
-    # Telefon raqam bilan kod so'rash
+    # --- Telefon raqam ---
     phone = text
     await state.update_data(phone=phone, otp_expired_attempts=0)
 
-    # Oldingi client ni tozalaymiz
-    old_client = user_clients.pop(message.from_user.id, None)
-    if old_client:
-        await _safe_disconnect(old_client)
+    old = user_clients.pop(message.from_user.id, None)
+    if old:
+        await _safe_disconnect(old)
 
-    client = Client(
-        name=f"session_{message.from_user.id}",
+    client = _make_client(
         api_id=int(data["api_id"]),
         api_hash=str(data["api_hash"]),
-        in_memory=True,
     )
 
     try:
@@ -192,20 +222,17 @@ async def process_phone(message: Message, state: FSMContext):
         await message.answer(f"Ulanishda xatolik: {e}")
         return
 
-    # Darhol saqlaymiz (disconnect kerak bo'lsa)
     user_clients[message.from_user.id] = client
 
     phone_code_hash, err = await _send_code_safe(client, phone)
 
     if err is not None:
-        # Xato — client ni tozalaymiz, state phone da qoladi (foydalanuvchi qayta yuboradi)
         await _safe_disconnect(client)
         user_clients.pop(message.from_user.id, None)
         if err.startswith("flood:"):
             secs = err.split(":")[1]
             await message.answer(
-                "Telegram cheklovi (FLOOD_WAIT).\n\n"
-                f"Iltimos, {secs} soniya kuting, keyin telefon raqamni qaytadan yuboring."
+                f"Telegram cheklovi (FLOOD_WAIT).\n\nIltimos, {secs} soniya kuting, keyin telefon raqamni qaytadan yuboring."
             )
         else:
             await message.answer(f"Kod yuborishda xatolik: {err}\n\nQaytadan urinib ko'ring.")
@@ -251,7 +278,6 @@ async def process_otp(message: Message, state: FSMContext):
             await state.clear()
             return
 
-        # Client hali ulanganmi?
         if not client.is_connected:
             try:
                 await client.connect()
@@ -266,10 +292,8 @@ async def process_otp(message: Message, state: FSMContext):
             if err.startswith("flood:"):
                 secs = err.split(":")[1]
                 await message.answer(
-                    "Telegram cheklovi (FLOOD_WAIT).\n\n"
-                    f"{secs} soniya kuting, keyin kodni qaytadan yuboring."
+                    f"Telegram cheklovi (FLOOD_WAIT).\n\n{secs} soniya kuting, keyin kodni qaytadan yuboring."
                 )
-                # OTP state da qoladi — foydalanuvchi kutib qayta kiradi
             else:
                 await message.answer(f"Yangi kod yuborishda xatolik: {err}\n\nQaytadan boshlang.")
                 await _safe_disconnect(client)
@@ -280,9 +304,8 @@ async def process_otp(message: Message, state: FSMContext):
         await state.update_data(phone_code_hash=new_hash)
         remaining = MAX_RETRIES - expired_attempts
         await message.answer(
-            "Kodning muddati tugagan. Yangi kod yuborildi.\n"
-            f"Yangi tasdiqlash kodini yuboring "
-            f"(Urinish: {expired_attempts}/{MAX_RETRIES}, {remaining} ta imkoniyat qoldi):"
+            f"Kodning muddati tugagan. Yangi kod yuborildi.\n"
+            f"Yangi tasdiqlash kodini yuboring (Urinish: {expired_attempts}/{MAX_RETRIES}, {remaining} ta imkoniyat qoldi):"
         )
         await state.set_state(TelegramAuth.otp)
         return
@@ -295,10 +318,8 @@ async def process_otp(message: Message, state: FSMContext):
     except FloodWait as e:
         wait_sec = int(e.value)
         await message.answer(
-            "Telegram cheklovi (FLOOD_WAIT).\n\n"
-            f"{wait_sec} soniya kuting, keyin kodni qaytadan yuboring."
+            f"Telegram cheklovi (FLOOD_WAIT).\n\n{wait_sec} soniya kuting, keyin kodni qaytadan yuboring."
         )
-        # State TelegramAuth.otp da qoladi
         return
 
     except Exception as e:
@@ -341,8 +362,7 @@ async def process_2fa(message: Message, state: FSMContext):
     except FloodWait as e:
         wait_sec = int(e.value)
         await message.answer(
-            "Telegram cheklovi (FLOOD_WAIT).\n\n"
-            f"{wait_sec} soniya kuting, keyin parolni qaytadan yuboring."
+            f"Telegram cheklovi (FLOOD_WAIT).\n\n{wait_sec} soniya kuting, keyin parolni qaytadan yuboring."
         )
         return
     except Exception as e:
