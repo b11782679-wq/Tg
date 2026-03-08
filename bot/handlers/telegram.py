@@ -344,7 +344,7 @@ async def process_otp(message: Message, state: FSMContext):
     try:
         await client.sign_in(phone, phone_code_hash, otp)
 
-    except PhoneCodeExpired:
+    except PhoneCodeExpired as e:
         expired_attempts += 1
         await state.update_data(otp_expired_attempts=expired_attempts)
 
@@ -375,7 +375,9 @@ async def process_otp(message: Message, state: FSMContext):
         await state.update_data(phone_code_hash=new_hash)
         remaining = MAX_RETRIES - expired_attempts
         await message.answer(
-            f"Kodning muddati tugagan. Yangi kod yuborildi.\n"
+            _format_auth_error_full(e)
+            + "\n\n"
+            + f"Yangi kod yuborildi.\n"
             f"Yangi tasdiqlash kodini yuboring (Urinish: {expired_attempts}/{MAX_RETRIES}, {remaining} ta imkoniyat qoldi):"
         )
         await state.set_state(TelegramAuth.otp)
