@@ -18,6 +18,17 @@ import tempfile
 router = Router()
 
 
+_DEFAULT_MAX_EMAILS = 100
+
+
+def _get_max_emails() -> int:
+    try:
+        v = int(os.getenv("ICLOUD_MAX_EMAILS", str(_DEFAULT_MAX_EMAILS)))
+    except Exception:
+        v = _DEFAULT_MAX_EMAILS
+    return max(1, min(2000, v))
+
+
 class iCloudStates(StatesGroup):
     waiting_emails = State()
 
@@ -27,12 +38,13 @@ def setup(repo: Repo):
     async def open_icloud_menu(callback: CallbackQuery, state: FSMContext):
         """iCloud Check menyusini ochish"""
         lang = await repo.get_language(callback.from_user.id)
+        max_emails = _get_max_emails()
         
         text = (
             "☁️ <b>iCloud Email Checker</b>\n\n"
             "iCloud/Apple ID email manzillarini tekshirish uchun email ro‘yxatini yuboring.\n\n"
             "📧 <b>Format:</b> Har bir qatorda 1 ta email\n"
-            "📄 <b>Maksimum:</b> 50 ta email bir vaqtning o‘zida\n"
+            f"📄 <b>Maksimum:</b> {max_emails} ta email bir vaqtning o‘zida\n"
             "⏱️ <b>Vaqt:</b> Har bir email ~20-40 soniya\n\n"
             "✉️ Email ro‘yxatini yuboring yoki fayl (emails.txt) yuklang:"
         )
@@ -49,6 +61,7 @@ def setup(repo: Repo):
     async def process_email_file(message: Message, state: FSMContext, bot: Bot):
         """Email faylini qabul qilish"""
         lang = await repo.get_language(message.from_user.id)
+        max_emails = _get_max_emails()
         
         # Check file extension
         file_name = message.document.file_name or ""
@@ -92,11 +105,11 @@ def setup(repo: Repo):
             return
         
         # Limit check
-        if len(emails) > 50:
-            emails = emails[:50]
+        if len(emails) > max_emails:
+            emails = emails[:max_emails]
             await message.answer(
                 "⚠️ <b>Diqqat!</b>\n"
-                "50 tadan ko‘p email kiritildi. Faqat birinchi 50 ta tekshiriladi.",
+                f"{max_emails} tadan ko‘p email kiritildi. Faqat birinchi {max_emails} ta tekshiriladi.",
                 parse_mode="HTML"
             )
         
@@ -154,6 +167,7 @@ def setup(repo: Repo):
     async def process_email_text(message: Message, state: FSMContext, bot: Bot):
         """Text formatidagi email ro'yxatini qabul qilish"""
         lang = await repo.get_language(message.from_user.id)
+        max_emails = _get_max_emails()
         
         # Parse emails from text
         lines = message.text.strip().split('\n')
@@ -172,11 +186,11 @@ def setup(repo: Repo):
             return
         
         # Limit check
-        if len(emails) > 50:
-            emails = emails[:50]
+        if len(emails) > max_emails:
+            emails = emails[:max_emails]
             await message.answer(
                 "⚠️ <b>Diqqat!</b>\n"
-                "50 tadan ko‘p email kiritildi. Faqat birinchi 50 ta tekshiriladi.",
+                f"{max_emails} tadan ko‘p email kiritildi. Faqat birinchi {max_emails} ta tekshiriladi.",
                 parse_mode="HTML"
             )
         
