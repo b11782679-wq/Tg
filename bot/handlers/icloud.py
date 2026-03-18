@@ -6,6 +6,14 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import TimeoutException, WebDriverException
+
 from bot.keyboards.youtuber import youtuber_entry_kb
 from bot.keyboards.menu import back_only_kb
 from bot.db.repo import Repo
@@ -27,6 +35,140 @@ def _get_max_emails() -> int:
     except Exception:
         v = _DEFAULT_MAX_EMAILS
     return max(1, min(2000, v))
+
+
+def _use_selenium() -> bool:
+    v = (os.getenv("ICLOUD_USE_SELENIUM", "").strip() or "0").lower()
+    return v in {"1", "true", "yes", "on"}
+
+
+def _is_headless() -> bool:
+    v = (os.getenv("ICLOUD_HEADLESS", "").strip() or "1").lower()
+    return v in {"1", "true", "yes", "on"}
+
+
+class ICloudSeleniumChecker:
+    def __init__(self):
+        self.driver = None
+        self._setup_driver()
+
+    def _setup_driver(self):
+        chrome_options = Options()
+        if _is_headless():
+            chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--window-size=1280,720")
+        chrome_options.add_argument("--lang=en-US")
+        chrome_options.add_argument("--log-level=3")
+
+        if os.path.exists("/usr/bin/chromium"):
+            chrome_options.binary_location = "/usr/bin/chromium"
+        elif os.path.exists("/usr/bin/chromium-browser"):
+            chrome_options.binary_location = "/usr/bin/chromium-browser"
+
+        service = None
+        if os.path.exists("/usr/bin/chromedriver"):
+            service = Service("/usr/bin/chromedriver")
+
+        if service:
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        else:
+            self.driver = webdriver.Chrome(options=chrome_options)
+
+    def close(self):
+        try:
+            if self.driver:
+                self.driver.quit()
+        except Exception:
+            pass
+
+    def check_email(self, email: str) -> dict:
+        try:
+            self.driver.get("https://appleid.apple.com/sign-in")
+
+            email_input = None
+            selectors = [
+                (By.ID, "account_name_text_field"),
+                (By.NAME, "account_name"),
+                (By.CSS_SELECTOR, "input[type='text']"),
+                (By.XPATH, "//input[contains(@id, 'account')]"),
+            ]
+            for sel_type, sel_val in selectors:
+                try:
+                    email_input = WebDriverWait(self.driver, 12).until(
+                        EC.presence_of_element_located((sel_type, sel_val))
+                    )
+                    if email_input.is_displayed():
+                        break
+                except Exception:
+                    continue
+
+            if not email_input:
+                return {"email": email, "exists": False, "status": "Element Not Found"}
+
+            try:
+                email_input.click()
+            except Exception:
+                pass
+            try:
+                email_input.clear()
+            except Exception:
+                pass
+            email_input.send_keys(email)
+
+            next_btn = None
+            btn_selectors = [
+                (By.ID, "sign-in"),
+                (By.ID, "continue"),
+                (By.CSS_SELECTOR, "button[type='submit']"),
+            ]
+            for sel_type, sel_val in btn_selectors:
+                try:
+                    next_btn = WebDriverWait(self.driver, 8).until(
+                        EC.element_to_be_clickable((sel_type, sel_val))
+                    )
+                    break
+                except Exception:
+                    continue
+            if next_btn:
+                try:
+                    next_btn.click()
+                except Exception:
+                    pass
+
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    lambda d: (
+                        "password" in (d.page_source or "").lower()
+                        or "not found" in (d.page_source or "").lower()
+                        or "doesn't exist" in (d.page_source or "").lower()
+                    )
+                )
+            except Exception:
+                pass
+
+            try:
+                pwd = self.driver.find_elements(By.CSS_SELECTOR, "input[type='password']")
+                if any(el.is_displayed() for el in pwd):
+                    return {"email": email, "exists": True, "status": "Valid"}
+            except Exception:
+                pass
+
+            src = (self.driver.page_source or "").lower()
+            if "password" in src:
+                return {"email": email, "exists": True, "status": "Valid"}
+            if "not found" in src or "doesn't exist" in src:
+                return {"email": email, "exists": False, "status": "Not Found"}
+            return {"email": email, "exists": False, "status": "Unknown"}
+
+        except TimeoutException:
+            return {"email": email, "exists": False, "status": "Timeout"}
+        except WebDriverException as e:
+            return {"email": email, "exists": False, "status": f"Error: {str(e)[:80]}"}
+        except Exception as e:
+            return {"email": email, "exists": False, "status": f"Error: {str(e)[:80]}"}
 
 
 class iCloudStates(StatesGroup):
@@ -255,35 +397,54 @@ async def run_icloud_check(emails: list, msg: Message, bot: Bot) -> list:
     Railway muhitida ishlamasa, lokal kompyuterda ishlatish tavsiya etiladi.
     """
     results = []
-    
-    for i, email in enumerate(emails, 1):
+
+    selenium_enabled = _use_selenium()
+    checker = None
+    if selenium_enabled:
         try:
-            # Simple HTTP-based check (fallback)
-            result = await check_email_http(email)
-            results.append(result)
-            
-            # Update progress every 5 emails
-            if i % 5 == 0 or i == len(emails):
-                try:
-                    await msg.edit_text(
-                        f"🔍 <b>Progress:</b> {i}/{len(emails)}\n"
-                        f"✅ Mavjud: {len([r for r in results if r.get('exists')])} | "
-                        f"❌ Yo'q: {len([r for r in results if not r.get('exists')])}",
-                        parse_mode="HTML"
-                    )
-                except Exception:
-                    pass  # Message not modified
-            
-            # Rate limiting
-            if i < len(emails):
-                await asyncio.sleep(2)  # 2 second delay between checks
-                
+            checker = ICloudSeleniumChecker()
         except Exception as e:
-            results.append({
-                "email": email,
-                "exists": False,
-                "status": f"Error: {str(e)[:50]}"
-            })
+            selenium_enabled = False
+            results.append({"email": "-", "exists": False, "status": f"Selenium init failed: {str(e)[:80]}"})
+    
+    try:
+        for i, email in enumerate(emails, 1):
+            try:
+                if selenium_enabled and checker:
+                    result = await asyncio.to_thread(checker.check_email, email)
+                    result = result or {"email": email, "exists": False, "status": "Unknown"}
+                    if result.get("status") in {"Valid", "Not Found"}:
+                        result["status"] = f"{result['status']} (Selenium)"
+                else:
+                    result = await check_email_http(email)
+                results.append(result)
+
+                if i % 5 == 0 or i == len(emails):
+                    try:
+                        await msg.edit_text(
+                            f"🔍 <b>Progress:</b> {i}/{len(emails)}\n"
+                            f"✅ Mavjud: {len([r for r in results if r.get('exists')])} | "
+                            f"❌ Yo'q: {len([r for r in results if not r.get('exists')])}",
+                            parse_mode="HTML"
+                        )
+                    except Exception:
+                        pass
+
+                if i < len(emails):
+                    await asyncio.sleep(2)
+
+            except Exception as e:
+                results.append({
+                    "email": email,
+                    "exists": False,
+                    "status": f"Error: {str(e)[:80]}"
+                })
+    finally:
+        if checker:
+            try:
+                await asyncio.to_thread(checker.close)
+            except Exception:
+                pass
     
     return results
 
