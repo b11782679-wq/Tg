@@ -433,6 +433,7 @@ async def run_icloud_check(emails: list, msg: Message, bot: Bot) -> list:
     total = len(emails)
     processed = 0
     processed_lock = asyncio.Lock()
+    results_lock = asyncio.Lock()
 
     async def _bump_progress():
         nonlocal processed
@@ -443,11 +444,14 @@ async def run_icloud_check(emails: list, msg: Message, bot: Bot) -> list:
             try:
                 mode = "Selenium" if selenium_enabled else "HTTP"
                 workers = _get_workers() if selenium_enabled else 1
+                async with results_lock:
+                    ok_n = len([r for r in results if r.get('exists')])
+                    bad_n = len([r for r in results if not r.get('exists')])
                 await msg.edit_text(
                     f"🔍 <b>Progress:</b> {p}/{total}\n"
                     f"⚙️ Rejim: <b>{mode}</b> | Workers: <b>{workers}</b>\n"
-                    f"✅ Mavjud: {len([r for r in results if r.get('exists')])} | "
-                    f"❌ Yo'q: {len([r for r in results if not r.get('exists')])}",
+                    f"✅ Mavjud: {ok_n} | "
+                    f"❌ Yo'q: {bad_n}",
                     parse_mode="HTML"
                 )
             except Exception:
@@ -469,7 +473,10 @@ async def run_icloud_check(emails: list, msg: Message, bot: Bot) -> list:
                 checker = await asyncio.to_thread(ICloudSeleniumChecker)
             except Exception as e:
                 for em in worker_emails:
-                    local_results.append({"email": em, "exists": False, "status": f"Selenium init failed: {str(e)[:80]}"})
+                    r = {"email": em, "exists": False, "status": f"Selenium init failed: {str(e)[:80]}"}
+                    local_results.append(r)
+                    async with results_lock:
+                        results.append(r)
                     await _bump_progress()
                 return local_results
 
@@ -482,7 +489,15 @@ async def run_icloud_check(emails: list, msg: Message, bot: Bot) -> list:
                             r["status"] = f"{r['status']} (Selenium)"
                         local_results.append(r)
                     except Exception as e:
-                        local_results.append({"email": em, "exists": False, "status": f"Error: {str(e)[:80]}"})
+                        r = {"email": em, "exists": False, "status": f"Error: {str(e)[:80]}"}
+                        local_results.append(r)
+                        async with results_lock:
+                            results.append(r)
+                        await _bump_progress()
+                        continue
+
+                    async with results_lock:
+                        results.append(r)
                     await _bump_progress()
             finally:
                 if checker:
