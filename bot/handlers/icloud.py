@@ -47,6 +47,14 @@ def _is_headless() -> bool:
     return v in {"1", "true", "yes", "on"}
 
 
+def _get_workers() -> int:
+    try:
+        v = int(os.getenv("ICLOUD_WORKERS", "3"))
+    except Exception:
+        v = 3
+    return max(1, min(8, v))
+
+
 class ICloudSeleniumChecker:
     def __init__(self):
         self.driver = None
@@ -399,52 +407,84 @@ async def run_icloud_check(emails: list, msg: Message, bot: Bot) -> list:
     results = []
 
     selenium_enabled = _use_selenium()
-    checker = None
-    if selenium_enabled:
-        try:
-            checker = ICloudSeleniumChecker()
-        except Exception as e:
-            selenium_enabled = False
-            results.append({"email": "-", "exists": False, "status": f"Selenium init failed: {str(e)[:80]}"})
-    
-    try:
-        for i, email in enumerate(emails, 1):
-            try:
-                if selenium_enabled and checker:
-                    result = await asyncio.to_thread(checker.check_email, email)
-                    result = result or {"email": email, "exists": False, "status": "Unknown"}
-                    if result.get("status") in {"Valid", "Not Found"}:
-                        result["status"] = f"{result['status']} (Selenium)"
-                else:
-                    result = await check_email_http(email)
-                results.append(result)
 
-                if i % 5 == 0 or i == len(emails):
+    total = len(emails)
+    processed = 0
+    processed_lock = asyncio.Lock()
+
+    async def _bump_progress():
+        nonlocal processed
+        async with processed_lock:
+            processed += 1
+            p = processed
+        if p % 10 == 0 or p == total:
+            try:
+                await msg.edit_text(
+                    f"🔍 <b>Progress:</b> {p}/{total}\n"
+                    f"✅ Mavjud: {len([r for r in results if r.get('exists')])} | "
+                    f"❌ Yo'q: {len([r for r in results if not r.get('exists')])}",
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
+
+    if selenium_enabled:
+        workers = _get_workers()
+        if workers > total:
+            workers = total
+
+        buckets: list[list[str]] = [[] for _ in range(workers)]
+        for idx, email in enumerate(emails):
+            buckets[idx % workers].append(email)
+
+        async def _selenium_worker(worker_emails: list[str]) -> list[dict]:
+            local_results: list[dict] = []
+            checker = None
+            try:
+                checker = await asyncio.to_thread(ICloudSeleniumChecker)
+            except Exception as e:
+                for em in worker_emails:
+                    local_results.append({"email": em, "exists": False, "status": f"Selenium init failed: {str(e)[:80]}"})
+                    await _bump_progress()
+                return local_results
+
+            try:
+                for em in worker_emails:
                     try:
-                        await msg.edit_text(
-                            f"🔍 <b>Progress:</b> {i}/{len(emails)}\n"
-                            f"✅ Mavjud: {len([r for r in results if r.get('exists')])} | "
-                            f"❌ Yo'q: {len([r for r in results if not r.get('exists')])}",
-                            parse_mode="HTML"
-                        )
+                        r = await asyncio.to_thread(checker.check_email, em)
+                        r = r or {"email": em, "exists": False, "status": "Unknown"}
+                        if r.get("status") in {"Valid", "Not Found"}:
+                            r["status"] = f"{r['status']} (Selenium)"
+                        local_results.append(r)
+                    except Exception as e:
+                        local_results.append({"email": em, "exists": False, "status": f"Error: {str(e)[:80]}"})
+                    await _bump_progress()
+            finally:
+                if checker:
+                    try:
+                        await asyncio.to_thread(checker.close)
                     except Exception:
                         pass
+            return local_results
 
-                if i < len(emails):
-                    await asyncio.sleep(2)
+        tasks = [asyncio.create_task(_selenium_worker(bucket)) for bucket in buckets if bucket]
+        for done in await asyncio.gather(*tasks):
+            results.extend(done)
 
+    else:
+        for i, email in enumerate(emails, 1):
+            try:
+                result = await check_email_http(email)
+                results.append(result)
             except Exception as e:
                 results.append({
                     "email": email,
                     "exists": False,
                     "status": f"Error: {str(e)[:80]}"
                 })
-    finally:
-        if checker:
-            try:
-                await asyncio.to_thread(checker.close)
-            except Exception:
-                pass
+            await _bump_progress()
+            if i < len(emails):
+                await asyncio.sleep(2)
     
     return results
 
