@@ -17,3 +17,6 @@ google-api-python-client==2.*
 google-auth==2.*
 google-auth-oauthlib==1.*
 google-auth-httplib2==0.2.*
+
+selenium==4.18.*
+webdriver-manager==4.0.*
