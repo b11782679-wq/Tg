@@ -6,7 +6,8 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from bot.keyboards.youtuber import youtuber_entry_kb, back_only_kb
+from bot.keyboards.youtuber import youtuber_entry_kb
+from bot.keyboards.menu import back_only_kb
 from bot.db.repo import Repo
 from bot.i18n import t
 
