@@ -151,7 +151,7 @@ def setup(repo: Repo):
         await state.clear()
 
     @router.message(iCloudStates.waiting_emails, F.text)
-    async def process_email_text(message: Message, state: FSMContext):
+    async def process_email_text(message: Message, state: FSMContext, bot: Bot):
         """Text formatidagi email ro'yxatini qabul qilish"""
         lang = await repo.get_language(message.from_user.id)
         
