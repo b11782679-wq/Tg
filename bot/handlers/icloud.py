@@ -183,6 +183,20 @@ class iCloudStates(StatesGroup):
     waiting_emails = State()
 
 
+def _estimate_minutes(n: int) -> int:
+    if n <= 0:
+        return 0
+    if _use_selenium():
+        workers = _get_workers()
+        # Conservative estimate per email; actual depends on Apple response time.
+        per_email_sec = 20
+        total_sec = int((n * per_email_sec) / max(1, workers))
+    else:
+        per_email_sec = 3
+        total_sec = int(n * per_email_sec)
+    return max(1, int((total_sec + 59) // 60))
+
+
 def setup(repo: Repo):
     @router.callback_query(F.data == "icloud:open")
     async def open_icloud_menu(callback: CallbackQuery, state: FSMContext):
@@ -264,9 +278,13 @@ def setup(repo: Repo):
             )
         
         # Start checking
+        mode = "Selenium" if _use_selenium() else "HTTP"
+        workers = _get_workers() if _use_selenium() else 1
+        eta_min = _estimate_minutes(len(emails))
         await msg.edit_text(
             f"🔍 <b>{len(emails)} ta email tekshirilmoqda...</b>\n\n"
-            f"⏱️ Taxminiy vaqt: <b>{len(emails) * 30 // 60} daqiqa</b>\n"
+            f"⚙️ Rejim: <b>{mode}</b> | Workers: <b>{workers}</b>\n"
+            f"⏱️ Taxminiy vaqt: <b>{eta_min} daqiqa</b>\n"
             f"📧 Tekshirilmoqda...",
             parse_mode="HTML"
         )
@@ -345,9 +363,13 @@ def setup(repo: Repo):
             )
         
         # Start checking
+        mode = "Selenium" if _use_selenium() else "HTTP"
+        workers = _get_workers() if _use_selenium() else 1
+        eta_min = _estimate_minutes(len(emails))
         msg = await message.answer(
             f"🔍 <b>{len(emails)} ta email tekshirilmoqda...</b>\n\n"
-            f"⏱️ Taxminiy vaqt: <b>{len(emails) * 30 // 60} daqiqa</b>\n"
+            f"⚙️ Rejim: <b>{mode}</b> | Workers: <b>{workers}</b>\n"
+            f"⏱️ Taxminiy vaqt: <b>{eta_min} daqiqa</b>\n"
             f"📧 Tekshirilmoqda...",
             parse_mode="HTML"
         )
@@ -419,8 +441,11 @@ async def run_icloud_check(emails: list, msg: Message, bot: Bot) -> list:
             p = processed
         if p % 10 == 0 or p == total:
             try:
+                mode = "Selenium" if selenium_enabled else "HTTP"
+                workers = _get_workers() if selenium_enabled else 1
                 await msg.edit_text(
                     f"🔍 <b>Progress:</b> {p}/{total}\n"
+                    f"⚙️ Rejim: <b>{mode}</b> | Workers: <b>{workers}</b>\n"
                     f"✅ Mavjud: {len([r for r in results if r.get('exists')])} | "
                     f"❌ Yo'q: {len([r for r in results if not r.get('exists')])}",
                     parse_mode="HTML"
